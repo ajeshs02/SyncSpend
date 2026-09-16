@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Controls only the window before Compose takes over. All real theming
+      (colors, light/dark/system, typography) lives in ui/theme/Theme.kt.
+    -->
+    <style name="Theme.SyncSpend" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A donut ring with one segment picked out, echoing the chart that now leads
+  the app. Drawn as two stroked arcs on the same circle: a full white ring,
+  then a heavier accent arc over roughly a quarter of it.
+
+  The ring sits inside the 66dp adaptive-icon safe zone — radius 24 plus a
+  7-wide stroke reaches 27.5 from centre, against a safe radius of 33.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Full ring -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="butt"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M30,54 A24,24 0 1,0 78,54 A24,24 0 1,0 30,54" />
+
+    <!-- Accent segment: from 12 o'clock clockwise to 3 o'clock -->
+    <path
+        android:strokeColor="#4566AE"
+        android:strokeWidth="11"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M54,30 A24,24 0 0,1 78,54" />
+</vector>

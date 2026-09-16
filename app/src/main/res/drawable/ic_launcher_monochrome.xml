@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Themed-icon layer. The system recolours this to match the wallpaper palette,
+  so the colour here is only a placeholder — the silhouette is what matters.
+  Same geometry as the foreground, with the accent segment kept as a thicker
+  arc so the shape still reads once everything is a single tone.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="7"
+        android:strokeLineCap="butt"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M30,54 A24,24 0 1,0 78,54 A24,24 0 1,0 30,54" />
+
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="11"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M54,30 A24,24 0 0,1 78,54" />
+</vector>

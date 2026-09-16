@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Only the pre-Compose starting-window background lives here — everything
+  else (the real color scheme, gradients, tokens) is Kotlin in ui/theme/Color.kt,
+  since a plain XML theme can't paint a gradient. This is a flat approximation
+  of the design's screen-gradient midtone, visible for a frame or two on cold
+  start before Compose's first frame lands.
+-->
+<resources>
+    <color name="window_background">#FFFAFCF9</color>
+</resources>
