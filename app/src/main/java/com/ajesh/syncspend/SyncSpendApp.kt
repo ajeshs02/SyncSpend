@@ -1,9 +1,10 @@
 package com.ajesh.syncspend
 
 import android.app.Application
+import com.ajesh.syncspend.di.AppContainer
+import com.ajesh.syncspend.di.DefaultAppContainer
 
-/**
- * Owns the app-wide [com.ajesh.syncspend.di.AppContainer] once it exists
- * (Phase 1). Empty for now — Phase 0 is just the themed shell.
- */
-class SyncSpendApp : Application()
+/** Owns the app-wide manual-DI [AppContainer]. */
+class SyncSpendApp : Application() {
+    val container: AppContainer by lazy { DefaultAppContainer(this) }
+}

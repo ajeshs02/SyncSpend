@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
-    // com.google.devtools.ksp lands in Phase 1 with Room.
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -81,8 +81,13 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
     implementation("androidx.navigation:navigation-compose:2.10.1")
 
-    // Room (local SQLite) and DataStore (prefs) land in Phase 1 alongside the
-    // entities/DAOs/repositories that actually use them.
+    // Room: local SQLite persistence.
+    implementation("androidx.room:room-runtime:2.8.4")
+    implementation("androidx.room:room-ktx:2.8.4")
+    ksp("androidx.room:room-compiler:2.8.4")
+
+    // DataStore: theme/currency/reminder preferences.
+    implementation("androidx.datastore:datastore-preferences:1.2.1")
 
     // No Glance/WorkManager/Hilt anywhere — RemoteViews widget + AlarmManager
     // + manual DI per spec.

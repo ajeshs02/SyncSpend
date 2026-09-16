@@ -9,6 +9,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.ajesh.syncspend.domain.model.ThemeMode
 
 /**
  * The design's semantic tokens (ink/sub/card/tile/acc/pos/neg/...), as a single
@@ -100,22 +101,15 @@ object SyncSpendTheme {
         get() = LocalSyncSpendColors.current
 }
 
-/**
- * App theme mode as chosen in Settings. Kept here (not in domain/) for Phase 0
- * since Settings/DataStore don't exist yet; DataStore-backed persistence of
- * this value lands in later phases without changing this enum's shape.
- */
-enum class AppThemeMode { LIGHT, DARK, SYSTEM }
-
 @Composable
 fun SyncSpendTheme(
-    themeMode: AppThemeMode = AppThemeMode.SYSTEM,
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
     content: @Composable () -> Unit,
 ) {
     val dark = when (themeMode) {
-        AppThemeMode.LIGHT -> false
-        AppThemeMode.DARK -> true
-        AppThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
     val tokens = if (dark) DarkColors else LightColors
 
