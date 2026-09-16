@@ -1,6 +1,7 @@
 package com.ajesh.syncspend.di
 
 import android.content.Context
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.room.Room
 import com.ajesh.syncspend.data.datastore.PreferencesRepository
 import com.ajesh.syncspend.data.db.AppDatabase
@@ -54,4 +55,9 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     override val preferencesRepository: PreferencesRepository by lazy {
         PreferencesRepository(context)
     }
+}
+
+/** Provided once at [com.ajesh.syncspend.MainActivity]'s root. */
+val LocalAppContainer = staticCompositionLocalOf<AppContainer> {
+    error("LocalAppContainer not provided — did you forget CompositionLocalProvider at the root?")
 }
