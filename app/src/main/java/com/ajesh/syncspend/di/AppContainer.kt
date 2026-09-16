@@ -9,6 +9,7 @@ import com.ajesh.syncspend.data.repository.CategoryRepository
 import com.ajesh.syncspend.data.repository.ReminderRepository
 import com.ajesh.syncspend.data.repository.SubscriptionRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
+import com.ajesh.syncspend.domain.state.SharedSelectionState
 
 /**
  * Manual DI root (no Hilt/Dagger/Koin). [com.ajesh.syncspend.SyncSpendApp] owns
@@ -23,6 +24,7 @@ interface AppContainer {
     val subscriptionRepository: SubscriptionRepository
     val reminderRepository: ReminderRepository
     val preferencesRepository: PreferencesRepository
+    val selectionState: SharedSelectionState
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -55,6 +57,8 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     override val preferencesRepository: PreferencesRepository by lazy {
         PreferencesRepository(context)
     }
+
+    override val selectionState: SharedSelectionState by lazy { SharedSelectionState() }
 }
 
 /** Provided once at [com.ajesh.syncspend.MainActivity]'s root. */

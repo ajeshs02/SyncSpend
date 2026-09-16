@@ -10,12 +10,11 @@ import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.data.repository.ReminderRepository
 import com.ajesh.syncspend.data.repository.SubscriptionRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
+import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
 import com.ajesh.syncspend.domain.model.FlowType
+import com.ajesh.syncspend.domain.model.ScopePeriod
+import com.ajesh.syncspend.domain.state.SharedSelectionState
 import com.ajesh.syncspend.util.CurrencyFormatter
-import java.time.YearMonth
-import java.time.format.TextStyle
-import java.util.Locale
-import kotlin.math.abs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -29,8 +28,15 @@ data class HomeUiState(
     val totalFormatted: String = "0.00",
     val currencySymbol: String = "₹",
     val hasEntriesInScope: Boolean = false,
+    val hasTrend: Boolean = false,
+    val trendPercent: Int = 0,
+    val trendIsUp: Boolean = false,
+    val prevScopeLabel: String = "",
+    val prevTotalFormatted: String = "",
     val subsCount: Int = 0,
     val remindersCount: Int = 0,
+    val currentScope: ScopePeriod = ScopePeriod.Month(java.time.YearMonth.now()),
+    val earliestTransactionDate: java.time.LocalDate? = null,
 )
 
 class HomeViewModel(
@@ -38,10 +44,8 @@ class HomeViewModel(
     private val subscriptionRepository: SubscriptionRepository,
     private val reminderRepository: ReminderRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val selection: SharedSelectionState,
 ) : ViewModel() {
-
-    private val selectedMonth = MutableStateFlow(YearMonth.now())
-    private val flow = MutableStateFlow(FlowType.EXPENSE)
 
     private data class Sources(
         val tx: List<TransactionEntity>,
@@ -57,34 +61,52 @@ class HomeViewModel(
         preferencesRepository.preferences,
     ) { tx, subs, reminders, prefs -> Sources(tx, subs, reminders, prefs) }
 
-    val uiState: StateFlow<HomeUiState> = combine(sources, selectedMonth, flow, ::compute)
+    val uiState: StateFlow<HomeUiState> = combine(sources, selection.scope, selection.flow, ::compute)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
-    private fun compute(sources: Sources, month: YearMonth, flowType: FlowType): HomeUiState {
-        val monthTx = sources.tx.filter { YearMonth.from(it.date) == month }
-        val flowTx = monthTx.filter { if (flowType == FlowType.INCOME) it.amount > 0 else it.amount < 0 }
-        val total = flowTx.sumOf { abs(it.amount) }
+    private fun compute(sources: Sources, scope: ScopePeriod, flowType: FlowType): HomeUiState {
+        val flowTx = AnalyticsEngine.flowFilter(sources.tx, flowType)
+        val scopeTx = AnalyticsEngine.scopeFilter(flowTx, scope)
+        val total = scopeTx.sumOf { kotlin.math.abs(it.amount) }
+
+        val prevScope = AnalyticsEngine.previousScope(scope)
+        val prevTotal = prevScope?.let { AnalyticsEngine.scopeFilter(flowTx, it).sumOf { t -> kotlin.math.abs(t.amount) } } ?: 0.0
+        val trend = AnalyticsEngine.trendPercent(total, prevTotal)
+
         return HomeUiState(
             flow = flowType,
-            scopeLabel = "${month.month.getDisplayName(TextStyle.FULL, Locale.US)} ${month.year}",
-            scopeSubLabel = "${flowTx.size} " + if (flowType == FlowType.INCOME) "income entries logged" else "expenses logged",
+            scopeLabel = AnalyticsEngine.scopeLabel(scope),
+            scopeSubLabel = "${scopeTx.size} " + if (flowType == FlowType.INCOME) "income entries logged" else "expenses logged",
             totalFormatted = CurrencyFormatter.amount(total),
             currencySymbol = sources.prefs.currencyCode.symbol,
-            hasEntriesInScope = flowTx.isNotEmpty(),
+            hasEntriesInScope = scopeTx.isNotEmpty(),
+            hasTrend = trend != null,
+            trendPercent = trend?.let { kotlin.math.abs(it) } ?: 0,
+            trendIsUp = (trend ?: 0) > 0,
+            prevScopeLabel = prevScope?.let { AnalyticsEngine.scopeLabel(it) } ?: "",
+            prevTotalFormatted = CurrencyFormatter.amount(prevTotal),
             subsCount = sources.subs.count { it.active },
             remindersCount = sources.reminders.count { it.active },
+            currentScope = scope,
+            earliestTransactionDate = sources.tx.minOfOrNull { it.date },
         )
     }
 
+    fun applyScope(newScope: ScopePeriod) {
+        selection.scope.value = newScope
+    }
+
     fun prevMonth() {
-        selectedMonth.value = selectedMonth.value.minusMonths(1)
+        val current = selection.scope.value
+        if (current is ScopePeriod.Month) selection.scope.value = ScopePeriod.Month(current.yearMonth.minusMonths(1))
     }
 
     fun nextMonth() {
-        selectedMonth.value = selectedMonth.value.plusMonths(1)
+        val current = selection.scope.value
+        if (current is ScopePeriod.Month) selection.scope.value = ScopePeriod.Month(current.yearMonth.plusMonths(1))
     }
 
     fun setFlow(type: FlowType) {
-        flow.value = type
+        selection.flow.value = type
     }
 }

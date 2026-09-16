@@ -26,7 +26,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,9 +47,11 @@ import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendCorners
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(onViewAllTransactions: () -> Unit) {
     val container = LocalAppContainer.current
+    var periodPickerOpen by remember { mutableStateOf(false) }
     val viewModel: HomeViewModel = viewModel(
         factory = viewModelFactory {
             initializer {
@@ -56,6 +60,7 @@ fun HomeScreen(onViewAllTransactions: () -> Unit) {
                     container.subscriptionRepository,
                     container.reminderRepository,
                     container.preferencesRepository,
+                    container.selectionState,
                 )
             }
         },
@@ -100,7 +105,12 @@ fun HomeScreen(onViewAllTransactions: () -> Unit) {
         ) {
             MonthArrow(SyncSpendIcons.Prev, onClick = viewModel::prevMonth)
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { periodPickerOpen = true },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(state.scopeLabel, style = MaterialTheme.typography.titleMedium, color = SyncSpendTheme.colors.ink)
@@ -135,7 +145,39 @@ fun HomeScreen(onViewAllTransactions: () -> Unit) {
                     }
                 }
                 androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp))
-                if (!state.hasEntriesInScope) {
+                if (state.hasTrend) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val up = state.trendIsUp
+                        val goodDirection = if (state.flow == FlowType.INCOME) up else !up
+                        Row(
+                            modifier = Modifier
+                                .background(
+                                    (if (goodDirection) Color(0xFF5FBF7D) else Color(0xFFF08579)).copy(alpha = 0.2f),
+                                    RoundedCornerShape(13.dp),
+                                )
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                if (up) SyncSpendIcons.Up else SyncSpendIcons.Down,
+                                null,
+                                tint = if (goodDirection) Color(0xFF9FE0B4) else Color(0xFFFFB3A8),
+                                modifier = Modifier.size(11.dp),
+                            )
+                            Text(
+                                "${state.trendPercent}%",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (goodDirection) Color(0xFF9FE0B4) else Color(0xFFFFB3A8),
+                            )
+                        }
+                        androidx.compose.foundation.layout.Spacer(Modifier.width(9.dp))
+                        Text(
+                            "vs ${state.prevScopeLabel} (${state.currencySymbol}${state.prevTotalFormatted})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.6f),
+                        )
+                    }
+                } else if (!state.hasEntriesInScope) {
                     Text(
                         "No entries yet for this period.",
                         style = MaterialTheme.typography.labelMedium,
@@ -187,6 +229,20 @@ fun HomeScreen(onViewAllTransactions: () -> Unit) {
                 modifier = Modifier.padding(vertical = 16.dp),
             )
         }
+    }
+
+    if (periodPickerOpen) {
+        val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        com.ajesh.syncspend.ui.components.PeriodPickerSheet(
+            currentScope = state.currentScope,
+            earliestTransactionDate = state.earliestTransactionDate,
+            onApply = {
+                viewModel.applyScope(it)
+                periodPickerOpen = false
+            },
+            onDismiss = { periodPickerOpen = false },
+            sheetState = sheetState,
+        )
     }
 }
 
