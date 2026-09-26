@@ -59,27 +59,30 @@ private val NavActiveTint = Color(0xFF8ECF63)
 private val NavInactiveTint = Color(0x7AFFFFFF) // rgba(255,255,255,.48)
 private val NavAddInactiveTint = Color(0x99FFFFFF) // rgba(255,255,255,.6)
 
-// Pill geometry. Five cells, the centre Add cell slightly wider: 4 x 56 + 64 + 2 x 10 padding = 308dp.
-private val CellWidth = 56.dp
-private val AddCellWidth = 64.dp
+// Pill geometry. Five cells, the centre Add cell wider and with a bigger plus so it reads as the
+// key button: 4 x 56 + 72 + 2 x 10 padding = 316dp.
 private val CellHeight = 50.dp
 private val PillPadding = 10.dp
 private val PillVerticalPadding = 6.dp
 private val PillRadius = 31.dp
+internal val NavCellWidth = 56.dp
+internal val NavAddCellWidth = 72.dp
+internal const val NAV_ADD_SLOT = 2
 
 /** Slot index in the pill for [route], or -1 when no tab is current (Subscriptions, Reminders). */
-private fun slotFor(route: String?): Int = when (route) {
+internal fun navSlotFor(route: String?): Int = when (route) {
     NavDestination.Home.route -> 0
     NavDestination.Transactions.route -> 1
-    "add_entry" -> 2
+    "add_entry" -> NAV_ADD_SLOT
     NavDestination.Categories.route -> 3
     NavDestination.Settings.route -> 4
     else -> -1
 }
 
-private fun slotOffset(slot: Int): Dp = CellWidth * slot.coerceAtMost(2) + if (slot > 2) AddCellWidth - CellWidth else 0.dp
+internal fun navSlotWidth(slot: Int): Dp = if (slot == NAV_ADD_SLOT) NavAddCellWidth else NavCellWidth
 
-private fun slotWidth(slot: Int): Dp = if (slot == 2) AddCellWidth else CellWidth
+/** Where slot [slot] starts: the widths of every cell before it (the Add cell is wider than the rest). */
+internal fun navSlotOffset(slot: Int): Dp = (0 until slot).fold(0.dp) { acc, i -> acc + navSlotWidth(i) }
 
 /**
  * The bottom fade scrim + floating pill nav, rendered once at the app's root
@@ -118,12 +121,12 @@ fun BottomFadeAndNav(
                 .background(NavPillDark, RoundedCornerShape(PillRadius))
                 .padding(horizontal = PillPadding, vertical = PillVerticalPadding),
         ) {
-            val slot = slotFor(currentRoute)
+            val slot = navSlotFor(currentRoute)
             ActiveIndicator(slot)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 NavIconButton(NavDestination.Home, SyncSpendIcons.Home, "Home", slot == 0) { onNavigate(NavDestination.Home) }
                 NavIconButton(NavDestination.Transactions, SyncSpendIcons.Swap, "Transactions", slot == 1) { onNavigate(NavDestination.Transactions) }
-                AddButton(active = slot == 2, onClick = onAddClick)
+                AddButton(active = slot == NAV_ADD_SLOT, onClick = onAddClick)
                 NavIconButton(NavDestination.Categories, SyncSpendIcons.Layers, "Categories", slot == 3) { onNavigate(NavDestination.Categories) }
                 NavIconButton(NavDestination.Settings, SyncSpendIcons.Cog, "Settings", slot == 4) { onNavigate(NavDestination.Settings) }
             }
@@ -142,8 +145,8 @@ private fun ActiveIndicator(slot: Int) {
     // A plain holder (not snapshot state): it only remembers the last tab for the fade-out.
     val last = remember { IntArray(1) }
     if (slot >= 0) last[0] = slot
-    val x by animateDpAsState(slotOffset(last[0]), tween(280, easing = FastOutSlowInEasing), label = "nav-x")
-    val width by animateDpAsState(slotWidth(last[0]), tween(280, easing = FastOutSlowInEasing), label = "nav-w")
+    val x by animateDpAsState(navSlotOffset(last[0]), tween(280, easing = FastOutSlowInEasing), label = "nav-x")
+    val width by animateDpAsState(navSlotWidth(last[0]), tween(280, easing = FastOutSlowInEasing), label = "nav-w")
     val visible by animateFloatAsState(if (slot >= 0) 1f else 0f, tween(180), label = "nav-visible")
     val density = LocalDensity.current
     Box(
@@ -164,7 +167,7 @@ private fun NavIconButton(destination: NavDestination, icon: ImageVector, label:
     val press by animateFloatAsState(if (pressed) 0.9f else 1f, tween(90), label = "nav-press")
     Box(
         modifier = Modifier
-            .size(width = CellWidth, height = CellHeight)
+            .size(width = NavCellWidth, height = CellHeight)
             .graphicsLayer {
                 scaleX = press
                 scaleY = press
@@ -189,7 +192,7 @@ private fun AddButton(active: Boolean, onClick: () -> Unit) {
     val press by animateFloatAsState(if (pressed) 0.9f else 1f, tween(90), label = "nav-add-press")
     Box(
         modifier = Modifier
-            .size(width = AddCellWidth, height = CellHeight)
+            .size(width = NavAddCellWidth, height = CellHeight)
             .graphicsLayer {
                 scaleX = press
                 scaleY = press
@@ -202,6 +205,6 @@ private fun AddButton(active: Boolean, onClick: () -> Unit) {
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(imageVector = SyncSpendIcons.Plus, contentDescription = null, tint = tint, modifier = Modifier.size(28.dp))
+        Icon(imageVector = SyncSpendIcons.Plus, contentDescription = null, tint = tint, modifier = Modifier.size(32.dp))
     }
 }

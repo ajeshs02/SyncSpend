@@ -42,7 +42,7 @@ import com.ajesh.syncspend.ui.components.DesignSheet
 import com.ajesh.syncspend.ui.components.DesignTextField
 import com.ajesh.syncspend.ui.components.FlowToggle
 import com.ajesh.syncspend.ui.components.NameIconDialog
-import com.ajesh.syncspend.ui.components.PrimaryGradientButton
+import com.ajesh.syncspend.ui.components.PrimaryButton
 import com.ajesh.syncspend.ui.components.SheetDeleteButton
 import com.ajesh.syncspend.ui.components.SheetHeader
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
@@ -199,15 +199,15 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
 
         Row(modifier = Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             SheetDeleteButton(onClick = { showDelete = true })
-            PrimaryGradientButton(
+            PrimaryButton(
                 text = "Save Changes",
                 enabled = canSave,
                 height = 48.dp,
                 radius = 16.dp,
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    val v = parsedAmount ?: return@PrimaryGradientButton
-                    val chosen = categoryId ?: return@PrimaryGradientButton
+                    val v = parsedAmount ?: return@PrimaryButton
+                    val chosen = categoryId ?: return@PrimaryButton
                     val category = categories.find { it.id == chosen }
                     scope.launch {
                         container.transactionRepository.update(

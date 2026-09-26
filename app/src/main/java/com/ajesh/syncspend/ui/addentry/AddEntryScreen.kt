@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,7 +51,7 @@ import com.ajesh.syncspend.ui.components.AmountEntryPad
 import com.ajesh.syncspend.ui.components.CategoryField
 import com.ajesh.syncspend.ui.components.DatePickerSheet
 import com.ajesh.syncspend.ui.components.FlowToggle
-import com.ajesh.syncspend.ui.components.PrimaryGradientButton
+import com.ajesh.syncspend.ui.components.PrimaryButton
 import com.ajesh.syncspend.ui.components.CategoryPickerSheet
 import com.ajesh.syncspend.ui.components.SquareIconButton
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
@@ -168,12 +169,14 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                     onBackspace = viewModel::pressBackspace,
                     onDateClick = { showDatePicker = true },
                 )
-                PrimaryGradientButton(
+                PrimaryButton(
                     text = "Save Entry",
                     onClick = { viewModel.save(onSaved) },
                     modifier = Modifier.padding(top = 10.dp).fillMaxWidth(),
                     leading = {
-                        Box(Modifier.size(7.dp).background(draftColor, RoundedCornerShape(2.dp)))
+                        // Flow dot tinted to read on the button (same tints the toggle's icons use).
+                        val onButton = if (state.type == FlowType.INCOME) Color(0xFF8ECF63) else colors.expenseOnSelected
+                        Box(Modifier.size(7.dp).background(onButton, RoundedCornerShape(2.dp)))
                         Spacer(Modifier.width(8.dp))
                     },
                 )

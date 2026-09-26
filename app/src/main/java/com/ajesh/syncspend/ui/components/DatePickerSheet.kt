@@ -46,7 +46,7 @@ import java.util.Locale
  * The design's custom calendar sheet, used for every date pick in the app
  * (Add Entry, Edit Entry, subscription / reminder dates).
  *
- * Browsable months default to ~3 months back through the current month —
+ * Browsable months default to the last 2 months through the current month —
  * extended further back only if an existing entry is older — so there is no
  * endless scrollback through empty years. Callers picking future dates (a
  * subscription's next due date) pass [minMonth]/[maxMonth]; the month of
@@ -62,11 +62,13 @@ fun DatePickerSheet(
     title: String = "ENTRY DATE",
     minMonth: YearMonth? = null,
     maxMonth: YearMonth? = null,
+    /** Days after this are shown but can't be picked (e.g. today, for a from/to range). */
+    maxDate: LocalDate? = null,
 ) {
     val initialMonth = remember { YearMonth.from(initial) }
     val now = remember { YearMonth.now() }
     val lower = remember(earliestTransactionDate, minMonth) {
-        val base = minMonth ?: minOf(now.minusMonths(3), earliestTransactionDate?.let { YearMonth.from(it) } ?: now)
+        val base = minMonth ?: minOf(now.minusMonths(2), earliestTransactionDate?.let { YearMonth.from(it) } ?: now)
         minOf(base, initialMonth)
     }
     val upper = remember(maxMonth) { maxOf(maxMonth ?: now, initialMonth) }
@@ -136,7 +138,7 @@ fun DatePickerSheet(
             modifier = Modifier.padding(top = 4.dp),
             label = "calendar-month",
         ) { month ->
-            MonthGrid(month = month, selected = selected, today = today, onPick = { selected = it })
+            MonthGrid(month = month, selected = selected, today = today, maxDate = maxDate, onPick = { selected = it })
         }
 
         Row(modifier = Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -151,7 +153,7 @@ fun DatePickerSheet(
 
 /** Always 6 week-rows (42 cells) so every month occupies the same height. */
 @Composable
-private fun MonthGrid(month: YearMonth, selected: LocalDate, today: LocalDate, onPick: (LocalDate) -> Unit) {
+private fun MonthGrid(month: YearMonth, selected: LocalDate, today: LocalDate, maxDate: LocalDate?, onPick: (LocalDate) -> Unit) {
     val firstOffset = month.atDay(1).dayOfWeek.value % 7 // Sunday-first, like the design
     val length = month.lengthOfMonth()
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -165,6 +167,7 @@ private fun MonthGrid(month: YearMonth, selected: LocalDate, today: LocalDate, o
                             day = day,
                             selected = date == selected,
                             isToday = date == today,
+                            enabled = maxDate == null || !date.isAfter(maxDate),
                             modifier = Modifier.weight(1f),
                             onClick = { onPick(date) },
                         )
@@ -178,20 +181,24 @@ private fun MonthGrid(month: YearMonth, selected: LocalDate, today: LocalDate, o
 }
 
 @Composable
-private fun DayCell(day: Int, selected: Boolean, isToday: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun DayCell(day: Int, selected: Boolean, isToday: Boolean, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val colors = SyncSpendTheme.colors
     Box(
         modifier = modifier
             .aspectRatio(1f)
             .background(if (selected) colors.selectedBrush else SolidColor(Color.Transparent), CircleShape)
             .then(if (isToday && !selected) Modifier.border(1.dp, colors.acc, CircleShape) else Modifier)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             day.toString(),
             style = MaterialTheme.typography.labelLarge.copy(fontSize = 12.sp),
-            color = if (selected) colors.onSelected else colors.ink,
+            color = when {
+                selected -> colors.onSelected
+                !enabled -> colors.sub.copy(alpha = 0.35f)
+                else -> colors.ink
+            },
         )
     }
 }

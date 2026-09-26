@@ -71,10 +71,11 @@ import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ThemeMode
 import com.ajesh.syncspend.ui.addentry.AddEntryViewModel
 import com.ajesh.syncspend.ui.components.AmountEntryPad
+import com.ajesh.syncspend.ui.components.AppLogo
 import com.ajesh.syncspend.ui.components.CategoryField
 import com.ajesh.syncspend.ui.components.CategoryPickerSheet
 import com.ajesh.syncspend.ui.components.DatePickerSheet
-import com.ajesh.syncspend.ui.components.PrimaryGradientButton
+import com.ajesh.syncspend.ui.components.PrimaryButton
 import com.ajesh.syncspend.ui.components.SquareIconButton
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendCorners
@@ -221,18 +222,16 @@ private fun QuickAddPanel(container: AppContainer, onFinished: () -> Unit, onOpe
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    // Shortcut into the app itself.
-                    Box(
+                    // Shortcut into the app itself — the real launcher icon.
+                    AppLogo(
+                        size = 30.dp,
                         modifier = Modifier
-                            .size(30.dp)
-                            .background(colors.darkGradient, RoundedCornerShape(10.dp))
                             .semantics { contentDescription = "Open SyncSpend" }
                             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                                 onOpenApp()
                                 dismiss()
                             },
-                        contentAlignment = Alignment.Center,
-                    ) { Icon(SyncSpendIcons.Spark, null, tint = Color(0xFF7FD39A), modifier = Modifier.size(16.dp)) }
+                    )
                     Text("New expense", style = MaterialTheme.typography.titleMedium, color = colors.ink)
                 }
                 SquareIconButton(SyncSpendIcons.Close, { dismiss() }, size = 30.dp)
@@ -273,15 +272,15 @@ private fun QuickAddPanel(container: AppContainer, onFinished: () -> Unit, onOpe
                     onBackspace = viewModel::pressBackspace,
                     onDateClick = { showDatePicker = true },
                 )
-                PrimaryGradientButton(
+                PrimaryButton(
                     text = if (saved) "Saved" else "Save Entry",
                     enabled = !saved,
                     modifier = Modifier.padding(top = 10.dp).fillMaxWidth(),
                     leading = {
                         if (saved) {
-                            Icon(SyncSpendIcons.Spark, null, tint = Color(0xFF7FD39A), modifier = Modifier.size(14.dp))
+                            Icon(SyncSpendIcons.Spark, null, tint = Color(0xFF8ECF63), modifier = Modifier.size(14.dp))
                         } else {
-                            Box(Modifier.size(7.dp).background(negative, RoundedCornerShape(2.dp)))
+                            Box(Modifier.size(7.dp).background(colors.expenseOnSelected, RoundedCornerShape(2.dp)))
                         }
                         Spacer(Modifier.width(8.dp))
                     },

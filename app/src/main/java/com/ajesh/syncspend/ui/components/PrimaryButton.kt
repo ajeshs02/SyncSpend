@@ -3,7 +3,6 @@ package com.ajesh.syncspend.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -17,7 +16,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -27,12 +25,14 @@ import androidx.compose.ui.unit.sp
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
 /**
- * The app's one primary call-to-action: the Home hero's dark-green gradient
- * with white text, so "Save" never drifts to some other green. [leading] slots
- * the small flow-colored dot Add Entry shows before its label.
+ * The app's one primary call-to-action, painted exactly like the selected
+ * segment of the Expense/Income toggle (`selectedBrush` + `onSelected`: deep
+ * green-black with light text in the light theme, off-white with dark text in
+ * the dark theme) so "Save" always matches the toggle beside it. [leading]
+ * slots the small flow-colored dot Add Entry shows before its label.
  */
 @Composable
-fun PrimaryGradientButton(
+fun PrimaryButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -53,8 +53,7 @@ fun PrimaryGradientButton(
                 scaleX = scale
                 scaleY = scale
             }
-            .background(if (enabled) colors.darkGradient else SolidColor(colors.dim), shape)
-            .border(1.dp, colors.line, shape)
+            .background(if (enabled) colors.selectedBrush else SolidColor(colors.dim), shape)
             .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
@@ -64,7 +63,7 @@ fun PrimaryGradientButton(
             text,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = if (enabled) Color.White else colors.ink.copy(alpha = 0.5f),
+            color = if (enabled) colors.onSelected else colors.ink.copy(alpha = 0.5f),
         )
     }
 }

@@ -29,15 +29,15 @@ object SyncSpendPalette {
     val LightDim = Color(0x2E151A12) // rgba(21,26,18,.18)
     val LightOnAcc = Color(0xFFFFFFFF)
     val LightSheet = Color(0xFFFFFFFF)
-    val LightScrEnd = Color(0xFFDCEADE)
+    val LightScrEnd = Color(0xFFE5EFE7)
 
     private val lightScrStops = arrayOf(
-        0.00f to Color(0xFFD7E8DA),
-        0.07f to Color(0xFFEAF2E8),
+        0.00f to Color(0xFFE1EEE3),
+        0.07f to Color(0xFFEFF5ED),
         0.15f to Color(0xFFFAFCF9),
         0.85f to Color(0xFFFAFCF9),
-        0.93f to Color(0xFFEAF2E8),
-        1.00f to Color(0xFFDCEADE),
+        0.93f to Color(0xFFEFF5ED),
+        1.00f to Color(0xFFE5EFE7),
     )
     val LightScreenGradient = Brush.verticalGradient(colorStops = lightScrStops)
 
@@ -80,15 +80,15 @@ object SyncSpendPalette {
     val DarkDim = Color(0x42FFFFFF) // rgba(255,255,255,.26)
     val DarkOnAcc = Color(0xFF07120B)
     val DarkSheet = Color(0xFF1B231C)
-    val DarkScrEnd = Color(0xFF16301E)
+    val DarkScrEnd = Color(0xFF112619)
 
     private val darkScrStops = arrayOf(
-        0.00f to Color(0xFF16301E),
-        0.07f to Color(0xFF101C13),
-        0.15f to Color(0xFF0E130F),
-        0.85f to Color(0xFF0E130F),
-        0.93f to Color(0xFF101C13),
-        1.00f to Color(0xFF16301E),
+        0.00f to Color(0xFF112619),
+        0.07f to Color(0xFF0C150E),
+        0.15f to Color(0xFF0A0E0B),
+        0.85f to Color(0xFF0A0E0B),
+        0.93f to Color(0xFF0C150E),
+        1.00f to Color(0xFF112619),
     )
     val DarkScreenGradient = Brush.verticalGradient(colorStops = darkScrStops)
 

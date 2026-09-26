@@ -194,7 +194,9 @@ private fun FlowMenuPopup(current: FlowType, onPick: (FlowType) -> Unit, onDismi
                     .background(SyncSpendTheme.colors.sheet, RoundedCornerShape(14.dp))
                     .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(14.dp))
                     .padding(6.dp)
-                    .widthIn(min = 126.dp),
+                    // A Popup is measured against the whole screen, so the fillMaxWidth rows inside
+                    // would stretch across it; pin the menu to a compact width.
+                    .width(150.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 FlowMenuItem("Expense", FlowType.EXPENSE, current, onPick)

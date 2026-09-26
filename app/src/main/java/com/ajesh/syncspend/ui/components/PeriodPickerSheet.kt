@@ -36,7 +36,7 @@ import java.util.Locale
 /**
  * The design's month/year/all-time scope picker, with one deliberate change
  * from the design (user requirement): rather than letting the year nav page
- * back indefinitely, the browsable range defaults to the last ~3 months
+ * back indefinitely, the browsable range defaults to the last 2 months
  * through the current month, extended further back only if an existing
  * transaction is older than that.
  */
@@ -50,7 +50,7 @@ fun PeriodPickerSheet(
     val today = remember { LocalDate.now() }
     val upperBound = remember { YearMonth.from(today) }
     val lowerBound = remember(earliestTransactionDate) {
-        val defaultLower = upperBound.minusMonths(3)
+        val defaultLower = upperBound.minusMonths(2)
         val earliestMonth = earliestTransactionDate?.let { YearMonth.from(it) }
         if (earliestMonth != null && earliestMonth.isBefore(defaultLower)) earliestMonth else defaultLower
     }

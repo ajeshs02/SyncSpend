@@ -49,6 +49,15 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        unitTests {
+            // Robolectric needs the merged resources/manifest, and native graphics so Compose
+            // screenshots (used to eyeball layouts without a device) actually rasterise.
+            isIncludeAndroidResources = true
+            all { it.systemProperty("robolectric.graphicsMode", "NATIVE") }
+        }
+    }
 }
 
 kotlin {
@@ -106,6 +115,10 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.2.1")
 
     testImplementation("junit:junit:4.13.2")
+    // JVM screenshot tests: render composables to PNG with no device (see src/test/.../screenshots).
+    testImplementation("org.robolectric:robolectric:4.17")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     // No Glance/WorkManager/Hilt anywhere — RemoteViews widget + AlarmManager
     // + manual DI per spec.

@@ -36,7 +36,7 @@ import com.ajesh.syncspend.ui.components.IconPickTile
 import com.ajesh.syncspend.ui.components.IconPickerDialog
 import com.ajesh.syncspend.ui.components.NameIconDialog
 import com.ajesh.syncspend.ui.components.PickerChip
-import com.ajesh.syncspend.ui.components.PrimaryGradientButton
+import com.ajesh.syncspend.ui.components.PrimaryButton
 import com.ajesh.syncspend.ui.components.SheetDeleteButton
 import com.ajesh.syncspend.ui.components.SheetHeader
 import com.ajesh.syncspend.ui.components.TimePickerSheet
@@ -141,14 +141,14 @@ private fun ReminderFields(
     }
 }
 
-/** Future dates only: from this month to two years ahead. */
+/** Future dates only: from this month to a year ahead (enough for yearly renewals). */
 @Composable
 private fun FutureDatePicker(initial: LocalDate, title: String, onApply: (LocalDate) -> Unit, onDismiss: () -> Unit) {
     DatePickerSheet(
         initial = initial,
         title = title,
         minMonth = YearMonth.now(),
-        maxMonth = YearMonth.now().plusMonths(24),
+        maxMonth = YearMonth.now().plusMonths(12),
         onApply = onApply,
         onDismiss = onDismiss,
     )
@@ -254,14 +254,14 @@ fun SubscriptionEditSheet(
 
         Row(modifier = Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             SheetDeleteButton(onClick = { confirmDelete = true })
-            PrimaryGradientButton(
+            PrimaryButton(
                 text = "Save Changes",
                 enabled = canSave,
                 height = 48.dp,
                 radius = 16.dp,
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    onSave(name.trim(), iconKey, amount ?: return@PrimaryGradientButton, cycle, due)
+                    onSave(name.trim(), iconKey, amount ?: return@PrimaryButton, cycle, due)
                     close()
                 },
             )
@@ -316,7 +316,7 @@ fun ReminderEditSheet(
 
         Row(modifier = Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             SheetDeleteButton(onClick = { confirmDelete = true })
-            PrimaryGradientButton(
+            PrimaryButton(
                 text = "Save Changes",
                 enabled = label.isNotBlank(),
                 height = 48.dp,
