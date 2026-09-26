@@ -12,7 +12,6 @@ data class ReminderEntity(
     val label: String,
     val iconKey: String,
     val schedule: ReminderSchedule,
-    val dayOfWeek: Int?, // 1=Mon..7=Sun, only meaningful when schedule == WEEKLY
     val timeMinuteOfDay: Int,
     val nextTriggerDate: LocalDate,
     val active: Boolean,

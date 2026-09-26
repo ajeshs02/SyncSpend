@@ -4,12 +4,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.ajesh.syncspend.ui.addentry.AddEntryScreen
 import com.ajesh.syncspend.ui.categories.CategoriesScreen
 import com.ajesh.syncspend.ui.home.HomeScreen
 import com.ajesh.syncspend.ui.settings.SettingsScreen
+import com.ajesh.syncspend.ui.subsreminders.SubsRemindersScreen
 import com.ajesh.syncspend.ui.transactions.TransactionsScreen
 
 /**
@@ -25,8 +28,8 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
         composable(Routes.HOME) {
             HomeScreen(
                 onViewAllTransactions = { navController.navigateToTab(Routes.TRANSACTIONS) },
-                onOpenSubscriptions = { /* wired with the Subscriptions screen in Phase 8b */ },
-                onOpenReminders = { /* wired with the Reminders screen in Phase 8b */ },
+                onOpenSubscriptions = { navController.navigate(Routes.subsReminders("subs")) },
+                onOpenReminders = { navController.navigate(Routes.subsReminders("alerts")) },
             )
         }
         composable(Routes.TRANSACTIONS) { TransactionsScreen() }
@@ -38,6 +41,15 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
         }
         composable(Routes.CATEGORIES) { CategoriesScreen() }
         composable(Routes.SETTINGS) { SettingsScreen() }
+        composable(
+            route = Routes.SUBS_REMINDERS,
+            arguments = listOf(navArgument("listMode") { type = NavType.StringType }),
+        ) { entry ->
+            SubsRemindersScreen(
+                listMode = entry.arguments?.getString("listMode") ?: "subs",
+                onBack = { navController.popBackStack() },
+            )
+        }
     }
 }
 

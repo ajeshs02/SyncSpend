@@ -26,6 +26,7 @@ object AlarmTimes {
         ReminderSchedule.ONCE -> date
         ReminderSchedule.DAILY -> date.plusDays(1)
         ReminderSchedule.WEEKLY -> date.plusWeeks(1)
+        ReminderSchedule.MONTHLY -> date.plusMonths(1)
     }
 
     /** Next daily-reminder instant strictly after [now]. */

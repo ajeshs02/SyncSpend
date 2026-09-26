@@ -1,9 +1,5 @@
 package com.ajesh.syncspend.ui.settings
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -38,7 +34,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -55,6 +50,7 @@ import com.ajesh.syncspend.ui.components.DesignSwitch
 import com.ajesh.syncspend.ui.components.InfoDialog
 import com.ajesh.syncspend.ui.components.PeriodPickerSheet
 import com.ajesh.syncspend.ui.components.PickerChip
+import com.ajesh.syncspend.ui.components.rememberNotificationGate
 import com.ajesh.syncspend.ui.components.SquareIconButton
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
@@ -93,21 +89,7 @@ fun SettingsScreen() {
     var exportPickerOpen by remember { mutableStateOf(false) }
     var pendingExportScope by remember { mutableStateOf<ScopePeriod>(ScopePeriod.AllTime) }
     var infoDialog by remember { mutableStateOf<Pair<String, String>?>(null) }
-    var pendingAfterPermission by remember { mutableStateOf<(() -> Unit)?>(null) }
-
-    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) pendingAfterPermission?.invoke()
-        else Toast.makeText(context, "Notifications are blocked — allow them in system settings to get reminders.", Toast.LENGTH_LONG).show()
-        pendingAfterPermission = null
-    }
-    fun withNotificationPermission(action: () -> Unit) {
-        val needs = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        if (needs) {
-            pendingAfterPermission = action
-            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else action()
-    }
+    val notificationGate = rememberNotificationGate()
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -205,7 +187,7 @@ fun SettingsScreen() {
                     DesignSwitch(
                         checked = prefs.dailyReminderEnabled,
                         onCheckedChange = { on ->
-                            if (on) withNotificationPermission { viewModel.setReminderEnabled(true) }
+                            if (on) notificationGate { viewModel.setReminderEnabled(true) }
                             else viewModel.setReminderEnabled(false)
                         },
                     )
@@ -228,7 +210,7 @@ fun SettingsScreen() {
                         SyncSpendIcons.Pencil,
                         onClick = {
                             NativePickers.showTime(context, prefs.dailyReminderMinuteOfDay, colors.isDark) { minute ->
-                                withNotificationPermission { viewModel.setReminderTime(minute) }
+                                notificationGate { viewModel.setReminderTime(minute) }
                             }
                         },
                         size = 34.dp, radius = 12.dp, iconSize = 15.dp, background = colors.card,
