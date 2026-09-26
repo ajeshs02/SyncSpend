@@ -110,7 +110,7 @@ fun TransactionsScreen() {
                     Icon(
                         if (state.flow == FlowType.INCOME) SyncSpendIcons.ArrowIn else SyncSpendIcons.ArrowOut,
                         null,
-                        tint = if (state.flow == FlowType.INCOME) Color(0xFF8ECF63) else SyncSpendTheme.colors.neg,
+                        tint = if (state.flow == FlowType.INCOME) SyncSpendTheme.colors.brand else SyncSpendTheme.colors.neg,
                         modifier = Modifier.size(15.dp),
                     )
                     Box(Modifier.width(5.dp))
@@ -235,7 +235,7 @@ private fun FlowMenuItem(label: String, value: FlowType, current: FlowType, onPi
         Icon(
             if (value == FlowType.INCOME) SyncSpendIcons.ArrowIn else SyncSpendIcons.ArrowOut,
             null,
-            tint = if (value == FlowType.INCOME) Color(0xFF8ECF63) else if (selected) colors.expenseOnSelected else colors.neg,
+            tint = if (value == FlowType.INCOME) SyncSpendTheme.colors.brand else if (selected) colors.expenseOnSelected else colors.neg,
             modifier = Modifier.size(14.dp),
         )
         Text(label, style = MaterialTheme.typography.labelLarge, color = if (selected) colors.onSelected else colors.ink)

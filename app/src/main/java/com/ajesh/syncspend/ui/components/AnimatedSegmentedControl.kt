@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.ui.theme.SyncSpendCorners
+import com.ajesh.syncspend.ui.theme.SyncSpendPalette
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
@@ -186,7 +187,7 @@ fun flowSegmentIcons(): List<SegmentIcon> {
     return remember(c) {
         listOf(
             SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.ArrowOut, c.expenseOnSelected, c.neg),
-            SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.ArrowIn, Color(0xFF8ECF63), Color(0xFF8ECF63)),
+            SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.ArrowIn, SyncSpendPalette.BrandGreen, SyncSpendPalette.BrandGreen),
         )
     }
 }

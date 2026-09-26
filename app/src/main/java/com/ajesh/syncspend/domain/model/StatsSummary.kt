@@ -6,6 +6,9 @@ import java.time.YearMonth
 
 data class MonthTotal(val month: YearMonth, val total: Double)
 
+/** The heaviest single day in the range. */
+data class DayTotal(val date: java.time.LocalDate, val total: Double, val entryCount: Int)
+
 /** Spending on one weekday over the range: the raw [total] and the average per such day (fair across ranges of any length). */
 data class WeekdayStat(val day: DayOfWeek, val total: Double, val average: Double)
 
@@ -45,6 +48,9 @@ data class StatsSummary(
     val topCategory: CategoryRollup?,
     val categories: List<CategoryRollup>,
     val biggestEntry: TransactionEntity?,
+    /** The largest entries in the range (up to three), biggest first. */
+    val topEntries: List<TransactionEntity>,
+    val busiestDay: DayTotal?,
     /** Six calendar months ending with the range's last month, oldest first. */
     val monthly: List<MonthTotal>,
     /** Monday first. */

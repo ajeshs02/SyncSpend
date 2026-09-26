@@ -47,6 +47,8 @@ data class SyncSpendColors(
     val onButton: Color,
     /** Expense arrow tint when sitting on the selected (inverted) indicator. */
     val expenseOnSelected: Color,
+    /** [SyncSpendPalette.BrandGreen]: the one bright green used by the nav, income cues and Stats charts. */
+    val brand: Color,
     val isDark: Boolean,
 )
 
@@ -78,6 +80,7 @@ private val LightColors = SyncSpendColors(
     button = SyncSpendPalette.LightButton,
     onButton = SyncSpendPalette.LightOnButton,
     expenseOnSelected = Color(0xFFF08579),
+    brand = SyncSpendPalette.BrandGreen,
     isDark = false,
 )
 
@@ -109,6 +112,7 @@ private val DarkColors = SyncSpendColors(
     button = SyncSpendPalette.DarkButton,
     onButton = SyncSpendPalette.DarkOnButton,
     expenseOnSelected = Color(0xFFC0392B),
+    brand = SyncSpendPalette.BrandGreen,
     isDark = true,
 )
 

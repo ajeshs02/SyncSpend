@@ -12,6 +12,9 @@ import androidx.compose.ui.graphics.Color
  */
 object SyncSpendPalette {
 
+    /** The bright green of the active nav icon — also the Income arrow and the Stats charts. Same in both themes. */
+    val BrandGreen = Color(0xFF8ECF63)
+
     // ---- Light ----
     val LightInk = Color(0xFF151A12)
     val LightSub = Color(0xFF7D867A)

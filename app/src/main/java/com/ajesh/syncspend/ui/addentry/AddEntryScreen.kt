@@ -161,7 +161,7 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                         modifier = Modifier.padding(top = 10.dp).fillMaxWidth(),
                         leading = {
                             // Flow dot tinted to read on the button (same tints the toggle's icons use).
-                            val onButton = if (state.type == FlowType.INCOME) Color(0xFF8ECF63) else colors.expenseOnSelected
+                            val onButton = if (state.type == FlowType.INCOME) colors.brand else colors.expenseOnSelected
                             Box(Modifier.size(7.dp).background(onButton, RoundedCornerShape(2.dp)))
                             Spacer(Modifier.width(8.dp))
                         },

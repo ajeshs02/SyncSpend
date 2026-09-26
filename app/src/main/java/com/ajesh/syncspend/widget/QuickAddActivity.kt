@@ -278,7 +278,7 @@ private fun QuickAddPanel(container: AppContainer, onFinished: () -> Unit, onOpe
                     modifier = Modifier.padding(top = 10.dp).fillMaxWidth(),
                     leading = {
                         if (saved) {
-                            Icon(SyncSpendIcons.Spark, null, tint = Color(0xFF8ECF63), modifier = Modifier.size(14.dp))
+                            Icon(SyncSpendIcons.Spark, null, tint = colors.brand, modifier = Modifier.size(14.dp))
                         } else {
                             Box(Modifier.size(7.dp).background(colors.expenseOnSelected, RoundedCornerShape(2.dp)))
                         }

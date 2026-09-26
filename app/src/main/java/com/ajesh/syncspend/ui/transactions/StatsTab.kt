@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -33,6 +34,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -116,6 +118,10 @@ fun StatsTab(stats: StatsUi, onRangeSelect: (StatsRange) -> Unit, modifier: Modi
                 }
             }
 
+            stats.pace?.let { pace ->
+                StatsCard(title = "Month pace") { PaceBar(pace) }
+            }
+
             StatsCard(title = "Last 6 months") {
                 BarChart(stats.monthlyBars, height = 112.dp, averageFraction = stats.monthlyAverageFraction)
                 Text(stats.monthlyCaption, fontSize = 10.5.sp, lineHeight = 15.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
@@ -125,6 +131,23 @@ fun StatsTab(stats: StatsUi, onRangeSelect: (StatsRange) -> Unit, modifier: Modi
                 StatsCard(title = "Where it goes") {
                     Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
                         stats.categoryBars.forEach { CategoryBar(it) }
+                    }
+                }
+            }
+
+            if (stats.movers.isNotEmpty()) {
+                StatsCard(title = "Biggest changes") {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        stats.movers.forEach { MoverRow(it) }
+                    }
+                    Text("Compared with the previous period.", fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
+                }
+            }
+
+            if (stats.topEntries.isNotEmpty()) {
+                StatsCard(title = "Top entries") {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        stats.topEntries.forEachIndexed { index, entry -> TopEntryRow(index + 1, entry) }
                     }
                 }
             }
@@ -146,7 +169,7 @@ fun StatsTab(stats: StatsUi, onRangeSelect: (StatsRange) -> Unit, modifier: Modi
                 Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
                     stats.findings.forEach { line ->
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Box(Modifier.padding(top = 5.dp).size(6.dp).background(colors.acc, RoundedCornerShape(50)))
+                            Box(Modifier.padding(top = 5.dp).size(6.dp).background(colors.brand, RoundedCornerShape(50)))
                             Text(line, fontSize = 11.5.sp, lineHeight = 16.7.sp, color = colors.ink)
                         }
                     }
@@ -236,7 +259,7 @@ private fun BarChart(bars: List<BarUi>, height: Dp, averageFraction: Float?) {
                                 transformOrigin = TransformOrigin(0.5f, 1f)
                             }
                             .background(
-                                if (bar.highlighted) colors.acc else colors.acc.copy(alpha = 0.26f),
+                                if (bar.highlighted) colors.brand else colors.brand.copy(alpha = 0.26f),
                                 RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp, bottomStart = 2.dp, bottomEnd = 2.dp),
                             ),
                     )
@@ -272,7 +295,7 @@ private fun CategoryBar(bar: CategoryBarUi) {
                 modifier = Modifier.size(28.dp).background(colors.tile, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) { Icon(SyncSpendIcons.iconFor(bar.iconKey), null, tint = colors.ink, modifier = Modifier.size(14.dp)) }
-            Text(bar.name, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1, modifier = Modifier.weight(1f))
+            Text(bar.name, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Text(bar.totalFormatted, style = MaterialTheme.typography.bodyMedium, color = colors.ink)
             Text("${bar.sharePercent}%", fontSize = 11.sp, color = colors.sub, modifier = Modifier.padding(start = 2.dp))
         }
@@ -291,7 +314,7 @@ private fun CategoryBar(bar: CategoryBarUi) {
                         scaleX = progress.value
                         transformOrigin = TransformOrigin(0f, 0.5f)
                     }
-                    .background(colors.acc, RoundedCornerShape(50)),
+                    .background(colors.brand, RoundedCornerShape(50)),
             )
         }
     }
@@ -302,7 +325,7 @@ private fun TipRow(tip: TipUi) {
     val colors = SyncSpendTheme.colors
     val (tint, icon) = when (tip.tone) {
         TipTone.WATCH -> colors.neg to SyncSpendIcons.Bolt
-        TipTone.GOOD -> colors.pos to SyncSpendIcons.Trend
+        TipTone.GOOD -> colors.brand to SyncSpendIcons.Trend
         TipTone.INFO -> colors.sub to SyncSpendIcons.Spark
     }
     Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
@@ -314,5 +337,95 @@ private fun TipRow(tip: TipUi) {
             Text(tip.title, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = colors.ink)
             Text(tip.body, fontSize = 11.5.sp, lineHeight = 16.sp, color = colors.sub, modifier = Modifier.padding(top = 2.dp))
         }
+    }
+}
+
+/** Fill = spent so far, pale extension = where the month is heading, tick = last month's total. */
+@Composable
+private fun PaceBar(pace: PaceUi) {
+    val colors = SyncSpendTheme.colors
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(pace) {
+        progress.snapTo(0f)
+        progress.animateTo(1f, tween(650, easing = FastOutSlowInEasing))
+    }
+    val tick = colors.ink.copy(alpha = 0.7f)
+    Column {
+        Text(pace.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = colors.ink)
+        Box(
+            modifier = Modifier
+                .padding(top = 12.dp)
+                .fillMaxWidth()
+                .height(10.dp)
+                .background(colors.tile, RoundedCornerShape(50))
+                .drawWithContent {
+                    drawContent()
+                    pace.lastMonthFraction?.let { f ->
+                        val x = size.width * f
+                        drawLine(tick, Offset(x, -3.dp.toPx()), Offset(x, size.height + 3.dp.toPx()), strokeWidth = 2.dp.toPx())
+                    }
+                },
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(pace.projectedFraction.coerceIn(0.02f, 1f))
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        scaleX = progress.value
+                        transformOrigin = TransformOrigin(0f, 0.5f)
+                    }
+                    .background(colors.brand.copy(alpha = 0.28f), RoundedCornerShape(50)),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(pace.soFarFraction.coerceIn(0.02f, 1f))
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        scaleX = progress.value
+                        transformOrigin = TransformOrigin(0f, 0.5f)
+                    }
+                    .background(colors.brand, RoundedCornerShape(50)),
+            )
+        }
+        Text(pace.caption, fontSize = 10.5.sp, lineHeight = 15.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
+    }
+}
+
+@Composable
+private fun MoverRow(mover: MoverUi) {
+    val colors = SyncSpendTheme.colors
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(
+            modifier = Modifier.size(28.dp).background(colors.tile, RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center,
+        ) { Icon(SyncSpendIcons.iconFor(mover.iconKey), null, tint = colors.ink, modifier = Modifier.size(14.dp)) }
+        Text(mover.name, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Icon(
+            if (mover.up) SyncSpendIcons.Up else SyncSpendIcons.Down,
+            null,
+            tint = if (mover.good) colors.pos else colors.neg,
+            modifier = Modifier.size(12.dp),
+        )
+        Text(
+            mover.deltaFormatted,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (mover.good) colors.pos else colors.neg,
+        )
+    }
+}
+
+@Composable
+private fun TopEntryRow(rank: Int, entry: TopEntryUi) {
+    val colors = SyncSpendTheme.colors
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(
+            modifier = Modifier.size(28.dp).background(colors.brand.copy(alpha = 0.18f), RoundedCornerShape(50)),
+            contentAlignment = Alignment.Center,
+        ) { Text(rank.toString(), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.ink) }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(entry.title, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1)
+            Text(entry.subtitle, fontSize = 10.5.sp, color = colors.sub, maxLines = 1, modifier = Modifier.padding(top = 1.dp))
+        }
+        Text(entry.amount, style = MaterialTheme.typography.bodyMedium, color = colors.ink)
     }
 }

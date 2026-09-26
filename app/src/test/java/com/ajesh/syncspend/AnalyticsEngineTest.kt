@@ -187,4 +187,26 @@ class AnalyticsEngineTest {
         assertEquals(10, sp.sharePercent)
         assertNull(AnalyticsEngine.smallPurchases(listOf(tx(-10.0, today)), 10.0, 10.0))
     }
+
+    @Test fun topEntriesAreTheLargestByAbsoluteAmount() {
+        val top = AnalyticsEngine.topEntries(AnalyticsEngine.flowFilter(data, FlowType.EXPENSE))
+        assertEquals(listOf(1500.0, 250.0, 200.0), top.map { kotlin.math.abs(it.amount) })
+        assertEquals(1, AnalyticsEngine.topEntries(AnalyticsEngine.flowFilter(data, FlowType.EXPENSE), limit = 1).size)
+        assertEquals(emptyList<TransactionEntity>(), AnalyticsEngine.topEntries(emptyList()))
+    }
+
+    @Test fun busiestDaySumsEntriesOnTheSameDate() {
+        val day = LocalDate.of(2026, 9, 2)
+        val list = listOf(tx(-100.0, day), tx(-250.0, day), tx(-300.0, LocalDate.of(2026, 9, 5)))
+        val busiest = AnalyticsEngine.busiestDay(list)!!
+        assertEquals(day, busiest.date)
+        assertEquals(350.0, busiest.total, 0.0)
+        assertEquals(2, busiest.entryCount)
+        assertNull(AnalyticsEngine.busiestDay(emptyList()))
+    }
+
+    @Test fun busiestDayTieGoesToTheEarlierDate() {
+        val list = listOf(tx(-100.0, LocalDate.of(2026, 9, 9)), tx(-100.0, LocalDate.of(2026, 9, 3)))
+        assertEquals(LocalDate.of(2026, 9, 3), AnalyticsEngine.busiestDay(list)!!.date)
+    }
 }

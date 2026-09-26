@@ -4,6 +4,7 @@ import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.domain.model.CategoryMover
 import com.ajesh.syncspend.domain.model.CategoryRollup
+import com.ajesh.syncspend.domain.model.DayTotal
 import com.ajesh.syncspend.domain.model.DateRange
 import com.ajesh.syncspend.domain.model.DayGroup
 import com.ajesh.syncspend.domain.model.EntryFilter
@@ -205,6 +206,8 @@ object AnalyticsEngine {
             topCategory = rollups.firstOrNull(),
             categories = rollups,
             biggestEntry = biggestEntry(inRange),
+            topEntries = topEntries(inRange),
+            busiestDay = busiestDay(inRange),
             monthly = monthlySeries(flowTx, YearMonth.from(minOf(range.end, today))),
             weekday = weekdayPattern(inRange, range, today),
             movers = if (previous != null && previousTotal > 0) categoryMovers(rollups, groupByCategory(previousTx, categories)) else emptyList(),
@@ -213,6 +216,17 @@ object AnalyticsEngine {
             smallPurchases = smallPurchases(inRange, total, average),
         )
     }
+
+    /** The [limit] largest entries by absolute amount, biggest first. */
+    fun topEntries(tx: List<TransactionEntity>, limit: Int = 3): List<TransactionEntity> =
+        tx.sortedByDescending { abs(it.amount) }.take(limit)
+
+    /** The single day with the highest total, or null for no entries (earliest such day wins a tie). */
+    fun busiestDay(tx: List<TransactionEntity>): DayTotal? =
+        tx.groupBy { it.date }
+            .map { (date, items) -> DayTotal(date, items.sumOf { abs(it.amount) }, items.size) }
+            .sortedWith(compareByDescending<DayTotal> { it.total }.thenBy { it.date })
+            .firstOrNull()
 
     /** Totals for the [count] calendar months ending at [end], oldest first (empty months are zero). */
     fun monthlySeries(flowTx: List<TransactionEntity>, end: YearMonth, count: Int = 6): List<MonthTotal> {

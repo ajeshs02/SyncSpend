@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -196,7 +197,14 @@ private fun CategoryRow(
                 modifier = Modifier.size(34.dp).background(colors.tile, RoundedCornerShape(11.dp)),
                 contentAlignment = Alignment.Center,
             ) { Icon(SyncSpendIcons.iconFor(category.iconKey), null, tint = colors.ink, modifier = Modifier.size(16.dp)) }
-            Text(category.name, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1, modifier = Modifier.weight(1f))
+            Text(
+                category.name,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.ink,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
         }
         SquareIconButton(SyncSpendIcons.Up, onUp, enabled = canMoveUp)
         SquareIconButton(SyncSpendIcons.Down, onDown, enabled = canMoveDown)

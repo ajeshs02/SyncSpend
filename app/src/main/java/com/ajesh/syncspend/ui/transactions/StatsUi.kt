@@ -24,6 +24,20 @@ data class CategoryBarUi(val name: String, val iconKey: String, val totalFormatt
 
 data class TipUi(val title: String, val body: String, val tone: TipTone)
 
+/** A category that moved against the previous period; [good] means the move is welcome (spending down / income up). */
+data class MoverUi(val name: String, val iconKey: String, val deltaFormatted: String, val up: Boolean, val good: Boolean)
+
+data class TopEntryUi(val title: String, val subtitle: String, val amount: String)
+
+/** The current-month forecast: fractions are of the largest of so-far / projected / last month. */
+data class PaceUi(
+    val title: String,
+    val caption: String,
+    val soFarFraction: Float,
+    val projectedFraction: Float,
+    val lastMonthFraction: Float?,
+)
+
 data class StatsUi(
     val range: StatsRange,
     val kicker: String,
@@ -40,6 +54,9 @@ data class StatsUi(
     val weekdayBars: List<BarUi>,
     val weekdayCaption: String,
     val tips: List<TipUi>,
+    val movers: List<MoverUi>,
+    val topEntries: List<TopEntryUi>,
+    val pace: PaceUi?,
     val findings: List<String>,
     val showComparison: Boolean,
     val currentLabel: String,
@@ -89,6 +106,19 @@ fun buildStatsUi(
             ),
         )
         add(StatTileUi("Daily average", money(s.dailyAverage), "Across ${maxOf(s.activeDays, 1)} active days", StatTone.NEUTRAL))
+        val busiest = s.busiestDay
+        add(
+            StatTileUi(
+                if (income) "Biggest income day" else "Busiest day",
+                busiest?.let { DateUtils.shortDate(it.date) } ?: "—",
+                busiest?.let { money(it.total) + " in ${it.entryCount} ${if (it.entryCount == 1) "entry" else "entries"}" } ?: "Nothing logged yet",
+                StatTone.NEUTRAL,
+            ),
+        )
+        add(
+            if (income) StatTileUi("Income days", s.activeDays.toString(), "Days money came in", StatTone.NEUTRAL)
+            else StatTileUi("No-spend days", s.noSpendDays.toString(), "Days nothing was spent", StatTone.POSITIVE),
+        )
     }
 
     val findings = buildList {
@@ -143,6 +173,35 @@ fun buildStatsUi(
         "You ${if (income) "earn" else "spend"} the most on ${it.day.getDisplayName(TextStyle.FULL, Locale.US)}s — about ${money(it.average)} each."
     } ?: ""
 
+    val categoryNames = s.categories.associate { it.categoryId to it.name }
+    val movers = s.movers.map {
+        MoverUi(
+            name = it.name,
+            iconKey = it.iconKey,
+            deltaFormatted = (if (it.delta > 0) "+" else "−") + money(abs(it.delta)),
+            up = it.delta > 0,
+            good = if (income) it.delta > 0 else it.delta < 0,
+        )
+    }
+    val topEntries = s.topEntries.map {
+        TopEntryUi(
+            title = it.description,
+            subtitle = (categoryNames[it.categoryId] ?: "Deleted category") + " · " + DateUtils.shortDate(it.date),
+            amount = money(abs(it.amount)),
+        )
+    }
+    val pace = s.projection?.let { p ->
+        val scale = maxOf(p.projected, p.soFar, p.previousMonthTotal).takeIf { it > 0 } ?: 1.0
+        PaceUi(
+            title = "On pace for ${money(p.projected)} this month",
+            caption = "${money(p.soFar)} so far · day ${p.dayOfMonth} of ${p.daysInMonth}" +
+                if (p.previousMonthTotal > 0) " · last month ${money(p.previousMonthTotal)}" else "",
+            soFarFraction = (p.soFar / scale).toFloat(),
+            projectedFraction = (p.projected / scale).toFloat(),
+            lastMonthFraction = if (p.previousMonthTotal > 0) (p.previousMonthTotal / scale).toFloat() else null,
+        )
+    }
+
     return StatsUi(
         range = kind,
         kicker = (if (income) "Top income source · " else "Top spending category · ") + label,
@@ -158,6 +217,9 @@ fun buildStatsUi(
         weekdayBars = weekdayBars,
         weekdayCaption = weekdayCaption,
         tips = TipsEngine.build(s, subsMonthlyTotal, ::money).map { TipUi(it.title, it.body, it.tone) },
+        movers = movers,
+        topEntries = topEntries,
+        pace = pace,
         findings = findings,
         showComparison = s.previousRange != null,
         currentLabel = label,

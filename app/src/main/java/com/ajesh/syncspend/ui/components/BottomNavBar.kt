@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
+import com.ajesh.syncspend.ui.theme.SyncSpendPalette
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import kotlin.math.roundToInt
 
@@ -55,7 +56,7 @@ enum class NavDestination(val route: String) {
 }
 
 private val NavPillDark = Color(0xFF050806)
-private val NavActiveTint = Color(0xFF8ECF63)
+private val NavActiveTint = SyncSpendPalette.BrandGreen
 private val NavInactiveTint = Color(0x7AFFFFFF) // rgba(255,255,255,.48)
 private val NavAddInactiveTint = Color(0x99FFFFFF) // rgba(255,255,255,.6)
 
