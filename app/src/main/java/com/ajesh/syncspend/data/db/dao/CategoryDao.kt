@@ -21,9 +21,10 @@ interface CategoryDao {
     @Delete
     suspend fun delete(category: CategoryEntity)
 
-    @Query("SELECT * FROM categories WHERE type = :type ORDER BY sortOrder ASC")
+    @Query("SELECT * FROM categories WHERE type = :type AND archived = 0 ORDER BY sortOrder ASC")
     fun getAllByType(type: FlowType): Flow<List<CategoryEntity>>
 
+    /** Includes archived rows — used to resolve labels on existing entries. */
     @Query("SELECT * FROM categories ORDER BY sortOrder ASC")
     fun getAll(): Flow<List<CategoryEntity>>
 

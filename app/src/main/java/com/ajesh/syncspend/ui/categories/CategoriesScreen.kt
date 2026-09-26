@@ -1,16 +1,205 @@
 package com.ajesh.syncspend.ui.categories
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.ajesh.syncspend.data.db.entity.CategoryEntity
+import com.ajesh.syncspend.di.LocalAppContainer
+import com.ajesh.syncspend.domain.model.FlowType
+import com.ajesh.syncspend.ui.components.AnimatedSegmentedControl
+import com.ajesh.syncspend.ui.components.ConfirmDialog
+import com.ajesh.syncspend.ui.components.HeaderAddButton
+import com.ajesh.syncspend.ui.components.NameIconDialog
+import com.ajesh.syncspend.ui.components.SquareIconButton
+import com.ajesh.syncspend.ui.components.SyncSpendChrome
+import com.ajesh.syncspend.ui.components.flowSegmentIcons
+import com.ajesh.syncspend.ui.icons.SyncSpendIcons
+import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
-/** Real add/rename/reorder/delete UI lands in Phase 6. */
 @Composable
 fun CategoriesScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Categories — coming in Phase 6")
+    val container = LocalAppContainer.current
+    val viewModel: CategoriesViewModel = viewModel(
+        factory = viewModelFactory {
+            initializer { CategoriesViewModel(container.categoryRepository, container.transactionRepository) }
+        },
+    )
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val colors = SyncSpendTheme.colors
+    val flowWord = if (state.type == FlowType.INCOME) "income" else "expense"
+
+    var showAdd by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<CategoryEntity?>(null) }
+    var deleting by remember { mutableStateOf<CategoryEntity?>(null) }
+
+    Column(modifier = Modifier.fillMaxSize().padding(top = SyncSpendChrome.screenTopInset)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("Categories", style = MaterialTheme.typography.headlineSmall, color = colors.ink)
+            HeaderAddButton("New", onClick = { showAdd = true })
+        }
+
+        AnimatedSegmentedControl(
+            options = listOf("Expense", "Income"),
+            selectedIndex = if (state.type == FlowType.EXPENSE) 0 else 1,
+            onSelect = { viewModel.setType(if (it == 0) FlowType.EXPENSE else FlowType.INCOME) },
+            icons = flowSegmentIcons(),
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
+        )
+        Text(
+            "Use the arrows to reorder · tap a category to rename it or change its icon",
+            fontSize = 10.5.sp,
+            color = colors.sub,
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp, bottom = 8.dp),
+        )
+
+        if (state.categories.isEmpty()) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(top = 48.dp, start = 40.dp, end = 40.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("No $flowWord categories yet", style = MaterialTheme.typography.bodyMedium, color = colors.ink)
+                Text(
+                    "Tap New to create one and pick an icon for it.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.sub,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 22.dp, end = 22.dp, bottom = SyncSpendChrome.screenBottomContentPadding),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                itemsIndexed(state.categories, key = { _, c -> c.id }) { index, cat ->
+                    CategoryRow(
+                        category = cat,
+                        canMoveUp = index > 0,
+                        canMoveDown = index < state.categories.lastIndex,
+                        onEdit = { editing = cat },
+                        onUp = { viewModel.move(cat, -1) },
+                        onDown = { viewModel.move(cat, 1) },
+                        onDelete = { deleting = cat },
+                        modifier = Modifier.animateItem(),
+                    )
+                }
+            }
+        }
+    }
+
+    if (showAdd) {
+        NameIconDialog(
+            title = "New category",
+            body = "Name it and pick an icon — it will be added to the $flowWord list.",
+            cta = "Create",
+            initialName = "",
+            initialIconKey = "receipt",
+            namePlaceholder = if (state.type == FlowType.INCOME) "New Income ${state.categories.size + 1}" else "New Expense ${state.categories.size + 1}",
+            onConfirm = { name, icon ->
+                viewModel.add(name, icon)
+                showAdd = false
+            },
+            onDismiss = { showAdd = false },
+        )
+    }
+    editing?.let { cat ->
+        NameIconDialog(
+            title = "Edit category",
+            body = "Rename it or pick a different icon. Past entries update along with it.",
+            cta = "Save",
+            initialName = cat.name,
+            initialIconKey = cat.iconKey,
+            namePlaceholder = "Category name",
+            onConfirm = { name, icon ->
+                viewModel.update(cat, name, icon)
+                editing = null
+            },
+            onDismiss = { editing = null },
+        )
+    }
+    deleting?.let { cat ->
+        ConfirmDialog(
+            title = "Delete category?",
+            body = "“${cat.name}” will be removed. Past entries keep their label.",
+            cta = "Delete",
+            onConfirm = {
+                viewModel.delete(cat)
+                deleting = null
+            },
+            onDismiss = { deleting = null },
+        )
+    }
+}
+
+@Composable
+private fun CategoryRow(
+    category: CategoryEntity,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onEdit: () -> Unit,
+    onUp: () -> Unit,
+    onDown: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = SyncSpendTheme.colors
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(colors.card, RoundedCornerShape(16.dp))
+            .border(1.dp, colors.line, RoundedCornerShape(16.dp))
+            .padding(horizontal = 13.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onEdit),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp),
+        ) {
+            Box(
+                modifier = Modifier.size(34.dp).background(colors.tile, RoundedCornerShape(11.dp)),
+                contentAlignment = Alignment.Center,
+            ) { Icon(SyncSpendIcons.iconFor(category.iconKey), null, tint = colors.ink, modifier = Modifier.size(16.dp)) }
+            Text(category.name, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1, modifier = Modifier.weight(1f))
+        }
+        SquareIconButton(SyncSpendIcons.Up, onUp, enabled = canMoveUp)
+        SquareIconButton(SyncSpendIcons.Down, onDown, enabled = canMoveDown)
+        SquareIconButton(SyncSpendIcons.Trash, onDelete)
     }
 }

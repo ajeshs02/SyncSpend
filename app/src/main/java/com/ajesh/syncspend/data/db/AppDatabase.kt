@@ -23,7 +23,7 @@ import com.ajesh.syncspend.data.db.entity.TransactionEntity
         SubscriptionEntity::class,
         ReminderEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

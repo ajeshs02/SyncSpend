@@ -87,7 +87,7 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
     var showDelete by remember { mutableStateOf(false) }
 
     val isIncome = loaded.amount > 0
-    val flowCategories = categories.filter { (it.type == com.ajesh.syncspend.domain.model.FlowType.INCOME) == isIncome }
+    val flowCategories = categories.filter { !it.archived && (it.type == com.ajesh.syncspend.domain.model.FlowType.INCOME) == isIncome }
     val parsedAmount = amountText.toDoubleOrNull()
     val canSave = parsedAmount != null && parsedAmount > 0
 
