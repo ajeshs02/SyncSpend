@@ -7,7 +7,7 @@ object Routes {
     const val CATEGORIES = "categories"
     const val SETTINGS = "settings"
 
-    // Added in Phase 8b, kept here as a forward reference for the route table.
     const val SUBS_REMINDERS = "subs_reminders/{listMode}"
+    const val SUBS_REMINDERS_PREFIX = "subs_reminders/"
     fun subsReminders(listMode: String) = "subs_reminders/$listMode"
 }

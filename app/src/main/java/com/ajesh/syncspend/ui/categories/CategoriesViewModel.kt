@@ -39,11 +39,7 @@ class CategoriesViewModel(
     }
 
     fun add(name: String, iconKey: String) {
-        viewModelScope.launch {
-            val t = type.value
-            val next = categoryRepository.getAllOnce().filter { it.type == t }.maxOfOrNull { it.sortOrder }?.plus(1) ?: 0
-            categoryRepository.insert(CategoryEntity(name = name, iconKey = iconKey, type = t, sortOrder = next))
-        }
+        viewModelScope.launch { categoryRepository.createNext(name, iconKey, type.value) }
     }
 
     fun update(category: CategoryEntity, name: String, iconKey: String) {

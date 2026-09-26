@@ -113,19 +113,7 @@ class AddEntryViewModel(
 
     fun createCategory(name: String, iconKey: String, onCreated: (CategoryEntity) -> Unit) {
         viewModelScope.launch {
-            val currentType = type.value
-            val nextOrder = categoryRepository.getAllOnce()
-                .filter { it.type == currentType }
-                .maxOfOrNull { it.sortOrder }
-                ?.plus(1) ?: 0
-            val newCategory = CategoryEntity(
-                name = name,
-                iconKey = iconKey,
-                type = currentType,
-                sortOrder = nextOrder,
-            )
-            val id = categoryRepository.insert(newCategory)
-            val created = newCategory.copy(id = id)
+            val created = categoryRepository.createNext(name, iconKey, type.value)
             selectedCategory.value = created
             categoryPickerOpen.value = false
             onCreated(created)

@@ -69,8 +69,14 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
     }
 }
 
-/** Standard single-stack bottom-nav navigation: no back-stack pileup between tabs. */
+/**
+ * Standard single-stack bottom-nav navigation: no back-stack pileup between
+ * tabs. A pushed detail screen (Subscriptions / Reminders, opened from Home) is
+ * popped first, otherwise `popUpTo{saveState}` would save it as part of Home's
+ * state and `restoreState` would bring it back the next time Home is tapped.
+ */
 fun NavHostController.navigateToTab(route: String) {
+    if (currentDestination?.route?.startsWith(Routes.SUBS_REMINDERS_PREFIX) == true) popBackStack()
     navigate(route) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true

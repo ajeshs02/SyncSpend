@@ -33,12 +33,10 @@ interface AppContainer {
 class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val database: AppDatabase by lazy {
-        Room.databaseBuilder(context, AppDatabase::class.java, "syncspend.db")
-            // Pre-1.0, single-user personal app — no installs in the wild to
-            // migrate yet. Real migrations start once the schema needs to
-            // change under existing data.
-            .fallbackToDestructiveMigration(dropAllTables = true)
-            .build()
+        // Deliberately no destructive fallback: the database holds real data now.
+        // Any future schema change needs an explicit Migration (a missing one
+        // fails loudly instead of silently wiping the user's entries).
+        Room.databaseBuilder(context, AppDatabase::class.java, "syncspend.db").build()
     }
 
     override val categoryRepository: CategoryRepository by lazy {

@@ -53,7 +53,7 @@ object AnalyticsEngine {
         listOf(EntryFilter.ALL)
     } else {
         listOf(
-            EntryFilter.TODAY, EntryFilter.YESTERDAY, EntryFilter.THIS_WEEK, EntryFilter.LAST_WEEK,
+            EntryFilter.TODAY, EntryFilter.YESTERDAY, EntryFilter.THIS_WEEK,
             EntryFilter.THIS_MONTH, EntryFilter.LAST_MONTH, EntryFilter.CUSTOM,
         )
     }
@@ -75,7 +75,6 @@ object AnalyticsEngine {
         EntryFilter.TODAY -> tx.filter { it.date == today }
         EntryFilter.YESTERDAY -> tx.filter { it.date == today.minusDays(1) }
         EntryFilter.THIS_WEEK -> tx.filter { !it.date.isBefore(today.minusDays(6)) && !it.date.isAfter(today) }
-        EntryFilter.LAST_WEEK -> tx.filter { !it.date.isBefore(today.minusDays(13)) && !it.date.isAfter(today.minusDays(7)) }
         EntryFilter.THIS_MONTH -> tx.filter { YearMonth.from(it.date) == YearMonth.from(today) }
         EntryFilter.LAST_MONTH -> tx.filter { YearMonth.from(it.date) == YearMonth.from(today).minusMonths(1) }
         EntryFilter.CUSTOM -> scopeFilter(tx, scope)

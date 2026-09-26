@@ -13,8 +13,9 @@ import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 
 /**
- * fallbackToDestructiveMigration (see [com.ajesh.syncspend.di.DefaultAppContainer])
- * pre-1.0 — single-user personal app, no installs in the wild to migrate yet.
+ * Version 3. There is no destructive-migration fallback (see
+ * [com.ajesh.syncspend.di.DefaultAppContainer]) — bumping [Database.version]
+ * requires shipping a real `Migration`.
  */
 @Database(
     entities = [
