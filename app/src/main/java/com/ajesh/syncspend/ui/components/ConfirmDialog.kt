@@ -82,12 +82,24 @@ fun DesignDialog(onDismiss: () -> Unit, content: @Composable () -> Unit) {
 
 @Composable
 fun DialogHeader(icon: ImageVector, iconTint: Color, title: String, body: String) {
+    DialogHeader(
+        leading = {
+            Box(
+                modifier = Modifier.size(34.dp).background(SyncSpendTheme.colors.tile, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) { Icon(icon, null, tint = iconTint, modifier = Modifier.size(17.dp)) }
+        },
+        title = title,
+        body = body,
+    )
+}
+
+/** Header with a custom leading slot (e.g. the tappable icon tile of the New-category dialog). */
+@Composable
+fun DialogHeader(leading: @Composable () -> Unit, title: String, body: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-        Box(
-            modifier = Modifier.size(34.dp).background(SyncSpendTheme.colors.tile, RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center,
-        ) { Icon(icon, null, tint = iconTint, modifier = Modifier.size(17.dp)) }
-        Column {
+        leading()
+        Column(modifier = Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleSmall, color = SyncSpendTheme.colors.ink)
             Text(
                 body,

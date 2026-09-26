@@ -147,7 +147,7 @@ fun SettingsScreen() {
                     options = listOf("Light", "Dark", "System"),
                     selectedIndex = prefs.themeMode.ordinal,
                     onSelect = { viewModel.setTheme(ThemeMode.entries[it]) },
-                    height = 38.dp,
+                    height = 42.dp,
                     outerShape = RoundedCornerShape(14.dp),
                     innerShape = RoundedCornerShape(10.dp),
                     textStyle = MaterialTheme.typography.labelMedium.copy(fontSize = 11.5.sp),

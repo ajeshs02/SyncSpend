@@ -46,11 +46,12 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.ui.components.AmountEntryPad
-import com.ajesh.syncspend.ui.components.AnimatedSegmentedControl
+import com.ajesh.syncspend.ui.components.CategoryField
+import com.ajesh.syncspend.ui.components.FlowToggle
+import com.ajesh.syncspend.ui.components.PrimaryGradientButton
 import com.ajesh.syncspend.ui.components.CategoryPickerSheet
 import com.ajesh.syncspend.ui.components.SquareIconButton
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
-import com.ajesh.syncspend.ui.components.flowSegmentIcons
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.DateUtils
@@ -95,12 +96,9 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                     Text("New Entry", style = MaterialTheme.typography.titleLarge, color = colors.ink)
                 }
 
-                AnimatedSegmentedControl(
-                    options = listOf("Expense", "Income"),
-                    selectedIndex = if (state.type == FlowType.EXPENSE) 0 else 1,
-                    onSelect = { viewModel.setType(if (it == 0) FlowType.EXPENSE else FlowType.INCOME) },
-                    icons = flowSegmentIcons(),
-                    height = 44.dp,
+                FlowToggle(
+                    type = state.type,
+                    onSelect = viewModel::setType,
                     modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 16.dp),
                 )
 
@@ -151,41 +149,11 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                     )
                 }
 
-                Row(
-                    modifier = Modifier
-                        .padding(start = 22.dp, end = 22.dp, top = 20.dp)
-                        .fillMaxWidth()
-                        .background(colors.card, RoundedCornerShape(18.dp))
-                        .border(1.dp, colors.line, RoundedCornerShape(18.dp))
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                            viewModel.openCategoryPicker()
-                        }
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(11.dp),
-                ) {
-                    Box(
-                        modifier = Modifier.size(32.dp).background(colors.tile, RoundedCornerShape(11.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            SyncSpendIcons.iconFor(state.selectedCategory?.iconKey ?: "layers"),
-                            null,
-                            tint = if (state.selectedCategory != null) colors.ink else colors.sub,
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Category", style = MaterialTheme.typography.labelSmall, color = colors.sub)
-                        Text(
-                            state.selectedCategory?.name ?: "Choose a category",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.ink,
-                            modifier = Modifier.padding(top = 2.dp),
-                        )
-                    }
-                    Icon(SyncSpendIcons.Down, null, tint = colors.sub, modifier = Modifier.size(14.dp))
-                }
+                CategoryField(
+                    category = state.selectedCategory,
+                    onClick = viewModel::openCategoryPicker,
+                    modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 20.dp),
+                )
             }
 
             Column(
@@ -198,23 +166,15 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                     onBackspace = viewModel::pressBackspace,
                     onDateClick = { NativePickers.showDate(context, state.date, colors.isDark, viewModel::setDate) },
                 )
-                Row(
-                    modifier = Modifier
-                        .padding(top = 10.dp)
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .background(colors.dark, RoundedCornerShape(18.dp))
-                        .border(1.dp, colors.line, RoundedCornerShape(18.dp))
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                            viewModel.save(onSaved)
-                        },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    Box(Modifier.size(7.dp).background(draftColor, RoundedCornerShape(2.dp)))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Save Entry", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = androidx.compose.ui.graphics.Color.White)
-                }
+                PrimaryGradientButton(
+                    text = "Save Entry",
+                    onClick = { viewModel.save(onSaved) },
+                    modifier = Modifier.padding(top = 10.dp).fillMaxWidth(),
+                    leading = {
+                        Box(Modifier.size(7.dp).background(draftColor, RoundedCornerShape(2.dp)))
+                        Spacer(Modifier.width(8.dp))
+                    },
+                )
             }
         }
     }

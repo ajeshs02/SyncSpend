@@ -35,13 +35,12 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.model.FlowType
-import com.ajesh.syncspend.ui.components.AnimatedSegmentedControl
+import com.ajesh.syncspend.ui.components.FlowToggle
 import com.ajesh.syncspend.ui.components.ConfirmDialog
 import com.ajesh.syncspend.ui.components.HeaderAddButton
 import com.ajesh.syncspend.ui.components.NameIconDialog
 import com.ajesh.syncspend.ui.components.SquareIconButton
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
-import com.ajesh.syncspend.ui.components.flowSegmentIcons
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
@@ -71,11 +70,9 @@ fun CategoriesScreen() {
             HeaderAddButton("New", onClick = { showAdd = true })
         }
 
-        AnimatedSegmentedControl(
-            options = listOf("Expense", "Income"),
-            selectedIndex = if (state.type == FlowType.EXPENSE) 0 else 1,
-            onSelect = { viewModel.setType(if (it == 0) FlowType.EXPENSE else FlowType.INCOME) },
-            icons = flowSegmentIcons(),
+        FlowToggle(
+            type = state.type,
+            onSelect = viewModel::setType,
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
         )
         Text(
@@ -126,7 +123,7 @@ fun CategoriesScreen() {
             body = "Name it and pick an icon — it will be added to the $flowWord list.",
             cta = "Create",
             initialName = "",
-            initialIconKey = "receipt",
+            initialIconKey = null,
             namePlaceholder = if (state.type == FlowType.INCOME) "New Income ${state.categories.size + 1}" else "New Expense ${state.categories.size + 1}",
             onConfirm = { name, icon ->
                 viewModel.add(name, icon)

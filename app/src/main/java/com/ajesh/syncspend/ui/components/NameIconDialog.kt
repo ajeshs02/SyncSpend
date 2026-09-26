@@ -14,14 +14,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
 /**
  * The design's "New category / New subscription / New reminder" modal: a
- * title + explanation, an editable name, and the preset icon grid. [extra]
- * slots additional fields (amount, cycle, date, time...) between the name
- * and the icon grid.
+ * title + explanation, an editable name, and an icon chosen through the tappable
+ * tile in the header (which opens [IconPickerDialog]). [extra] slots additional
+ * fields (amount, cycle, date, time...) below the name.
+ *
+ * [initialIconKey] = null means "no icon yet": the icon is then mandatory and
+ * the confirm button stays disabled until one is picked.
  */
 @Composable
 fun NameIconDialog(
@@ -29,7 +31,7 @@ fun NameIconDialog(
     body: String,
     cta: String,
     initialName: String,
-    initialIconKey: String,
+    initialIconKey: String?,
     namePlaceholder: String,
     onConfirm: (name: String, iconKey: String) -> Unit,
     onDismiss: () -> Unit,
@@ -38,8 +40,15 @@ fun NameIconDialog(
 ) {
     var name by remember { mutableStateOf(initialName) }
     var iconKey by remember { mutableStateOf(initialIconKey) }
+    var pickingIcon by remember { mutableStateOf(false) }
+    val chosen = iconKey
+
     DesignDialog(onDismiss) {
-        DialogHeader(SyncSpendIcons.Plus, SyncSpendTheme.colors.ink, title, body)
+        DialogHeader(
+            leading = { IconPickTile(chosen, onClick = { pickingIcon = true }) },
+            title = title,
+            body = body,
+        )
         Column(
             modifier = Modifier
                 .heightIn(max = 460.dp)
@@ -51,20 +60,32 @@ fun NameIconDialog(
                 placeholder = namePlaceholder,
                 modifier = Modifier.padding(top = 14.dp),
             )
+            if (chosen == null) {
+                Text(
+                    "Tap the icon at the top to choose one.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SyncSpendTheme.colors.sub,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
             extra()
-            Text(
-                "Icon",
-                style = MaterialTheme.typography.labelSmall,
-                color = SyncSpendTheme.colors.sub,
-                modifier = Modifier.padding(top = 14.dp, bottom = 7.dp),
-            )
-            IconPickerGrid(selectedKey = iconKey, onSelect = { iconKey = it })
         }
         DialogButtons(
             cta = cta,
             onCancel = onDismiss,
-            onConfirm = { onConfirm(name.trim(), iconKey) },
-            ctaEnabled = name.isNotBlank() && extraValid,
+            onConfirm = { if (chosen != null) onConfirm(name.trim(), chosen) },
+            ctaEnabled = name.isNotBlank() && chosen != null && extraValid,
+        )
+    }
+
+    if (pickingIcon) {
+        IconPickerDialog(
+            selectedKey = chosen,
+            onPick = {
+                iconKey = it
+                pickingIcon = false
+            },
+            onDismiss = { pickingIcon = false },
         )
     }
 }

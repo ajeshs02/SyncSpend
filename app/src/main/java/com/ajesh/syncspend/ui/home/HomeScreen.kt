@@ -48,10 +48,9 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.model.FlowType
-import com.ajesh.syncspend.ui.components.AnimatedSegmentedControl
+import com.ajesh.syncspend.ui.components.FlowToggle
 import com.ajesh.syncspend.ui.components.PeriodPickerSheet
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
-import com.ajesh.syncspend.ui.components.flowSegmentIcons
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendCorners
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
@@ -100,11 +99,9 @@ fun HomeScreen(
             Text("SyncSpend", style = MaterialTheme.typography.headlineSmall.copy(letterSpacing = (-0.18).sp), color = colors.ink)
         }
 
-        AnimatedSegmentedControl(
-            options = listOf("Expense", "Income"),
-            selectedIndex = if (state.flow == FlowType.EXPENSE) 0 else 1,
-            onSelect = { viewModel.setFlow(if (it == 0) FlowType.EXPENSE else FlowType.INCOME) },
-            icons = flowSegmentIcons(),
+        FlowToggle(
+            type = state.flow,
+            onSelect = viewModel::setFlow,
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
         )
 

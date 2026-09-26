@@ -145,7 +145,7 @@ fun CategoryPickerSheet(
             body = "Name it and pick an icon — it will be added to the ${if (flow == FlowType.INCOME) "income" else "expense"} list.",
             cta = "Create",
             initialName = "",
-            initialIconKey = "receipt",
+            initialIconKey = null,
             namePlaceholder = if (flow == FlowType.INCOME) "New Income ${existing + 1}" else "New Expense ${existing + 1}",
             onConfirm = { name, icon ->
                 showCreate = false

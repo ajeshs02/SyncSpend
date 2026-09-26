@@ -13,11 +13,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,13 +34,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.ui.theme.SyncSpendCorners
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import kotlin.math.roundToInt
@@ -67,14 +69,15 @@ fun AnimatedSegmentedControl(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    height: Dp = 40.dp,
+    height: Dp = 44.dp,
     icons: List<SegmentIcon?>? = null,
+    iconSize: Dp = 15.dp,
     trackColor: Color = SyncSpendTheme.colors.pill,
     trackBorderColor: Color = SyncSpendTheme.colors.line,
     indicatorBrush: Brush = SyncSpendTheme.colors.selectedBrush,
     selectedContentColor: Color = SyncSpendTheme.colors.onSelected,
     unselectedContentColor: Color = SyncSpendTheme.colors.sub,
-    textStyle: TextStyle = androidx.compose.material3.MaterialTheme.typography.labelLarge,
+    textStyle: TextStyle = MaterialTheme.typography.labelLarge,
     outerShape: Shape = SyncSpendCorners.pillOuter,
     innerShape: Shape = SyncSpendCorners.pillInner,
 ) {
@@ -104,12 +107,15 @@ fun AnimatedSegmentedControl(
             .padding(4.dp),
     ) {
         if (hasPlacedOnce) {
-            val indicatorWidth = with(LocalDensity.current) { widthPx.value.toDp() }
+            // Width and offset are read in the layout/placement phases, so a slide
+            // re-lays-out one box per frame instead of recomposing the control.
             Box(
                 modifier = Modifier
-                    .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                    .width(indicatorWidth)
-                    .fillMaxHeight()
+                    .layout { measurable, constraints ->
+                        val w = widthPx.value.roundToInt().coerceAtLeast(0)
+                        val placeable = measurable.measure(Constraints.fixed(w, constraints.maxHeight))
+                        layout(w, placeable.height) { placeable.place(offsetX.value.roundToInt(), 0) }
+                    }
                     .background(indicatorBrush, innerShape),
             )
         }
@@ -140,7 +146,7 @@ fun AnimatedSegmentedControl(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (icon != null) {
-                            Icon(icon.vector, null, tint = iconColor, modifier = Modifier.size(15.dp))
+                            Icon(icon.vector, null, tint = iconColor, modifier = Modifier.size(iconSize))
                             Box(Modifier.width(5.dp))
                         }
                         Text(text = label, style = textStyle, color = textColor, textAlign = TextAlign.Center)
@@ -149,6 +155,28 @@ fun AnimatedSegmentedControl(
             }
         }
     }
+}
+
+/**
+ * The Expense / Income toggle used on Home, Add Entry, Categories and Edit Entry:
+ * taller than the app's other segmented controls (it's the most-used control).
+ */
+@Composable
+fun FlowToggle(
+    type: FlowType,
+    onSelect: (FlowType) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedSegmentedControl(
+        options = listOf("Expense", "Income"),
+        selectedIndex = if (type == FlowType.EXPENSE) 0 else 1,
+        onSelect = { onSelect(if (it == 0) FlowType.EXPENSE else FlowType.INCOME) },
+        icons = flowSegmentIcons(),
+        height = 50.dp,
+        iconSize = 16.dp,
+        textStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp),
+        modifier = modifier,
+    )
 }
 
 /** The design's Expense / Income icon pair, tinted so it reads on either indicator theme. */
