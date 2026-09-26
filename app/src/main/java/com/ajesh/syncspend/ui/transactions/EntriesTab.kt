@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.ajesh.syncspend.ui.components.DateSeparator
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
@@ -40,29 +41,23 @@ fun EntriesTab(groups: List<DayGroupUi>, onRowClick: (Long) -> Unit, modifier: M
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(bottom = SyncSpendChrome.screenBottomContentPadding),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         groups.forEach { group ->
-            item(key = "header-${group.label}") {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(group.label, style = MaterialTheme.typography.bodySmall, color = SyncSpendTheme.colors.sub)
-                    Text(group.totalFormatted, style = MaterialTheme.typography.bodySmall, color = SyncSpendTheme.colors.sub)
-                }
+            item(key = "header-${group.label}", contentType = "day-header") {
+                DateSeparator(label = group.label, trailing = group.totalFormatted)
             }
-            items(group.items, key = { it.id }) { row ->
-                TxRowCard(row = row, onClick = { onRowClick(row.id) })
-                androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 8.dp))
+            items(group.items, key = { it.id }, contentType = { "row" }) { row ->
+                TxRowCard(row = row, onClick = { onRowClick(row.id) }, modifier = Modifier.animateItem())
             }
         }
     }
 }
 
 @Composable
-private fun TxRowCard(row: TxRow, onClick: () -> Unit) {
+private fun TxRowCard(row: TxRow, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(SyncSpendTheme.colors.card, RoundedCornerShape(16.dp))
             .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(16.dp))

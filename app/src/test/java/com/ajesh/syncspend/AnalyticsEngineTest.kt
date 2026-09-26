@@ -3,6 +3,7 @@ package com.ajesh.syncspend
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
+import com.ajesh.syncspend.domain.model.DateRange
 import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ScopePeriod
@@ -41,12 +42,26 @@ class AnalyticsEngineTest {
 
     @Test fun entryFiltersUseRollingWeeks() {
         val e = AnalyticsEngine.flowFilter(data, FlowType.EXPENSE)
-        val scope = ScopePeriod.AllTime
-        assertEquals(1, AnalyticsEngine.applyEntryFilter(e, EntryFilter.TODAY, scope, today).size)
-        assertEquals(1, AnalyticsEngine.applyEntryFilter(e, EntryFilter.YESTERDAY, scope, today).size)
+        assertEquals(1, AnalyticsEngine.applyEntryFilter(e, EntryFilter.TODAY, null, today).size)
+        assertEquals(1, AnalyticsEngine.applyEntryFilter(e, EntryFilter.YESTERDAY, null, today).size)
         // 8 Sep is exactly 6 days back -> inside "this week"
-        assertEquals(3, AnalyticsEngine.applyEntryFilter(e, EntryFilter.THIS_WEEK, scope, today).size)
-        assertEquals(1, AnalyticsEngine.applyEntryFilter(e, EntryFilter.LAST_MONTH, scope, today).size)
+        assertEquals(3, AnalyticsEngine.applyEntryFilter(e, EntryFilter.THIS_WEEK, null, today).size)
+        assertEquals(1, AnalyticsEngine.applyEntryFilter(e, EntryFilter.LAST_MONTH, null, today).size)
+    }
+
+    @Test fun lastWeekFilterIsGone() {
+        assertEquals(
+            listOf("TODAY", "YESTERDAY", "THIS_WEEK", "THIS_MONTH", "LAST_MONTH", "CUSTOM"),
+            AnalyticsEngine.entryFilterOptions(FlowType.EXPENSE).map { it.name },
+        )
+    }
+
+    @Test fun customRangeIsInclusiveOnBothEnds() {
+        val e = AnalyticsEngine.flowFilter(data, FlowType.EXPENSE)
+        val range = DateRange(LocalDate.of(2026, 8, 28), LocalDate.of(2026, 9, 8))
+        val picked = AnalyticsEngine.applyEntryFilter(e, EntryFilter.CUSTOM, range, today)
+        assertEquals(2, picked.size) // 28 Aug and 8 Sep, both edges included
+        assertEquals(e.size, AnalyticsEngine.applyEntryFilter(e, EntryFilter.CUSTOM, null, today).size)
     }
 
     @Test fun incomeOnlyOffersAll() {

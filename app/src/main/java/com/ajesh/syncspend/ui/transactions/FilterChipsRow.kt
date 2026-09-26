@@ -28,6 +28,8 @@ fun FilterChipsRow(
     selected: EntryFilter,
     onSelect: (EntryFilter) -> Unit,
     modifier: Modifier = Modifier,
+    /** Shown on the Custom chip once a range has been picked, e.g. "12 Aug – 3 Sep". */
+    customLabel: String? = null,
 ) {
     Row(
         modifier = modifier.horizontalScroll(rememberScrollState()),
@@ -46,7 +48,7 @@ fun FilterChipsRow(
                     .padding(horizontal = 14.dp, vertical = 7.dp),
             ) {
                 Text(
-                    option.label,
+                    if (option == EntryFilter.CUSTOM && isSelected && customLabel != null) customLabel else option.label,
                     style = MaterialTheme.typography.labelLarge,
                     color = if (isSelected) SyncSpendTheme.colors.onSelected else SyncSpendTheme.colors.sub,
                 )

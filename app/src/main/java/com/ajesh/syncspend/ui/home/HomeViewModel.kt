@@ -16,20 +16,25 @@ import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.state.SharedSelectionState
+import com.ajesh.syncspend.ui.transactions.DayGroupUi
 import com.ajesh.syncspend.ui.transactions.TxRow
 import com.ajesh.syncspend.util.CurrencyFormatter
 import com.ajesh.syncspend.util.DateUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 
 data class HomeUiState(
+    /** False only for the placeholder shown before Room answers — the hero count-up waits for real data. */
+    val loaded: Boolean = false,
     val flow: FlowType = FlowType.EXPENSE,
     val scopeLabel: String = "",
     val scopeSubLabel: String = "",
-    val totalFormatted: String = "0.00",
+    val total: Double = 0.0,
     val currencySymbol: String = "₹",
     val hasEntriesInScope: Boolean = false,
     val hasTrend: Boolean = false,
@@ -43,7 +48,8 @@ data class HomeUiState(
     val earliestTransactionDate: java.time.LocalDate? = null,
     val entryCountLabel: String = "",
     val avgNote: String = "",
-    val recent: List<TxRow> = emptyList(),
+    /** The latest entries in the selected scope, grouped by day. */
+    val recentGroups: List<DayGroupUi> = emptyList(),
 )
 
 class HomeViewModel(
@@ -72,6 +78,7 @@ class HomeViewModel(
     ) { tx, subs, reminders, prefs, cats -> Sources(tx, subs, reminders, prefs, cats) }
 
     val uiState: StateFlow<HomeUiState> = combine(sources, selection.scope, selection.flow, ::compute)
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     private fun compute(sources: Sources, scope: ScopePeriod, flowType: FlowType): HomeUiState {
@@ -83,13 +90,15 @@ class HomeViewModel(
         val prevTotal = prevScope?.let { AnalyticsEngine.scopeFilter(flowTx, it).sumOf { t -> kotlin.math.abs(t.amount) } } ?: 0.0
         val trend = AnalyticsEngine.trendPercent(total, prevTotal)
         val cur = sources.prefs.currencyCode.symbol
-        val sorted = scopeTx.sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
+        val recent = scopeTx.sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt }).take(10)
+        val categoriesById = sources.categories.associateBy { it.id }
 
         return HomeUiState(
+            loaded = true,
             flow = flowType,
             scopeLabel = AnalyticsEngine.scopeLabel(scope),
             scopeSubLabel = "${scopeTx.size} " + if (flowType == FlowType.INCOME) "income entries logged" else "expenses logged",
-            totalFormatted = CurrencyFormatter.amount(total),
+            total = total,
             currencySymbol = sources.prefs.currencyCode.symbol,
             hasEntriesInScope = scopeTx.isNotEmpty(),
             hasTrend = trend != null,
@@ -103,16 +112,22 @@ class HomeViewModel(
             earliestTransactionDate = sources.tx.minOfOrNull { it.date },
             entryCountLabel = "${scopeTx.size} entries",
             avgNote = "Averaging $cur${CurrencyFormatter.amount(if (scopeTx.isEmpty()) 0.0 else total / scopeTx.size)} per entry",
-            recent = sorted.take(10).map { t ->
-                val category = sources.categories.find { it.id == t.categoryId }
-                TxRow(
-                    id = t.id,
-                    name = t.description,
-                    categoryLabel = category?.name ?: "Deleted category",
-                    amountFormatted = cur + CurrencyFormatter.amount(t.amount),
-                    isPositive = t.amount > 0,
-                    dayLabel = DateUtils.shortDate(t.date),
-                    iconKey = category?.iconKey ?: "receipt",
+            recentGroups = AnalyticsEngine.groupByDay(recent).map { group ->
+                DayGroupUi(
+                    label = group.label,
+                    totalFormatted = cur + CurrencyFormatter.amount(group.totalAbs),
+                    items = group.items.map { t ->
+                        val category = categoriesById[t.categoryId]
+                        TxRow(
+                            id = t.id,
+                            name = t.description,
+                            categoryLabel = category?.name ?: "Deleted category",
+                            amountFormatted = cur + CurrencyFormatter.amount(t.amount),
+                            isPositive = t.amount > 0,
+                            dayLabel = DateUtils.shortDate(t.date),
+                            iconKey = category?.iconKey ?: "receipt",
+                        )
+                    },
                 )
             },
         )

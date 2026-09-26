@@ -3,6 +3,7 @@ package com.ajesh.syncspend.domain.analytics
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.domain.model.CategoryRollup
+import com.ajesh.syncspend.domain.model.DateRange
 import com.ajesh.syncspend.domain.model.DayGroup
 import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.FlowType
@@ -68,7 +69,7 @@ object AnalyticsEngine {
     fun applyEntryFilter(
         tx: List<TransactionEntity>,
         filter: EntryFilter,
-        scope: ScopePeriod,
+        custom: DateRange?,
         today: LocalDate = LocalDate.now(),
     ): List<TransactionEntity> = when (filter) {
         EntryFilter.ALL -> tx
@@ -77,7 +78,7 @@ object AnalyticsEngine {
         EntryFilter.THIS_WEEK -> tx.filter { !it.date.isBefore(today.minusDays(6)) && !it.date.isAfter(today) }
         EntryFilter.THIS_MONTH -> tx.filter { YearMonth.from(it.date) == YearMonth.from(today) }
         EntryFilter.LAST_MONTH -> tx.filter { YearMonth.from(it.date) == YearMonth.from(today).minusMonths(1) }
-        EntryFilter.CUSTOM -> scopeFilter(tx, scope)
+        EntryFilter.CUSTOM -> if (custom == null) tx else tx.filter { it.date in custom }
     }
 
     fun groupByDay(tx: List<TransactionEntity>, today: LocalDate = LocalDate.now()): List<DayGroup> {

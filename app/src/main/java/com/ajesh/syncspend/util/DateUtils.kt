@@ -13,6 +13,22 @@ object DateUtils {
     fun shortDate(d: LocalDate): String =
         "${d.dayOfMonth} ${d.month.getDisplayName(TextStyle.SHORT, Locale.US)}"
 
+    /** "14 Sep 2026". */
+    fun shortDateYear(d: LocalDate): String = "${shortDate(d)} ${d.year}"
+
+    /**
+     * Compact label for a custom range: "12 Aug – 3 Sep" within [today]'s year,
+     * with years added when the range reaches into another year.
+     */
+    fun rangeLabel(start: LocalDate, end: LocalDate, today: LocalDate = LocalDate.now()): String {
+        if (start == end) return if (start.year == today.year) shortDate(start) else shortDateYear(start)
+        return if (start.year == today.year && end.year == today.year) {
+            "${shortDate(start)} – ${shortDate(end)}"
+        } else {
+            "${shortDateYear(start)} – ${shortDateYear(end)}"
+        }
+    }
+
     /** "12:05 AM"-style label from minute-of-day, matching the design's `fmt12`. */
     fun fmt12(minuteOfDay: Int): String {
         val h = minuteOfDay / 60

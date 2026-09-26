@@ -48,6 +48,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.model.FlowType
+import com.ajesh.syncspend.ui.components.AnimatedAmountText
+import com.ajesh.syncspend.ui.components.DateSeparator
 import com.ajesh.syncspend.ui.components.FlowToggle
 import com.ajesh.syncspend.ui.components.PeriodPickerSheet
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
@@ -163,7 +165,7 @@ fun HomeScreen(
             )
         }
 
-        if (state.recent.isEmpty()) {
+        if (state.recentGroups.isEmpty()) {
             Text(
                 "No transactions yet — tap the + button to add your first one.",
                 style = MaterialTheme.typography.bodySmall,
@@ -171,9 +173,12 @@ fun HomeScreen(
                 modifier = Modifier.padding(horizontal = 22.dp, vertical = 18.dp),
             )
         } else {
-            Column(modifier = Modifier.padding(horizontal = 22.dp).padding(top = 4.dp)) {
-                state.recent.forEach { row ->
-                    RecentRow(row) { container.selectionState.editingTransactionId.value = row.id }
+            Column(modifier = Modifier.padding(horizontal = 22.dp).padding(top = 2.dp)) {
+                state.recentGroups.forEach { group ->
+                    DateSeparator(label = group.label)
+                    group.items.forEach { row ->
+                        RecentRow(row) { container.selectionState.editingTransactionId.value = row.id }
+                    }
                 }
             }
         }
@@ -220,13 +225,14 @@ private fun HeroCard(state: HomeUiState, modifier: Modifier = Modifier) {
             )
             Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(state.currencySymbol, fontSize = 23.sp, fontWeight = FontWeight.Normal, color = Color.White)
-                AnimatedContent(
-                    targetState = state.totalFormatted,
-                    transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
-                    label = "hero-total",
-                ) { amount ->
-                    Text(amount, fontSize = 34.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.68).sp, color = Color.White)
-                }
+                AnimatedAmountText(
+                    target = state.total,
+                    ready = state.loaded,
+                    color = Color.White,
+                    fontSize = 34.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = (-0.68).sp,
+                )
             }
             Row(modifier = Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 if (state.hasTrend) {
@@ -309,7 +315,7 @@ private fun RecentRow(row: TxRow, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(vertical = 9.dp),
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(11.dp),
     ) {

@@ -1,5 +1,7 @@
 package com.ajesh.syncspend.ui.transactions
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,23 +22,32 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.di.LocalAppContainer
+import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.ui.components.AnimatedSegmentedControl
-import com.ajesh.syncspend.ui.components.PeriodPickerSheet
+import com.ajesh.syncspend.ui.components.DateRangePickerSheet
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
+import com.ajesh.syncspend.util.DateUtils
 
 @Composable
 fun TransactionsScreen() {
@@ -55,6 +66,11 @@ fun TransactionsScreen() {
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // Pure UI state lives here, not in the ViewModel: toggling a menu must not re-run the data pipeline.
+    var flowMenuOpen by remember { mutableStateOf(false) }
+    var rangePickerOpen by remember { mutableStateOf(false) }
+    val colors = SyncSpendTheme.colors
+    val flowColor by animateColorAsState(if (state.flow == FlowType.INCOME) colors.pos else colors.neg, tween(200), label = "flow-word")
 
     Column(
         modifier = Modifier
@@ -73,7 +89,7 @@ fun TransactionsScreen() {
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = viewModel::toggleFlowMenu,
+                            onClick = { flowMenuOpen = !flowMenuOpen },
                         )
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -91,17 +107,29 @@ fun TransactionsScreen() {
                         color = SyncSpendTheme.colors.ink,
                     )
                 }
-                if (state.flowMenuOpen) {
-                    FlowMenuPopup(state.flow, viewModel::setFlow, viewModel::closeFlowMenu)
+                if (flowMenuOpen) {
+                    FlowMenuPopup(
+                        current = state.flow,
+                        onPick = {
+                            viewModel.setFlow(it)
+                            flowMenuOpen = false
+                        },
+                        onDismiss = { flowMenuOpen = false },
+                    )
                 }
             }
         }
 
         androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 10.dp))
         Text(
-            "Showing ${if (state.flow == FlowType.INCOME) "income" else "expenses"} for ${state.scopeLabel}",
-            style = MaterialTheme.typography.bodySmall,
-            color = SyncSpendTheme.colors.sub,
+            buildAnnotatedString {
+                append("Showing ")
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = flowColor)) {
+                    append(if (state.flow == FlowType.INCOME) "income" else "expenses")
+                }
+            },
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+            color = colors.sub,
         )
 
         androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 14.dp))
@@ -116,7 +144,10 @@ fun TransactionsScreen() {
             FilterChipsRow(
                 options = state.entryFilterOptions,
                 selected = state.entryFilter,
-                onSelect = viewModel::pickEntryFilter,
+                customLabel = state.customRange?.let { DateUtils.rangeLabel(it.start, it.end) },
+                onSelect = { filter ->
+                    if (filter == EntryFilter.CUSTOM) rangePickerOpen = true else viewModel.pickEntryFilter(filter)
+                },
             )
         }
 
@@ -132,12 +163,12 @@ fun TransactionsScreen() {
         }
     }
 
-    if (state.periodPickerOpen) {
-        PeriodPickerSheet(
-            currentScope = state.currentScope,
+    if (rangePickerOpen) {
+        DateRangePickerSheet(
+            initial = state.customRange,
             earliestTransactionDate = state.earliestTransactionDate,
-            onApply = viewModel::applyScope,
-            onDismiss = viewModel::closePeriodPicker,
+            onApply = viewModel::applyCustomRange,
+            onDismiss = { rangePickerOpen = false },
         )
     }
 }

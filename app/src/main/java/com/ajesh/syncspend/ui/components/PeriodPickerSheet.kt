@@ -174,13 +174,16 @@ fun PickerChip(
 
 /** Cancel / Apply style footer button (46dp, 15dp radius). */
 @Composable
-fun SheetButton(label: String, primary: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun SheetButton(label: String, primary: Boolean, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
     Box(
         modifier = modifier
             .height(46.dp)
-            .background(if (primary) SyncSpendTheme.colors.button else SyncSpendTheme.colors.card, RoundedCornerShape(15.dp))
+            .background(
+                if (primary) SyncSpendTheme.colors.button.copy(alpha = if (enabled) 1f else 0.35f) else SyncSpendTheme.colors.card,
+                RoundedCornerShape(15.dp),
+            )
             .then(if (primary) Modifier else Modifier.border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(15.dp)))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
