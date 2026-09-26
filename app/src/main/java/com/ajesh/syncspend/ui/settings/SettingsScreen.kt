@@ -52,11 +52,11 @@ import com.ajesh.syncspend.ui.components.PeriodPickerSheet
 import com.ajesh.syncspend.ui.components.PickerChip
 import com.ajesh.syncspend.ui.components.rememberNotificationGate
 import com.ajesh.syncspend.ui.components.SquareIconButton
+import com.ajesh.syncspend.ui.components.TimePickerSheet
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.DateUtils
-import com.ajesh.syncspend.util.NativePickers
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.flow.first
@@ -89,6 +89,7 @@ fun SettingsScreen() {
     var exportPickerOpen by remember { mutableStateOf(false) }
     var pendingExportScope by remember { mutableStateOf<ScopePeriod>(ScopePeriod.AllTime) }
     var infoDialog by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var timePickerOpen by remember { mutableStateOf(false) }
     val notificationGate = rememberNotificationGate()
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
@@ -214,11 +215,7 @@ fun SettingsScreen() {
                     }
                     SquareIconButton(
                         SyncSpendIcons.Pencil,
-                        onClick = {
-                            NativePickers.showTime(context, prefs.dailyReminderMinuteOfDay, colors.isDark) { minute ->
-                                notificationGate { viewModel.setReminderTime(minute) }
-                            }
-                        },
+                        onClick = { timePickerOpen = true },
                         size = 34.dp, radius = 12.dp, iconSize = 15.dp, background = colors.card,
                         modifier = Modifier.border(1.dp, colors.line, RoundedCornerShape(12.dp)),
                     )
@@ -264,6 +261,14 @@ fun SettingsScreen() {
                 exportLauncher.launch("syncspend_export_$stamp.csv")
             },
             onDismiss = { exportPickerOpen = false },
+        )
+    }
+    if (timePickerOpen) {
+        TimePickerSheet(
+            initialMinuteOfDay = prefs.dailyReminderMinuteOfDay,
+            title = "Daily reminder time",
+            onApply = { minute -> notificationGate { viewModel.setReminderTime(minute) } },
+            onDismiss = { timePickerOpen = false },
         )
     }
     infoDialog?.let { (title, body) -> InfoDialog(title, body, onDismiss = { infoDialog = null }) }

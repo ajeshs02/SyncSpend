@@ -69,7 +69,7 @@ import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendCorners
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.DateUtils
-import com.ajesh.syncspend.util.NativePickers
+import com.ajesh.syncspend.ui.components.DatePickerSheet
 
 /**
  * The widget's quick-add panel: a translucent overlay over the home screen with
@@ -126,6 +126,8 @@ private fun QuickAddPanel(container: com.ajesh.syncspend.di.AppContainer, onFini
     BackHandler { dismiss() }
 
     var hint by remember { mutableStateOf<String?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val earliest by container.transactionRepository.getEarliestDate().collectAsStateWithLifecycle(null)
     var showCreate by remember { mutableStateOf(false) }
 
     Box(
@@ -211,7 +213,7 @@ private fun QuickAddPanel(container: com.ajesh.syncspend.di.AppContainer, onFini
                     dateLabel = DateUtils.shortDate(state.date),
                     onDigit = { hint = null; viewModel.pressDigit(it) },
                     onBackspace = viewModel::pressBackspace,
-                    onDateClick = { NativePickers.showDate(context, state.date, colors.isDark, viewModel::setDate) },
+                    onDateClick = { showDatePicker = true },
                 )
                 Row(
                     modifier = Modifier
@@ -241,13 +243,21 @@ private fun QuickAddPanel(container: com.ajesh.syncspend.di.AppContainer, onFini
         }
     }
 
+    if (showDatePicker) {
+        DatePickerSheet(
+            initial = state.date,
+            earliestTransactionDate = earliest,
+            onApply = viewModel::setDate,
+            onDismiss = { showDatePicker = false },
+        )
+    }
     if (showCreate) {
         NameIconDialog(
             title = "New category",
             body = "Name it and pick an icon — it will be added to the expense list.",
             cta = "Create",
             initialName = "",
-            initialIconKey = "receipt",
+            initialIconKey = null,
             namePlaceholder = "New Expense ${state.categoriesForType.size + 1}",
             onConfirm = { name, icon ->
                 showCreate = false

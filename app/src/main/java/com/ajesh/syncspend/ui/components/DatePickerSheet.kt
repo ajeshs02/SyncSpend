@@ -1,6 +1,14 @@
 package com.ajesh.syncspend.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -11,7 +19,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,7 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -36,31 +43,38 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 /**
- * The design's custom calendar sheet ("Entry date"). Used wherever the spec
- * says to use the in-app date picker (Edit Entry). Per the user's requirement
- * the browsable months start ~3 months back from the current month (extended
- * further back only if an existing entry is older) and stop at the current
- * month — no endless scrollback through empty years.
+ * The design's custom calendar sheet, used for every date pick in the app
+ * (Add Entry, Edit Entry, subscription / reminder dates).
+ *
+ * Browsable months default to ~3 months back through the current month —
+ * extended further back only if an existing entry is older — so there is no
+ * endless scrollback through empty years. Callers picking future dates (a
+ * subscription's next due date) pass [minMonth]/[maxMonth]; the month of
+ * [initial] is always reachable. The grid is always six rows tall so the sheet
+ * never changes height as you page between months.
  */
 @Composable
 fun DatePickerSheet(
     initial: LocalDate,
-    earliestTransactionDate: LocalDate?,
     onApply: (LocalDate) -> Unit,
     onDismiss: () -> Unit,
+    earliestTransactionDate: LocalDate? = null,
+    title: String = "ENTRY DATE",
+    minMonth: YearMonth? = null,
+    maxMonth: YearMonth? = null,
 ) {
-    val upper = remember { YearMonth.now() }
-    val lower = remember(earliestTransactionDate, initial) {
-        val defaultLower = upper.minusMonths(3)
-        listOfNotNull(defaultLower, earliestTransactionDate?.let { YearMonth.from(it) }, YearMonth.from(initial))
-            .minOf { it }
+    val initialMonth = remember { YearMonth.from(initial) }
+    val now = remember { YearMonth.now() }
+    val lower = remember(earliestTransactionDate, minMonth) {
+        val base = minMonth ?: minOf(now.minusMonths(3), earliestTransactionDate?.let { YearMonth.from(it) } ?: now)
+        minOf(base, initialMonth)
     }
-    // The upper bound must also contain the entry's own date if it was future-dated.
-    val effectiveUpper = remember(initial) { maxOf(upper, YearMonth.from(initial)) }
+    val upper = remember(maxMonth) { maxOf(maxMonth ?: now, initialMonth) }
 
     var selected by remember { mutableStateOf(initial) }
-    var viewing by remember { mutableStateOf(YearMonth.from(initial)) }
+    var viewing by remember { mutableStateOf(initialMonth) }
     val colors = SyncSpendTheme.colors
+    val today = remember { LocalDate.now() }
 
     DesignSheet(onDismiss = onDismiss) { close ->
         Row(
@@ -69,12 +83,7 @@ fun DatePickerSheet(
             verticalAlignment = Alignment.Top,
         ) {
             Column {
-                Text(
-                    "ENTRY DATE",
-                    fontSize = 10.5.sp,
-                    letterSpacing = 0.63.sp,
-                    color = colors.sub,
-                )
+                Text(title, fontSize = 10.5.sp, letterSpacing = 0.63.sp, color = colors.sub)
                 Text(
                     DateUtils.longDate(selected),
                     fontSize = 19.sp,
@@ -101,7 +110,7 @@ fun DatePickerSheet(
             )
             SquareIconButton(
                 SyncSpendIcons.Next, { viewing = viewing.plusMonths(1) },
-                size = 32.dp, radius = 11.dp, iconSize = 17.dp, enabled = viewing.isBefore(effectiveUpper),
+                size = 32.dp, radius = 11.dp, iconSize = 17.dp, enabled = viewing.isBefore(upper),
             )
         }
 
@@ -117,40 +126,17 @@ fun DatePickerSheet(
             }
         }
 
-        val firstOffset = viewing.atDay(1).dayOfWeek.value % 7 // Sunday-first, like the design
-        val cells: List<Int?> = List(firstOffset) { null } + (1..viewing.lengthOfMonth()).toList()
-        Column(modifier = Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            cells.chunked(7).forEach { week ->
-                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    week.forEach { day ->
-                        val isSelected = day != null && selected == viewing.atDay(day)
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
-                                .background(
-                                    if (isSelected) colors.selectedBrush else SolidColor(androidx.compose.ui.graphics.Color.Transparent),
-                                    CircleShape,
-                                )
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    enabled = day != null,
-                                ) { if (day != null) selected = viewing.atDay(day) },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (day != null) {
-                                Text(
-                                    day.toString(),
-                                    style = MaterialTheme.typography.labelLarge.copy(fontSize = 12.sp),
-                                    color = if (isSelected) colors.onSelected else colors.ink,
-                                )
-                            }
-                        }
-                    }
-                    repeat(7 - week.size) { Box(Modifier.weight(1f)) }
-                }
-            }
+        AnimatedContent(
+            targetState = viewing,
+            transitionSpec = {
+                val dir = if (targetState > initialState) 1 else -1
+                (slideInHorizontally(tween(220)) { it / 5 * dir } + fadeIn(tween(220))) togetherWith
+                    (slideOutHorizontally(tween(160)) { -it / 5 * dir } + fadeOut(tween(120)))
+            },
+            modifier = Modifier.padding(top = 4.dp),
+            label = "calendar-month",
+        ) { month ->
+            MonthGrid(month = month, selected = selected, today = today, onPick = { selected = it })
         }
 
         Row(modifier = Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -160,5 +146,52 @@ fun DatePickerSheet(
                 close()
             }
         }
+    }
+}
+
+/** Always 6 week-rows (42 cells) so every month occupies the same height. */
+@Composable
+private fun MonthGrid(month: YearMonth, selected: LocalDate, today: LocalDate, onPick: (LocalDate) -> Unit) {
+    val firstOffset = month.atDay(1).dayOfWeek.value % 7 // Sunday-first, like the design
+    val length = month.lengthOfMonth()
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        repeat(6) { week ->
+            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                repeat(7) { col ->
+                    val day = week * 7 + col - firstOffset + 1
+                    if (day in 1..length) {
+                        val date = month.atDay(day)
+                        DayCell(
+                            day = day,
+                            selected = date == selected,
+                            isToday = date == today,
+                            modifier = Modifier.weight(1f),
+                            onClick = { onPick(date) },
+                        )
+                    } else {
+                        Box(Modifier.weight(1f).aspectRatio(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DayCell(day: Int, selected: Boolean, isToday: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val colors = SyncSpendTheme.colors
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .background(if (selected) colors.selectedBrush else SolidColor(Color.Transparent), CircleShape)
+            .then(if (isToday && !selected) Modifier.border(1.dp, colors.acc, CircleShape) else Modifier)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            day.toString(),
+            style = MaterialTheme.typography.labelLarge.copy(fontSize = 12.sp),
+            color = if (selected) colors.onSelected else colors.ink,
+        )
     }
 }

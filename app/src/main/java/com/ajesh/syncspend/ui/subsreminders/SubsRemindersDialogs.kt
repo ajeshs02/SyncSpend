@@ -23,21 +23,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.ajesh.syncspend.data.db.entity.ReminderEntity
 import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.domain.model.BillingCycle
 import com.ajesh.syncspend.domain.model.ReminderSchedule
+import com.ajesh.syncspend.ui.components.DatePickerSheet
 import com.ajesh.syncspend.ui.components.DesignTextField
 import com.ajesh.syncspend.ui.components.NameIconDialog
 import com.ajesh.syncspend.ui.components.PickerChip
+import com.ajesh.syncspend.ui.components.TimePickerSheet
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.DateUtils
-import com.ajesh.syncspend.util.NativePickers
 import java.time.LocalDate
+import java.time.YearMonth
 
 @Composable
 private fun FieldLabel(text: String) {
@@ -74,11 +75,10 @@ fun SubscriptionDialog(
     onSave: (name: String, iconKey: String, amount: Double, cycle: BillingCycle, due: LocalDate) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val context = LocalContext.current
-    val dark = SyncSpendTheme.colors.isDark
     var amountText by remember { mutableStateOf(initial?.amount?.let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString() } ?: "") }
     var cycle by remember { mutableStateOf(initial?.billingCycle ?: BillingCycle.MONTHLY) }
     var due by remember { mutableStateOf(initial?.nextDueDate ?: LocalDate.now().plusMonths(1)) }
+    var pickingDue by remember { mutableStateOf(false) }
     val amount = amountText.toDoubleOrNull()
 
     NameIconDialog(
@@ -111,8 +111,19 @@ fun SubscriptionDialog(
         }
         FieldLabel("Next due date")
         PickerTile(SyncSpendIcons.Cal, "${DateUtils.shortDate(due)} ${due.year}", Modifier.fillMaxWidth()) {
-            NativePickers.showDate(context, due, dark) { due = it }
+            pickingDue = true
         }
+    }
+
+    if (pickingDue) {
+        DatePickerSheet(
+            initial = due,
+            title = "NEXT DUE DATE",
+            minMonth = YearMonth.now(),
+            maxMonth = YearMonth.now().plusMonths(24),
+            onApply = { due = it },
+            onDismiss = { pickingDue = false },
+        )
     }
 }
 
@@ -122,11 +133,11 @@ fun ReminderDialog(
     onSave: (label: String, iconKey: String, schedule: ReminderSchedule, date: LocalDate, minuteOfDay: Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val context = LocalContext.current
-    val dark = SyncSpendTheme.colors.isDark
     var schedule by remember { mutableStateOf(initial?.schedule ?: ReminderSchedule.DAILY) }
     var date by remember { mutableStateOf(initial?.nextTriggerDate ?: LocalDate.now()) }
     var minute by remember { mutableStateOf(initial?.timeMinuteOfDay ?: (20 * 60)) }
+    var pickingDate by remember { mutableStateOf(false) }
+    var pickingTime by remember { mutableStateOf(false) }
 
     NameIconDialog(
         title = if (initial == null) "New reminder" else "Edit reminder",
@@ -150,12 +161,26 @@ fun ReminderDialog(
         }
         FieldLabel(if (schedule == ReminderSchedule.ONCE) "Date" else "Starting")
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
-            PickerTile(SyncSpendIcons.Cal, DateUtils.shortDate(date), Modifier.weight(1f)) {
-                NativePickers.showDate(context, date, dark) { date = it }
-            }
-            PickerTile(SyncSpendIcons.Clock, DateUtils.fmt12(minute), Modifier.weight(1f)) {
-                NativePickers.showTime(context, minute, dark) { minute = it }
-            }
+            PickerTile(SyncSpendIcons.Cal, DateUtils.shortDate(date), Modifier.weight(1f)) { pickingDate = true }
+            PickerTile(SyncSpendIcons.Clock, DateUtils.fmt12(minute), Modifier.weight(1f)) { pickingTime = true }
         }
+    }
+
+    if (pickingDate) {
+        DatePickerSheet(
+            initial = date,
+            title = if (schedule == ReminderSchedule.ONCE) "REMINDER DATE" else "STARTING FROM",
+            minMonth = YearMonth.now(),
+            maxMonth = YearMonth.now().plusMonths(24),
+            onApply = { date = it },
+            onDismiss = { pickingDate = false },
+        )
+    }
+    if (pickingTime) {
+        TimePickerSheet(
+            initialMinuteOfDay = minute,
+            onApply = { minute = it },
+            onDismiss = { pickingTime = false },
+        )
     }
 }

@@ -32,10 +32,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,6 +48,7 @@ import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.ui.components.AmountEntryPad
 import com.ajesh.syncspend.ui.components.CategoryField
+import com.ajesh.syncspend.ui.components.DatePickerSheet
 import com.ajesh.syncspend.ui.components.FlowToggle
 import com.ajesh.syncspend.ui.components.PrimaryGradientButton
 import com.ajesh.syncspend.ui.components.CategoryPickerSheet
@@ -55,7 +57,6 @@ import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.DateUtils
-import com.ajesh.syncspend.util.NativePickers
 
 @Composable
 fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
@@ -68,8 +69,9 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val colors = SyncSpendTheme.colors
+    var showDatePicker by remember { mutableStateOf(false) }
+    val earliest by container.transactionRepository.getEarliestDate().collectAsStateWithLifecycle(null)
     val draftColor = if (state.type == FlowType.INCOME) colors.pos else colors.neg
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -164,7 +166,7 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                     dateLabel = DateUtils.shortDate(state.date),
                     onDigit = viewModel::pressDigit,
                     onBackspace = viewModel::pressBackspace,
-                    onDateClick = { NativePickers.showDate(context, state.date, colors.isDark, viewModel::setDate) },
+                    onDateClick = { showDatePicker = true },
                 )
                 PrimaryGradientButton(
                     text = "Save Entry",
@@ -177,6 +179,15 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                 )
             }
         }
+    }
+
+    if (showDatePicker) {
+        DatePickerSheet(
+            initial = state.date,
+            earliestTransactionDate = earliest,
+            onApply = viewModel::setDate,
+            onDismiss = { showDatePicker = false },
+        )
     }
 
     if (state.categoryPickerOpen) {
