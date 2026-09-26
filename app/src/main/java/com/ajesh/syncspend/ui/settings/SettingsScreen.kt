@@ -110,11 +110,17 @@ fun SettingsScreen() {
             try {
                 val r = CsvImporter.import(context, uri, container.database)
                 val extra = buildString {
+                    if (r.duplicates > 0) append("\n${r.duplicates} already in your data, skipped.")
+                    if (r.skipped > 0) append("\n${r.skipped} rows couldn't be read.")
                     if (r.createdCategories > 0) append("\n${r.createdCategories} new categories were created.")
                     if (r.problems.isNotEmpty()) append("\n\n" + r.problems.joinToString("\n"))
                 }
-                infoDialog = (if (r.imported > 0) "Import complete" else "Nothing imported") to
-                    "${r.imported} imported, ${r.skipped} skipped.$extra"
+                val title = when {
+                    r.imported > 0 -> "Import complete"
+                    r.duplicates > 0 -> "Already up to date"
+                    else -> "Nothing imported"
+                }
+                infoDialog = title to "${r.imported} entries imported.$extra"
             } catch (e: Exception) {
                 infoDialog = "Import failed" to (e.message ?: "That file couldn't be read.")
             }
@@ -228,7 +234,7 @@ fun SettingsScreen() {
             ActionCard(
                 icon = SyncSpendIcons.Upload,
                 title = "Import CSV",
-                note = "Add entries from a SyncSpend CSV file",
+                note = "Works with SyncSpend exports and your old tracker's CSV",
                 onClick = { importLauncher.launch(arrayOf("*/*")) },
             )
 

@@ -7,86 +7,86 @@ import com.ajesh.syncspend.data.db.AppDatabase
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.domain.model.FlowType
-import java.time.LocalDate
-import java.time.format.DateTimeParseException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-data class ImportResult(val imported: Int, val skipped: Int, val problems: List<String>, val createdCategories: Int)
+data class ImportResult(
+    val imported: Int,
+    /** Rows that couldn't be read at all. */
+    val skipped: Int,
+    /** Rows already in the app (identical date, amount, category and description). */
+    val duplicates: Int,
+    val problems: List<String>,
+    val createdCategories: Int,
+)
 
 object CsvImporter {
     /**
-     * Reads the app's own export format. Categories are matched by
-     * (name, type) case-insensitively and created (default icon) when missing;
-     * an archived match is revived. All inserts happen in one transaction.
-     * Re-importing the same file adds the rows again — no de-duplication.
+     * Reads a CSV written by this app *or* the previous tracker (see
+     * [CsvImportParser] for the accepted columns). Categories are matched by
+     * (name, type) case-insensitively; a match that was archived is revived and
+     * a missing one is created with a guessed icon. Rows already present are
+     * skipped, so re-importing a file is harmless. All writes happen in one
+     * transaction.
      */
     suspend fun import(context: Context, uri: Uri, db: AppDatabase): ImportResult = withContext(Dispatchers.IO) {
-        val text = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             ?: error("Could not open the file")
-        val rows = CsvFormat.parse(text.removePrefix("\uFEFF"))
-        if (rows.isEmpty()) return@withContext ImportResult(0, 0, listOf("The file is empty."), 0)
+        val parsed = CsvImportParser.parse(CsvImportParser.decode(bytes))
+        parsed.headerError?.let { return@withContext ImportResult(0, 0, 0, listOf(it), 0) }
 
-        val header = rows.first().map { it.trim().lowercase() }
-        if (header != CsvFormat.HEADER) {
-            return@withContext ImportResult(0, rows.size - 1, listOf("Not a SyncSpend export — expected header: ${CsvFormat.HEADER.joinToString(",")}"), 0)
-        }
-
-        var imported = 0
-        var skipped = 0
         var created = 0
-        val problems = mutableListOf<String>()
+        var duplicates = 0
+        val toInsert = ArrayList<TransactionEntity>(parsed.rows.size)
 
         db.withTransaction {
             val categoryDao = db.categoryDao()
-            val txDao = db.transactionDao()
-            val known = categoryDao.getAllOnce().toMutableList()
-            val nextOrder = FlowType.values().associateWith { t ->
-                (known.filter { it.type == t }.maxOfOrNull { it.sortOrder } ?: -1) + 1
-            }.toMutableMap()
+            val existing = DuplicateTracker(db.transactionDao().getAllOnce())
 
-            rows.drop(1).forEachIndexed { index, r ->
-                val line = index + 2
-                fun skip(reason: String) {
-                    skipped++
-                    if (problems.size < 5) problems += "Row $line: $reason"
-                }
-                if (r.size < 5) return@forEachIndexed skip("expected 5 columns")
-                val date = try { LocalDate.parse(r[0].trim()) } catch (_: DateTimeParseException) { return@forEachIndexed skip("bad date \"${r[0]}\"") }
-                val type = when (r[1].trim().uppercase()) {
-                    "EXPENSE" -> FlowType.EXPENSE
-                    "INCOME" -> FlowType.INCOME
-                    else -> return@forEachIndexed skip("bad type \"${r[1]}\"")
-                }
-                val categoryName = r[2].trim()
-                if (categoryName.isEmpty()) return@forEachIndexed skip("missing category")
-                val amount = r[4].trim().toDoubleOrNull()?.takeIf { it > 0 } ?: return@forEachIndexed skip("bad amount \"${r[4]}\"")
+            val byKey = HashMap<Pair<FlowType, String>, CategoryEntity>()
+            val nextOrder = HashMap<FlowType, Int>()
+            categoryDao.getAllOnce().forEach { c ->
+                byKey.putIfAbsent(c.type to c.name.trim().lowercase(), c)
+                nextOrder[c.type] = maxOf(nextOrder[c.type] ?: 0, c.sortOrder + 1)
+            }
 
-                var category = known.find { it.type == type && it.name.equals(categoryName, ignoreCase = true) }
+            val now = System.currentTimeMillis()
+            parsed.rows.forEachIndexed { index, row ->
+                val key = row.type to row.categoryName.trim().lowercase()
+                var category = byKey[key]
                 if (category == null) {
-                    val fresh = CategoryEntity(name = categoryName, iconKey = "receipt", type = type, sortOrder = nextOrder.getValue(type))
-                    nextOrder[type] = nextOrder.getValue(type) + 1
+                    val fresh = CategoryEntity(
+                        name = row.categoryName.trim(),
+                        iconKey = CategoryIconGuesser.guess(row.categoryName),
+                        type = row.type,
+                        sortOrder = nextOrder[row.type] ?: 0,
+                    )
+                    nextOrder[row.type] = fresh.sortOrder + 1
                     category = fresh.copy(id = categoryDao.insert(fresh))
-                    known += category
+                    byKey[key] = category
                     created++
                 } else if (category.archived) {
-                    val revived = category.copy(archived = false)
-                    categoryDao.update(revived)
-                    known[known.indexOf(category)] = revived
-                    category = revived
+                    category = category.copy(archived = false)
+                    categoryDao.update(category)
+                    byKey[key] = category
                 }
-                txDao.insert(
-                    TransactionEntity(
-                        amount = if (type == FlowType.INCOME) amount else -amount,
-                        description = r[3].trim().ifEmpty { categoryName },
+
+                val signed = if (row.type == FlowType.INCOME) row.amount else -row.amount
+                val description = row.description.ifEmpty { category.name }
+                if (existing.consumeIfDuplicate(row.date, signed, category.id, description)) {
+                    duplicates++
+                } else {
+                    toInsert += TransactionEntity(
+                        amount = signed,
+                        description = description,
                         categoryId = category.id,
-                        date = date,
-                        createdAt = System.currentTimeMillis() + index,
-                    ),
-                )
-                imported++
+                        date = row.date,
+                        createdAt = now + index,
+                    )
+                }
             }
+            db.transactionDao().insertAll(toInsert)
         }
-        ImportResult(imported, skipped, problems, created)
+        ImportResult(toInsert.size, parsed.skipped, duplicates, parsed.problems, created)
     }
 }

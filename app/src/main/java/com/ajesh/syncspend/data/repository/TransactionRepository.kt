@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 class TransactionRepository(private val dao: TransactionDao) {
     fun getAll(): Flow<List<TransactionEntity>> = dao.getAll()
+    suspend fun getAllOnce(): List<TransactionEntity> = dao.getAllOnce()
     fun getById(id: Long): Flow<TransactionEntity?> = dao.getById(id)
     fun getEarliestDate(): Flow<LocalDate?> = dao.getEarliestDate()
     fun getCount(): Flow<Int> = dao.getCount()
