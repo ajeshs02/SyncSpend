@@ -81,6 +81,9 @@ fun HomeScreen(
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // The toggle reads the selection itself (main-thread, instant) rather than waiting for the
+    // computed state to come back from the background, so its pill moves on the tap.
+    val flow by container.selectionState.flow.collectAsStateWithLifecycle()
     val colors = SyncSpendTheme.colors
 
     // The title, flow toggle and period selector stay put; only what is below them scrolls, so
@@ -99,7 +102,7 @@ fun HomeScreen(
         }
 
         FlowToggle(
-            type = state.flow,
+            type = flow,
             onSelect = viewModel::setFlow,
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
         )
@@ -133,7 +136,9 @@ fun HomeScreen(
             NavArrow(SyncSpendIcons.Next, "Next period", state.canGoNext, viewModel::nextPeriod)
         }
 
-        Column(
+        // Nothing below the header until the first real state exists, so the first frame never flashes
+        // a 0 total or the "No transactions yet" text before the rows arrive.
+        if (state.loaded) Column(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())

@@ -41,10 +41,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.di.LocalAppContainer
+import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
 import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.FlowType
+import com.ajesh.syncspend.domain.model.StatsRange
 import com.ajesh.syncspend.domain.model.TransactionsTab
 import com.ajesh.syncspend.ui.components.AnimatedSegmentedControl
+import com.ajesh.syncspend.ui.components.ChipsRow
 import com.ajesh.syncspend.ui.components.CustomRangeSheet
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
@@ -68,7 +71,15 @@ fun TransactionsScreen() {
             }
         },
     )
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // Selections are cheap main-thread state, so a tap moves its pill at once; each tab's rows
+    // come from their own flow, collected only while that tab is showing.
+    val flow by viewModel.flow.collectAsStateWithLifecycle()
+    val tab by viewModel.tab.collectAsStateWithLifecycle()
+    val storedFilter by viewModel.entryFilter.collectAsStateWithLifecycle()
+    val customRange by viewModel.customRange.collectAsStateWithLifecycle()
+    val statsRange by viewModel.statsRange.collectAsStateWithLifecycle()
+    val filter = AnalyticsEngine.effectiveEntryFilter(storedFilter, flow)
+    val filterOptions = remember(flow) { AnalyticsEngine.entryFilterOptions(flow) }
     // Pure UI state lives here, not in the ViewModel: toggling a menu must not re-run the data pipeline.
     var flowMenuOpen by remember { mutableStateOf(false) }
     var rangePickerOpen by remember { mutableStateOf(false) }
@@ -83,7 +94,7 @@ fun TransactionsScreen() {
         viewModel.selectTab(requested)
         container.selectionState.pendingTransactionsTab.value = null
     }
-    val flowColor by animateColorAsState(if (state.flow == FlowType.INCOME) colors.pos else colors.neg, tween(200), label = "flow-word")
+    val flowColor by animateColorAsState(if (flow == FlowType.INCOME) colors.pos else colors.neg, tween(200), label = "flow-word")
 
     Column(
         modifier = Modifier
@@ -108,21 +119,21 @@ fun TransactionsScreen() {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        if (state.flow == FlowType.INCOME) SyncSpendIcons.ArrowIn else SyncSpendIcons.ArrowOut,
+                        if (flow == FlowType.INCOME) SyncSpendIcons.ArrowIn else SyncSpendIcons.ArrowOut,
                         null,
-                        tint = if (state.flow == FlowType.INCOME) SyncSpendTheme.colors.brand else SyncSpendTheme.colors.neg,
+                        tint = if (flow == FlowType.INCOME) SyncSpendTheme.colors.brand else SyncSpendTheme.colors.neg,
                         modifier = Modifier.size(15.dp),
                     )
                     Box(Modifier.width(5.dp))
                     Text(
-                        if (state.flow == FlowType.INCOME) "Income" else "Expense",
+                        if (flow == FlowType.INCOME) "Income" else "Expense",
                         style = MaterialTheme.typography.labelLarge,
                         color = SyncSpendTheme.colors.ink,
                     )
                 }
                 if (flowMenuOpen) {
                     FlowMenuPopup(
-                        current = state.flow,
+                        current = flow,
                         onPick = {
                             viewModel.setFlow(it)
                             flowMenuOpen = false
@@ -138,7 +149,7 @@ fun TransactionsScreen() {
             buildAnnotatedString {
                 append("Showing ")
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = flowColor)) {
-                    append(if (state.flow == FlowType.INCOME) "income" else "expenses")
+                    append(if (flow == FlowType.INCOME) "income" else "expenses")
                 }
             },
             style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
@@ -148,38 +159,60 @@ fun TransactionsScreen() {
         androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 14.dp))
         AnimatedSegmentedControl(
             options = listOf("Entries", "Categories", "Stats"),
-            selectedIndex = state.tab.ordinal,
+            selectedIndex = tab.ordinal,
             onSelect = { viewModel.selectTab(TransactionsTab.entries[it]) },
         )
 
-        if (state.tab != TransactionsTab.ANALYTICS) {
-            androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 14.dp))
+        androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 14.dp))
+        if (tab == TransactionsTab.ANALYTICS) {
+            ChipsRow(
+                labels = StatsRange.entries.map { it.label },
+                selectedIndex = statsRange.ordinal,
+                onSelect = { viewModel.selectStatsRange(StatsRange.entries[it]) },
+            )
+        } else {
             FilterChipsRow(
-                options = state.entryFilterOptions,
-                selected = state.entryFilter,
-                customLabel = state.customRange?.let { DateUtils.rangeLabel(it.start, it.end) },
-                onSelect = { filter ->
-                    if (filter == EntryFilter.CUSTOM) rangePickerOpen = true else viewModel.pickEntryFilter(filter)
+                options = filterOptions,
+                selected = filter,
+                customLabel = customRange?.let { DateUtils.rangeLabel(it.start, it.end) },
+                onSelect = { f ->
+                    if (f == EntryFilter.CUSTOM) rangePickerOpen = true else viewModel.pickEntryFilter(f)
                 },
             )
         }
 
-        androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 10.dp))
-        when (state.tab) {
-            TransactionsTab.ENTRIES -> EntriesTab(
-                groups = state.dayGroups,
-                onRowClick = { container.selectionState.editingTransactionId.value = it },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            TransactionsTab.CATEGORIES -> CategoriesTab(rollups = state.categoryRollups, modifier = Modifier.fillMaxWidth())
-            TransactionsTab.ANALYTICS -> state.stats?.let { StatsTab(it, onRangeSelect = viewModel::selectStatsRange, modifier = Modifier.fillMaxWidth()) }
+        // The gap under the chips sits outside the scrolling list, so scrolled rows/cards clip a
+        // clear band below the chips instead of running flush against them.
+        androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 12.dp))
+        // Only the visible tab is collected, so only its rows are ever built. Until its first
+        // state arrives nothing is drawn (never a flash of "No transactions…").
+        when (tab) {
+            TransactionsTab.ENTRIES -> {
+                val entries by viewModel.entries.collectAsStateWithLifecycle()
+                entries?.let {
+                    EntriesTab(
+                        groups = it.groups,
+                        onRowClick = { id -> container.selectionState.editingTransactionId.value = id },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+            TransactionsTab.CATEGORIES -> {
+                val rollups by viewModel.rollups.collectAsStateWithLifecycle()
+                rollups?.let { CategoriesTab(rollups = it.rollups, modifier = Modifier.fillMaxWidth()) }
+            }
+            TransactionsTab.ANALYTICS -> {
+                val stats by viewModel.stats.collectAsStateWithLifecycle()
+                stats?.let { StatsTab(it, modifier = Modifier.fillMaxWidth()) }
+            }
         }
     }
 
     if (rangePickerOpen) {
+        val earliest by viewModel.earliestDate.collectAsStateWithLifecycle()
         CustomRangeSheet(
-            initial = state.customRange,
-            earliestTransactionDate = state.earliestTransactionDate,
+            initial = customRange,
+            earliestTransactionDate = earliest,
             onApply = viewModel::applyCustomRange,
             onDismiss = { rangePickerOpen = false },
         )

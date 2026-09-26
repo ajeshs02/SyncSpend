@@ -47,22 +47,14 @@ import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
 /**
- * Stats tab: range chips, top-category card, 2x2 tiles, six-month bars, where
- * the money goes, weekday pattern, tips & suggestions, findings and the
- * period-over-period card.
+ * Stats tab body: top-category card, 2x2 tiles, six-month bars, where the money goes, weekday
+ * pattern, tips & suggestions, findings and the period-over-period card. The range chips above it
+ * live in [TransactionsScreen] (so they are on screen before the numbers are computed).
  */
 @Composable
-fun StatsTab(stats: StatsUi, onRangeSelect: (StatsRange) -> Unit, modifier: Modifier = Modifier) {
+fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
     val colors = SyncSpendTheme.colors
     Column(modifier = modifier) {
-        ChipsRow(
-            labels = StatsRange.entries.map { it.label },
-            selectedIndex = stats.range.ordinal,
-            onSelect = { onRangeSelect(StatsRange.entries[it]) },
-        )
-        // The gap sits outside the scroll region (like the Entries/Categories chips), so scrolled
-        // cards clip a clear band below the chips instead of running flush against them.
-        Spacer(Modifier.height(12.dp))
         Column(
             modifier = Modifier
                 .verticalScroll(rememberScrollState())

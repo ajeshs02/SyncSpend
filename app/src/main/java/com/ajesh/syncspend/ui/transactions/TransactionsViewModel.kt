@@ -50,110 +50,66 @@ data class CategoryRollupUi(
     val sharePercent: Int,
 )
 
-data class TransactionsUiState(
-    val flow: FlowType = FlowType.EXPENSE,
-    val tab: TransactionsTab = TransactionsTab.ENTRIES,
-    val entryFilter: EntryFilter = EntryFilter.THIS_MONTH,
-    val entryFilterOptions: List<EntryFilter> = emptyList(),
-    /** The picked from/to span while [entryFilter] is CUSTOM (kept when switching chips so it can be re-applied). */
-    val customRange: DateRange? = null,
-    val dayGroups: List<DayGroupUi> = emptyList(),
-    val categoryRollups: List<CategoryRollupUi> = emptyList(),
-    val currencySymbol: String = "₹",
-    val earliestTransactionDate: LocalDate? = null,
-    val stats: StatsUi? = null,
+/** The Entries tab's rows. Null (in the flow) until first computed, so the screen never flashes an empty state. */
+data class EntriesUi(val groups: List<DayGroupUi>)
+
+/** The Categories tab's rollups. */
+data class RollupsUi(val rollups: List<CategoryRollupUi>)
+
+/** What every tab is built from. */
+internal data class Ledger(
+    val tx: List<TransactionEntity>,
+    val categories: List<CategoryEntity>,
+    val prefs: UserPreferences,
 )
 
-class TransactionsViewModel(
-    private val transactionRepository: TransactionRepository,
-    private val categoryRepository: CategoryRepository,
-    private val preferencesRepository: PreferencesRepository,
-    private val subscriptionRepository: SubscriptionRepository,
-    private val selection: SharedSelectionState,
-) : ViewModel() {
-
-    private val tab = MutableStateFlow(TransactionsTab.ENTRIES)
-    private val entryFilter = MutableStateFlow(EntryFilter.THIS_MONTH)
-    private val customRange = MutableStateFlow<DateRange?>(null)
-    private val statsRange = MutableStateFlow(StatsRange.THIS_MONTH)
-
-    private data class DataSources(
-        val tx: List<TransactionEntity>,
-        val categories: List<CategoryEntity>,
-        val prefs: UserPreferences,
-        val subscriptions: List<SubscriptionEntity>,
-    )
-
-    private data class Controls(
-        val tab: TransactionsTab,
-        val entryFilter: EntryFilter,
-        val customRange: DateRange?,
-        val statsRange: StatsRange,
-    )
-
-    private val dataSources = combine(
-        transactionRepository.getAll(),
-        categoryRepository.getAll(),
-        preferencesRepository.preferences,
-        subscriptionRepository.getAll(),
-    ) { tx, categories, prefs, subs -> DataSources(tx, categories, prefs, subs) }
-
-    private val controls = combine(tab, entryFilter, customRange, statsRange) { t, ef, cr, sr -> Controls(t, ef, cr, sr) }
-
-    val uiState: StateFlow<TransactionsUiState> = combine(
-        dataSources,
-        selection.flow,
-        controls,
-    ) { data, flowType, controls -> compute(data, flowType, controls) }
-        // Grouping/sorting thousands of rows must not happen on the main thread.
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TransactionsUiState())
-
-    private fun compute(data: DataSources, flowType: FlowType, controls: Controls): TransactionsUiState {
-        val cur = data.prefs.currencyCode.symbol
-        val categoriesById = data.categories.associateBy { it.id }
-        val flowTx = AnalyticsEngine.flowFilter(data.tx, flowType)
-        val effFilter = AnalyticsEngine.effectiveEntryFilter(controls.entryFilter, flowType)
-        val filtered = AnalyticsEngine.applyEntryFilter(flowTx, effFilter, controls.customRange)
-
-        val dayGroups = AnalyticsEngine.groupByDay(filtered).map { g ->
-            DayGroupUi(
-                label = g.label,
-                totalFormatted = cur + CurrencyFormatter.amount(g.totalAbs),
-                items = g.items.map { it.toRow(categoriesById, cur) },
-            )
-        }
-        val rollups = AnalyticsEngine.groupByCategory(filtered, data.categories).map {
-            CategoryRollupUi(it.categoryId, it.name, it.iconKey, it.count, cur + CurrencyFormatter.amount(it.totalAbs), it.sharePercent)
-        }
-
-        return TransactionsUiState(
-            flow = flowType,
-            tab = controls.tab,
-            entryFilter = effFilter,
-            entryFilterOptions = AnalyticsEngine.entryFilterOptions(flowType),
-            customRange = controls.customRange,
-            dayGroups = dayGroups,
-            categoryRollups = rollups,
-            currencySymbol = cur,
-            earliestTransactionDate = data.tx.minOfOrNull { it.date },
-            stats = if (controls.tab == TransactionsTab.ANALYTICS) {
-                val active = data.subscriptions.filter { it.active }
-                val monthly = active.sumOf {
-                    when (it.billingCycle) {
-                        BillingCycle.WEEKLY -> it.amount * 52.0 / 12.0
-                        BillingCycle.MONTHLY -> it.amount
-                        BillingCycle.YEARLY -> it.amount / 12.0
-                    }
-                }
-                val today = LocalDate.now()
-                val range = controls.statsRange.resolve(today, data.tx.minOfOrNull { it.date })
-                val summary = AnalyticsEngine.stats(
-                    data.tx, data.categories, range, controls.statsRange.previous(range), flowType, today,
+/**
+ * The per-tab builders, kept free of coroutines and Android so they can be unit-tested and run on
+ * `Dispatchers.Default`. Each tab is built on its own — switching tabs never rebuilds the others.
+ */
+internal object TransactionsCompute {
+    fun entries(ledger: Ledger, flow: FlowType, entryFilter: EntryFilter, customRange: DateRange?, today: LocalDate = LocalDate.now()): EntriesUi {
+        val cur = ledger.prefs.currencyCode.symbol
+        val categoriesById = ledger.categories.associateBy { it.id }
+        val filtered = filtered(ledger, flow, entryFilter, customRange, today)
+        return EntriesUi(
+            AnalyticsEngine.groupByDay(filtered, today).map { g ->
+                DayGroupUi(
+                    label = g.label,
+                    totalFormatted = cur + CurrencyFormatter.amount(g.totalAbs),
+                    items = g.items.map { it.toRow(categoriesById, cur) },
                 )
-                buildStatsUi(summary, controls.statsRange, cur, monthly, active.size)
-            } else null,
+            },
         )
+    }
+
+    fun rollups(ledger: Ledger, flow: FlowType, entryFilter: EntryFilter, customRange: DateRange?, today: LocalDate = LocalDate.now()): RollupsUi {
+        val cur = ledger.prefs.currencyCode.symbol
+        val filtered = filtered(ledger, flow, entryFilter, customRange, today)
+        return RollupsUi(
+            AnalyticsEngine.groupByCategory(filtered, ledger.categories).map {
+                CategoryRollupUi(it.categoryId, it.name, it.iconKey, it.count, cur + CurrencyFormatter.amount(it.totalAbs), it.sharePercent)
+            },
+        )
+    }
+
+    fun stats(ledger: Ledger, subscriptions: List<SubscriptionEntity>, flow: FlowType, range: StatsRange, today: LocalDate = LocalDate.now()): StatsUi {
+        val active = subscriptions.filter { it.active }
+        val monthly = active.sumOf {
+            when (it.billingCycle) {
+                BillingCycle.WEEKLY -> it.amount * 52.0 / 12.0
+                BillingCycle.MONTHLY -> it.amount
+                BillingCycle.YEARLY -> it.amount / 12.0
+            }
+        }
+        val resolved = range.resolve(today, ledger.tx.minOfOrNull { it.date })
+        val summary = AnalyticsEngine.stats(ledger.tx, ledger.categories, resolved, range.previous(resolved), flow, today)
+        return buildStatsUi(summary, range, ledger.prefs.currencyCode.symbol, monthly, active.size)
+    }
+
+    private fun filtered(ledger: Ledger, flow: FlowType, entryFilter: EntryFilter, customRange: DateRange?, today: LocalDate): List<TransactionEntity> {
+        val effective = AnalyticsEngine.effectiveEntryFilter(entryFilter, flow)
+        return AnalyticsEngine.applyEntryFilter(AnalyticsEngine.flowFilter(ledger.tx, flow), effective, customRange, today)
     }
 
     private fun TransactionEntity.toRow(categoriesById: Map<Long, CategoryEntity>, cur: String): TxRow {
@@ -168,26 +124,79 @@ class TransactionsViewModel(
             iconKey = category?.iconKey ?: "receipt",
         )
     }
+}
+
+/**
+ * UI-only selections (tab, filter chips, stats range) are plain StateFlows read on the main thread,
+ * so a tap moves its pill immediately. Each tab's heavy state is its own flow, computed on
+ * `Dispatchers.Default` and only while that tab is on screen (the screen collects just the visible
+ * one) — a tab switch no longer rebuilds every row, and a revisited tab still holds its last value.
+ */
+class TransactionsViewModel(
+    transactionRepository: TransactionRepository,
+    categoryRepository: CategoryRepository,
+    preferencesRepository: PreferencesRepository,
+    subscriptionRepository: SubscriptionRepository,
+    private val selection: SharedSelectionState,
+) : ViewModel() {
+
+    private val _tab = MutableStateFlow(TransactionsTab.ENTRIES)
+    private val _entryFilter = MutableStateFlow(EntryFilter.THIS_MONTH)
+    private val _customRange = MutableStateFlow<DateRange?>(null)
+    private val _statsRange = MutableStateFlow(StatsRange.THIS_MONTH)
+
+    val tab: StateFlow<TransactionsTab> = _tab
+    val entryFilter: StateFlow<EntryFilter> = _entryFilter
+    /** The picked from/to span while the filter is CUSTOM (kept when switching chips so it can be re-applied). */
+    val customRange: StateFlow<DateRange?> = _customRange
+    val statsRange: StateFlow<StatsRange> = _statsRange
+    val flow: StateFlow<FlowType> = selection.flow
+
+    val earliestDate: StateFlow<LocalDate?> = transactionRepository.getEarliestDate()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val ledger = combine(
+        transactionRepository.getAll(),
+        categoryRepository.getAll(),
+        preferencesRepository.preferences,
+    ) { tx, categories, prefs -> Ledger(tx, categories, prefs) }
+
+    private data class ListControls(val flow: FlowType, val entryFilter: EntryFilter, val customRange: DateRange?)
+
+    private val listControls = combine(selection.flow, _entryFilter, _customRange) { f, ef, cr -> ListControls(f, ef, cr) }
+
+    // Grouping/sorting thousands of rows must not happen on the main thread.
+    val entries: StateFlow<EntriesUi?> = combine(ledger, listControls) { l, c ->
+        TransactionsCompute.entries(l, c.flow, c.entryFilter, c.customRange)
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val rollups: StateFlow<RollupsUi?> = combine(ledger, listControls) { l, c ->
+        TransactionsCompute.rollups(l, c.flow, c.entryFilter, c.customRange)
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val stats: StateFlow<StatsUi?> = combine(ledger, subscriptionRepository.getAll(), selection.flow, _statsRange) { l, subs, flowType, range ->
+        TransactionsCompute.stats(l, subs, flowType, range)
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun setFlow(type: FlowType) {
         selection.flow.value = type
     }
 
     fun selectTab(newTab: TransactionsTab) {
-        tab.value = newTab
+        _tab.value = newTab
     }
 
     /** Any chip except Custom (Custom goes through the range picker, see [applyCustomRange]). */
     fun pickEntryFilter(filter: EntryFilter) {
-        entryFilter.value = filter
+        _entryFilter.value = filter
     }
 
     fun selectStatsRange(range: StatsRange) {
-        statsRange.value = range
+        _statsRange.value = range
     }
 
     fun applyCustomRange(range: DateRange) {
-        customRange.value = range
-        entryFilter.value = EntryFilter.CUSTOM
+        _customRange.value = range
+        _entryFilter.value = EntryFilter.CUSTOM
     }
 }
