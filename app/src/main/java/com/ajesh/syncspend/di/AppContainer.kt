@@ -9,6 +9,7 @@ import com.ajesh.syncspend.alarm.DailyReminderManager
 import com.ajesh.syncspend.data.datastore.PreferencesRepository
 import com.ajesh.syncspend.data.db.AppDatabase
 import com.ajesh.syncspend.data.repository.CategoryRepository
+import com.ajesh.syncspend.data.repository.CategorySeeder
 import com.ajesh.syncspend.data.repository.ReminderRepository
 import com.ajesh.syncspend.data.repository.SubscriptionRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
@@ -57,6 +58,8 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     override val ready: StateFlow<Boolean> = _ready.asStateFlow()
 
     override suspend fun warmUp() {
+        // Starter categories first, so the very first screens (and pickers) already have them.
+        categorySeeder.seedIfNeeded()
         combine(transactionRepository.getAll(), categoryRepository.getAll(), preferencesRepository.preferences) { _, _, _ -> }.first()
         _ready.value = true
     }
@@ -67,6 +70,8 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         // fails loudly instead of silently wiping the user's entries).
         Room.databaseBuilder(context, AppDatabase::class.java, "syncspend.db").build()
     }
+
+    private val categorySeeder: CategorySeeder by lazy { CategorySeeder(categoryRepository, preferencesRepository) }
 
     override val categoryRepository: CategoryRepository by lazy {
         CategoryRepository(database.categoryDao(), appScope)

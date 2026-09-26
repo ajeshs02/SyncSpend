@@ -9,4 +9,6 @@ data class UserPreferences(
     val dailyReminderEnabled: Boolean = false,
     val dailyReminderMinuteOfDay: Int = 20 * 60, // 8:00 PM default
     val notifPermissionRequested: Boolean = false,
+    /** True once the starter categories have been added (they are added exactly once). */
+    val defaultCategoriesSeeded: Boolean = false,
 )
