@@ -48,6 +48,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.model.FlowType
+import com.ajesh.syncspend.domain.model.TransactionsTab
 import com.ajesh.syncspend.ui.components.AnimatedAmountText
 import com.ajesh.syncspend.ui.components.DateSeparator
 import com.ajesh.syncspend.ui.components.FlowToggle
@@ -83,12 +84,9 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val colors = SyncSpendTheme.colors
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(top = SyncSpendChrome.screenTopInset, bottom = SyncSpendChrome.screenBottomContentPadding),
-    ) {
+    // The title, flow toggle and period selector stay put; only what is below them scrolls, so
+    // content can never slide under the status bar.
+    Column(modifier = Modifier.fillMaxSize().padding(top = SyncSpendChrome.screenTopInset)) {
         Row(
             modifier = Modifier.padding(horizontal = 22.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -136,7 +134,21 @@ fun HomeScreen(
             NavArrow(SyncSpendIcons.Next, "Next period", state.canGoNext, viewModel::nextPeriod)
         }
 
-        HeroCard(state, modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp))
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = SyncSpendChrome.screenBottomContentPadding),
+        ) {
+        HeroCard(
+            state,
+            onClick = {
+                // Straight to the Stats tab: Transactions slides its tab pill over once it appears.
+                container.selectionState.pendingTransactionsTab.value = TransactionsTab.ANALYTICS
+                onViewAllTransactions()
+            },
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
+        )
 
         Row(
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp),
@@ -182,6 +194,7 @@ fun HomeScreen(
                 }
             }
         }
+        }
     }
 
     if (periodPickerOpen) {
@@ -196,11 +209,12 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HeroCard(state: HomeUiState, modifier: Modifier = Modifier) {
+private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(SyncSpendCorners.hero)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
             .background(SyncSpendTheme.colors.darkGradient)
             .drawWithCache {
                 // The design's soft green glow tucked into the top-right corner (brush built once per size, not per draw).

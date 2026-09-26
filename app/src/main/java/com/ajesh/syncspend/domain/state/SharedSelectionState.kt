@@ -2,6 +2,7 @@ package com.ajesh.syncspend.domain.state
 
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ScopePeriod
+import com.ajesh.syncspend.domain.model.TransactionsTab
 import java.time.YearMonth
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -23,4 +24,13 @@ class SharedSelectionState {
      * app root renders the sheet so it paints above the floating nav.
      */
     val editingTransactionId = MutableStateFlow<Long?>(null)
+
+    /**
+     * A tab the Transactions page should switch to as soon as it appears (Home's hero card
+     * sets it to Stats). Transactions consumes and clears it, so the tab pill visibly slides.
+     */
+    val pendingTransactionsTab = MutableStateFlow<TransactionsTab?>(null)
+
+    /** The Home total counts up once per app launch; this flips to true as that animation starts. */
+    @Volatile var launchCountUpDone: Boolean = false
 }

@@ -21,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -42,12 +43,14 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.FlowType
+import com.ajesh.syncspend.domain.model.TransactionsTab
 import com.ajesh.syncspend.ui.components.AnimatedSegmentedControl
 import com.ajesh.syncspend.ui.components.CustomRangeSheet
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.DateUtils
+import kotlinx.coroutines.delay
 
 @Composable
 fun TransactionsScreen() {
@@ -70,6 +73,16 @@ fun TransactionsScreen() {
     var flowMenuOpen by remember { mutableStateOf(false) }
     var rangePickerOpen by remember { mutableStateOf(false) }
     val colors = SyncSpendTheme.colors
+
+    // Home's hero card asks for the Stats tab. Wait for the screen to be on its way in, then
+    // switch — so the tab pill is seen sliding from Entries to Stats rather than starting there.
+    val pendingTab by container.selectionState.pendingTransactionsTab.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingTab) {
+        val requested = pendingTab ?: return@LaunchedEffect
+        delay(220)
+        viewModel.selectTab(requested)
+        container.selectionState.pendingTransactionsTab.value = null
+    }
     val flowColor by animateColorAsState(if (state.flow == FlowType.INCOME) colors.pos else colors.neg, tween(200), label = "flow-word")
 
     Column(

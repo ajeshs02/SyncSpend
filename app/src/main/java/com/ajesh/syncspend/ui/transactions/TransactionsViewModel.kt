@@ -16,6 +16,7 @@ import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.BillingCycle
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.StatsRange
+import com.ajesh.syncspend.domain.model.TransactionsTab
 import com.ajesh.syncspend.domain.state.SharedSelectionState
 import com.ajesh.syncspend.util.CurrencyFormatter
 import java.time.LocalDate
@@ -27,8 +28,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
-
-enum class TransactionsTab { ENTRIES, CATEGORIES, ANALYTICS }
 
 data class TxRow(
     val id: Long,

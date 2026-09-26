@@ -1,12 +1,5 @@
 package com.ajesh.syncspend.ui.addentry
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -75,111 +68,105 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
     val earliest by container.transactionRepository.getEarliestDate().collectAsStateWithLifecycle(null)
     val draftColor = if (state.type == FlowType.INCOME) colors.pos else colors.neg
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val minHeight = maxHeight
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .heightIn(min = minHeight)
-                .padding(top = SyncSpendChrome.screenTopInset),
-            verticalArrangement = Arrangement.SpaceBetween,
+    // The "New Entry" heading row stays fixed; everything below it sits in the (only just
+    // scrollable) region under it, so nothing can scroll up under the status bar.
+    Column(modifier = Modifier.fillMaxSize().padding(top = SyncSpendChrome.screenTopInset)) {
+        Row(
+            modifier = Modifier.padding(horizontal = 22.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Column {
-                Row(
-                    modifier = Modifier.padding(horizontal = 22.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    SquareIconButton(
-                        SyncSpendIcons.Back, onBack, size = 36.dp, radius = 13.dp, iconSize = 17.dp,
-                        background = colors.pill,
-                        modifier = Modifier.border(1.dp, colors.line, RoundedCornerShape(13.dp)),
-                    )
-                    Text("New Entry", style = MaterialTheme.typography.titleLarge, color = colors.ink)
-                }
+            SquareIconButton(
+                SyncSpendIcons.Back, onBack, size = 36.dp, radius = 13.dp, iconSize = 17.dp,
+                background = colors.pill,
+                modifier = Modifier.border(1.dp, colors.line, RoundedCornerShape(13.dp)),
+            )
+            Text("New Entry", style = MaterialTheme.typography.titleLarge, color = colors.ink)
+        }
 
-                FlowToggle(
-                    type = state.type,
-                    onSelect = viewModel::setType,
-                    modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 16.dp),
-                )
-
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 26.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(6.dp).background(draftColor, RoundedCornerShape(2.dp)))
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            if (state.type == FlowType.INCOME) "INCOME" else "EXPENSE",
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 0.84.sp,
-                            color = draftColor,
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.padding(top = 8.dp),
-                        verticalAlignment = Alignment.Bottom,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text(state.currencySymbol, fontSize = 24.sp, fontWeight = FontWeight.Normal, color = draftColor)
-                        AnimatedContent(
-                            targetState = state.amountText,
-                            transitionSpec = {
-                                (fadeIn(tween(120)) + slideInVertically(tween(120)) { it / 6 }) togetherWith
-                                    (fadeOut(tween(90)) + slideOutVertically(tween(90)) { -it / 6 })
-                            },
-                            label = "draft-amount",
-                        ) { amount ->
-                            Text(amount, fontSize = 44.sp, fontWeight = FontWeight.Medium, letterSpacing = (-1.3).sp, color = colors.ink)
-                        }
-                    }
-                    Box(
-                        Modifier
-                            .padding(top = 12.dp)
-                            .width(88.dp)
-                            .height(2.dp)
-                            .background(draftColor.copy(alpha = 0.5f), RoundedCornerShape(2.dp)),
-                    )
-                    Text(
-                        DateUtils.longDate(state.date),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.sub,
-                        modifier = Modifier.padding(top = 10.dp),
-                    )
-                }
-
-                CategoryField(
-                    category = state.selectedCategory,
-                    onClick = viewModel::openCategoryPicker,
-                    modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 20.dp),
-                )
-            }
-
+        BoxWithConstraints(modifier = Modifier.weight(1f)) {
+            val minHeight = maxHeight
             Column(
                 modifier = Modifier
-                    .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = SyncSpendChrome.screenBottomContentPadding + 18.dp),
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .heightIn(min = minHeight),
+                verticalArrangement = Arrangement.SpaceBetween,
             ) {
-                AmountEntryPad(
-                    dateLabel = DateUtils.shortDate(state.date),
-                    onDigit = viewModel::pressDigit,
-                    onBackspace = viewModel::pressBackspace,
-                    onDateClick = { showDatePicker = true },
-                )
-                PrimaryButton(
-                    text = "Save Entry",
-                    onClick = { viewModel.save(onSaved) },
-                    modifier = Modifier.padding(top = 10.dp).fillMaxWidth(),
-                    leading = {
-                        // Flow dot tinted to read on the button (same tints the toggle's icons use).
-                        val onButton = if (state.type == FlowType.INCOME) Color(0xFF8ECF63) else colors.expenseOnSelected
-                        Box(Modifier.size(7.dp).background(onButton, RoundedCornerShape(2.dp)))
-                        Spacer(Modifier.width(8.dp))
-                    },
-                )
+                Column {
+                    FlowToggle(
+                        type = state.type,
+                        onSelect = viewModel::setType,
+                        modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 16.dp),
+                    )
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(top = 26.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(6.dp).background(draftColor, RoundedCornerShape(2.dp)))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                if (state.type == FlowType.INCOME) "INCOME" else "EXPENSE",
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 0.84.sp,
+                                color = draftColor,
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.padding(top = 8.dp),
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(state.currencySymbol, fontSize = 24.sp, fontWeight = FontWeight.Normal, color = draftColor)
+                            Text(state.amountText, fontSize = 44.sp, fontWeight = FontWeight.Medium, letterSpacing = (-1.3).sp, color = colors.ink)
+                        }
+                        Box(
+                            Modifier
+                                .padding(top = 12.dp)
+                                .width(88.dp)
+                                .height(2.dp)
+                                .background(draftColor.copy(alpha = 0.5f), RoundedCornerShape(2.dp)),
+                        )
+                        Text(
+                            DateUtils.longDate(state.date),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.sub,
+                            modifier = Modifier.padding(top = 10.dp),
+                        )
+                    }
+
+                    CategoryField(
+                        category = state.selectedCategory,
+                        onClick = viewModel::openCategoryPicker,
+                        modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 20.dp),
+                    )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = SyncSpendChrome.screenBottomContentPadding + 18.dp),
+                ) {
+                    AmountEntryPad(
+                        dateLabel = DateUtils.shortDate(state.date),
+                        onDigit = viewModel::pressDigit,
+                        onBackspace = viewModel::pressBackspace,
+                        onDateClick = { showDatePicker = true },
+                    )
+                    PrimaryButton(
+                        text = "Save Entry",
+                        onClick = { viewModel.save(onSaved) },
+                        modifier = Modifier.padding(top = 10.dp).fillMaxWidth(),
+                        leading = {
+                            // Flow dot tinted to read on the button (same tints the toggle's icons use).
+                            val onButton = if (state.type == FlowType.INCOME) Color(0xFF8ECF63) else colors.expenseOnSelected
+                            Box(Modifier.size(7.dp).background(onButton, RoundedCornerShape(2.dp)))
+                            Spacer(Modifier.width(8.dp))
+                        },
+                    )
+                }
             }
         }
     }

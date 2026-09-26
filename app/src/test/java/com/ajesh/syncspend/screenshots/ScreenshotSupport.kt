@@ -6,12 +6,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.unit.dp
+import com.ajesh.syncspend.di.AppContainer
+import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.model.ThemeMode
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import java.io.File
@@ -26,15 +29,22 @@ fun ComposeContentTestRule.snapshot(
     dark: Boolean = false,
     widthDp: Int = 360,
     heightDp: Int = 780,
+    container: AppContainer? = null,
+    /** Called after the first composition, e.g. to wait until async data has arrived. */
+    beforeCapture: ComposeContentTestRule.() -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     setContent {
-        SyncSpendTheme(themeMode = if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
-            Box(Modifier.size(widthDp.dp, heightDp.dp).background(SyncSpendTheme.colors.screenGradient)) {
-                Box(Modifier.fillMaxSize()) { content() }
+        CompositionLocalProvider(*listOfNotNull(container?.let { LocalAppContainer provides it }).toTypedArray()) {
+            SyncSpendTheme(themeMode = if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
+                Box(Modifier.size(widthDp.dp, heightDp.dp).background(SyncSpendTheme.colors.screenGradient)) {
+                    Box(Modifier.fillMaxSize()) { content() }
+                }
             }
         }
     }
+    beforeCapture()
+    waitForIdle()
     val bitmap = onRoot().captureToImage().asAndroidBitmap()
     val dir = File("build/screenshots").apply { mkdirs() }
     File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
