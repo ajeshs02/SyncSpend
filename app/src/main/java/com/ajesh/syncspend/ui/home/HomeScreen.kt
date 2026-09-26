@@ -118,7 +118,7 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            NavArrow(SyncSpendIcons.Prev, viewModel::prevMonth)
+            NavArrow(SyncSpendIcons.Prev, "Previous month", viewModel::prevMonth)
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -134,7 +134,7 @@ fun HomeScreen(
                 }
                 Text(state.scopeSubLabel, fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 1.dp))
             }
-            NavArrow(SyncSpendIcons.Next, viewModel::nextMonth)
+            NavArrow(SyncSpendIcons.Next, "Next month", viewModel::nextMonth)
         }
 
         HeroCard(state, modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp))
@@ -272,7 +272,7 @@ private fun HeroCard(state: HomeUiState, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun NavArrow(icon: ImageVector, onClick: () -> Unit) {
+private fun NavArrow(icon: ImageVector, description: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(32.dp)
@@ -280,7 +280,7 @@ private fun NavArrow(icon: ImageVector, onClick: () -> Unit) {
             .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(11.dp))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, null, tint = SyncSpendTheme.colors.ink, modifier = Modifier.size(17.dp)) }
+    ) { Icon(icon, description, tint = SyncSpendTheme.colors.ink, modifier = Modifier.size(17.dp)) }
 }
 
 @Composable

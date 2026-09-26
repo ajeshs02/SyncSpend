@@ -91,14 +91,31 @@ fun SquareIconButton(
     tint: Color = SyncSpendTheme.colors.ink,
     iconSize: androidx.compose.ui.unit.Dp = 14.dp,
     enabled: Boolean = true,
+    contentDescription: String? = null,
 ) {
     Box(
         modifier = modifier
             .size(size)
             .background(background, RoundedCornerShape(radius))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, enabled = enabled, onClick = onClick),
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                enabled = enabled,
+                role = androidx.compose.ui.semantics.Role.Button,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, null, tint = if (enabled) tint else tint.copy(alpha = 0.35f), modifier = Modifier.size(iconSize))
+        Icon(icon, contentDescription ?: defaultDescription(icon), tint = if (enabled) tint else tint.copy(alpha = 0.35f), modifier = Modifier.size(iconSize))
     }
+}
+
+private fun defaultDescription(icon: androidx.compose.ui.graphics.vector.ImageVector): String = when (icon.name) {
+    "trash" -> "Delete"
+    "pencil" -> "Edit"
+    "up" -> "Move up"
+    "down" -> "Move down"
+    "prev" -> "Previous"
+    "next" -> "Next"
+    else -> icon.name.replaceFirstChar { it.uppercase() }
 }

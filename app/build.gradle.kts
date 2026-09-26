@@ -82,6 +82,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
     implementation("androidx.navigation:navigation-compose:2.10.1")
 
+    // Installs Compose's bundled baseline profiles so ART can AOT-compile hot
+    // composition paths instead of interpreting them on first use.
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+
     // Room: local SQLite persistence.
     implementation("androidx.room:room-runtime:2.8.4")
     implementation("androidx.room:room-ktx:2.8.4")
@@ -89,6 +93,8 @@ dependencies {
 
     // DataStore: theme/currency/reminder preferences.
     implementation("androidx.datastore:datastore-preferences:1.2.1")
+
+    testImplementation("junit:junit:4.13.2")
 
     // No Glance/WorkManager/Hilt anywhere — RemoteViews widget + AlarmManager
     // + manual DI per spec.

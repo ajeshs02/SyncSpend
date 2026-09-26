@@ -24,7 +24,7 @@ object CsvImporter {
     suspend fun import(context: Context, uri: Uri, db: AppDatabase): ImportResult = withContext(Dispatchers.IO) {
         val text = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
             ?: error("Could not open the file")
-        val rows = CsvFormat.parse(text.removePrefix("﻿"))
+        val rows = CsvFormat.parse(text.removePrefix("\uFEFF"))
         if (rows.isEmpty()) return@withContext ImportResult(0, 0, listOf("The file is empty."), 0)
 
         val header = rows.first().map { it.trim().lowercase() }

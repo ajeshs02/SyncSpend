@@ -12,5 +12,5 @@ class CategoryRepository(private val dao: CategoryDao) {
     suspend fun insert(category: CategoryEntity): Long = dao.insert(category)
     suspend fun update(category: CategoryEntity) = dao.update(category)
     suspend fun delete(category: CategoryEntity) = dao.delete(category)
-    suspend fun updateSortOrders(categories: List<CategoryEntity>) = dao.updateSortOrders(categories)
+    suspend fun updateSortOrders(categories: List<CategoryEntity>) = dao.updateAll(categories)
 }

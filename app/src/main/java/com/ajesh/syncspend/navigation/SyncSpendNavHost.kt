@@ -1,5 +1,9 @@
 package com.ajesh.syncspend.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -24,7 +28,19 @@ import com.ajesh.syncspend.ui.transactions.TransactionsScreen
  */
 @Composable
 fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
-    NavHost(navController = navController, startDestination = Routes.HOME, modifier = modifier) {
+    // The design's `ssup` entry: 300ms fade with a small rise. Exits are a quick
+    // fade so the outgoing screen never fights the incoming one.
+    val enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 40 }
+    val exit = fadeOut(tween(120))
+    NavHost(
+        navController = navController,
+        startDestination = Routes.HOME,
+        modifier = modifier,
+        enterTransition = { enter },
+        exitTransition = { exit },
+        popEnterTransition = { enter },
+        popExitTransition = { exit },
+    ) {
         composable(Routes.HOME) {
             HomeScreen(
                 onViewAllTransactions = { navController.navigateToTab(Routes.TRANSACTIONS) },

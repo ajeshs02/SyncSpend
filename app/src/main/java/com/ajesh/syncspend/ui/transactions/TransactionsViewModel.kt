@@ -172,6 +172,10 @@ class TransactionsViewModel(
         flowMenuOpen.value = false
     }
 
+    fun closeFlowMenu() {
+        flowMenuOpen.value = false
+    }
+
     fun toggleFlowMenu() {
         flowMenuOpen.value = !flowMenuOpen.value
     }

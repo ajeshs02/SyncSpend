@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  A donut ring with one segment picked out, echoing the chart that now leads
-  the app. Drawn as two stroked arcs on the same circle: a full white ring,
+  A ring with one segment picked out in mint, on the app's deep-green field. Drawn as two stroked arcs on the same circle: a full white ring,
   then a heavier accent arc over roughly a quarter of it.
 
   The ring sits inside the 66dp adaptive-icon safe zone — radius 24 plus a
@@ -15,7 +14,7 @@
 
     <!-- Full ring -->
     <path
-        android:strokeColor="#FFFFFF"
+        android:strokeColor="#EEF3EA"
         android:strokeWidth="7"
         android:strokeLineCap="butt"
         android:fillColor="@android:color/transparent"
@@ -23,7 +22,7 @@
 
     <!-- Accent segment: from 12 o'clock clockwise to 3 o'clock -->
     <path
-        android:strokeColor="#4566AE"
+        android:strokeColor="#7FD39A"
         android:strokeWidth="11"
         android:strokeLineCap="round"
         android:fillColor="@android:color/transparent"

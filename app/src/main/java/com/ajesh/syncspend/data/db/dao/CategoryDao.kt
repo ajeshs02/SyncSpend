@@ -4,7 +4,6 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
-import androidx.room.Transaction
 import androidx.room.Update
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.domain.model.FlowType
@@ -31,8 +30,7 @@ interface CategoryDao {
     @Query("SELECT * FROM categories ORDER BY sortOrder ASC")
     suspend fun getAllOnce(): List<CategoryEntity>
 
-    @Transaction
-    suspend fun updateSortOrders(categories: List<CategoryEntity>) {
-        categories.forEach { update(it) }
-    }
+    /** Batch update (Room runs it in one transaction) — used to renumber sortOrder after a reorder. */
+    @Update
+    suspend fun updateAll(categories: List<CategoryEntity>)
 }

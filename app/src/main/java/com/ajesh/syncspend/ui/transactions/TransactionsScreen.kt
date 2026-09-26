@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -21,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -79,8 +82,9 @@ fun TransactionsScreen() {
                         if (state.flow == FlowType.INCOME) SyncSpendIcons.ArrowIn else SyncSpendIcons.ArrowOut,
                         null,
                         tint = if (state.flow == FlowType.INCOME) Color(0xFF8ECF63) else SyncSpendTheme.colors.neg,
-                        modifier = Modifier.padding(end = 5.dp).widthIn(max = 15.dp),
+                        modifier = Modifier.size(15.dp),
                     )
+                    Box(Modifier.width(5.dp))
                     Text(
                         if (state.flow == FlowType.INCOME) "Income" else "Expense",
                         style = MaterialTheme.typography.labelLarge,
@@ -88,16 +92,7 @@ fun TransactionsScreen() {
                     )
                 }
                 if (state.flowMenuOpen) {
-                    Column(
-                        modifier = Modifier
-                            .padding(top = 42.dp)
-                            .background(SyncSpendTheme.colors.sheet, RoundedCornerShape(14.dp))
-                            .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(14.dp))
-                            .padding(6.dp),
-                    ) {
-                        FlowMenuItem("Expense", FlowType.EXPENSE, state.flow, viewModel::setFlow)
-                        FlowMenuItem("Income", FlowType.INCOME, state.flow, viewModel::setFlow)
-                    }
+                    FlowMenuPopup(state.flow, viewModel::setFlow, viewModel::closeFlowMenu)
                 }
             }
         }
@@ -148,18 +143,55 @@ fun TransactionsScreen() {
 }
 
 @Composable
+private fun FlowMenuPopup(current: FlowType, onPick: (FlowType) -> Unit, onDismiss: () -> Unit) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val visible = remember { androidx.compose.animation.core.MutableTransitionState(false).apply { targetState = true } }
+    androidx.compose.ui.window.Popup(
+        alignment = Alignment.TopEnd,
+        offset = androidx.compose.ui.unit.IntOffset(0, with(density) { 42.dp.roundToPx() }),
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.PopupProperties(focusable = true),
+    ) {
+        androidx.compose.animation.AnimatedVisibility(
+            visibleState = visible,
+            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(140)) +
+                androidx.compose.animation.scaleIn(androidx.compose.animation.core.tween(140), initialScale = 0.92f, transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0f)),
+        ) {
+            Column(
+                modifier = Modifier
+                    .shadow(14.dp, RoundedCornerShape(14.dp))
+                    .background(SyncSpendTheme.colors.sheet, RoundedCornerShape(14.dp))
+                    .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(14.dp))
+                    .padding(6.dp)
+                    .widthIn(min = 126.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                FlowMenuItem("Expense", FlowType.EXPENSE, current, onPick)
+                FlowMenuItem("Income", FlowType.INCOME, current, onPick)
+            }
+        }
+    }
+}
+
+@Composable
 private fun FlowMenuItem(label: String, value: FlowType, current: FlowType, onPick: (FlowType) -> Unit) {
+    val colors = SyncSpendTheme.colors
     val selected = value == current
     Row(
         modifier = Modifier
-            .background(if (selected) SyncSpendTheme.colors.selectedBrush else androidx.compose.ui.graphics.SolidColor(Color.Transparent), RoundedCornerShape(10.dp))
+            .fillMaxWidth()
+            .background(if (selected) colors.selectedBrush else androidx.compose.ui.graphics.SolidColor(Color.Transparent), RoundedCornerShape(10.dp))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onPick(value) }
             .padding(horizontal = 11.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) SyncSpendTheme.colors.onSelected else SyncSpendTheme.colors.ink,
+        Icon(
+            if (value == FlowType.INCOME) SyncSpendIcons.ArrowIn else SyncSpendIcons.ArrowOut,
+            null,
+            tint = if (value == FlowType.INCOME) Color(0xFF8ECF63) else if (selected) colors.expenseOnSelected else colors.neg,
+            modifier = Modifier.size(14.dp),
         )
+        Text(label, style = MaterialTheme.typography.labelLarge, color = if (selected) colors.onSelected else colors.ink)
     }
 }
