@@ -11,15 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,6 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
@@ -43,17 +38,14 @@ import java.util.Locale
  * from the design (user requirement): rather than letting the year nav page
  * back indefinitely, the browsable range defaults to the last ~3 months
  * through the current month, extended further back only if an existing
- * transaction is older than that — no need to page through years of empty
- * months to reach "today."
+ * transaction is older than that.
  */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun PeriodPickerSheet(
     currentScope: ScopePeriod,
     earliestTransactionDate: LocalDate?,
     onApply: (ScopePeriod) -> Unit,
     onDismiss: () -> Unit,
-    sheetState: SheetState,
 ) {
     val today = remember { LocalDate.now() }
     val upperBound = remember { YearMonth.from(today) }
@@ -70,193 +62,131 @@ fun PeriodPickerSheet(
                 is ScopePeriod.Month -> currentScope.yearMonth.year
                 is ScopePeriod.Year -> currentScope.year
                 ScopePeriod.AllTime -> upperBound.year
-            },
+            }.coerceIn(lowerBound.year, upperBound.year),
         )
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = SyncSpendTheme.colors.sheet) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 8.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Select period", style = MaterialTheme.typography.titleMedium, color = SyncSpendTheme.colors.ink)
-                CloseChip(onClick = onDismiss)
-            }
+    DesignSheet(onDismiss = onDismiss) { close ->
+        SheetHeader("Select period", onClose = close)
 
-            androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RoundIconButton(
-                    icon = SyncSpendIcons.Prev,
-                    enabled = pickerYear > lowerBound.year,
-                    onClick = { pickerYear-- },
-                )
-                Text(
-                    pickerYear.toString(),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = SyncSpendTheme.colors.ink,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier.weight(1f),
-                )
-                RoundIconButton(
-                    icon = SyncSpendIcons.Next,
-                    enabled = pickerYear < upperBound.year,
-                    onClick = { pickerYear++ },
-                )
-            }
+        Row(modifier = Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            SquareIconButton(
+                SyncSpendIcons.Prev, { pickerYear-- },
+                size = 32.dp, radius = 11.dp, iconSize = 17.dp, enabled = pickerYear > lowerBound.year,
+            )
+            Text(
+                pickerYear.toString(),
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
+                color = SyncSpendTheme.colors.ink,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
+            )
+            SquareIconButton(
+                SyncSpendIcons.Next, { pickerYear++ },
+                size = 32.dp, radius = 11.dp, iconSize = 17.dp, enabled = pickerYear < upperBound.year,
+            )
+        }
 
-            androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                ScopeChip(
-                    label = "Year $pickerYear",
-                    selected = draft is ScopePeriod.Year && (draft as ScopePeriod.Year).year == pickerYear,
-                    modifier = Modifier.weight(1f),
-                    onClick = { draft = ScopePeriod.Year(pickerYear) },
-                )
-                ScopeChip(
-                    label = "All Time",
-                    selected = draft is ScopePeriod.AllTime,
-                    modifier = Modifier.weight(1f),
-                    onClick = { draft = ScopePeriod.AllTime },
-                )
-            }
+        Row(modifier = Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            PickerChip(
+                label = "Year $pickerYear",
+                selected = draft is ScopePeriod.Year && (draft as ScopePeriod.Year).year == pickerYear,
+                modifier = Modifier.weight(1f),
+                vertical = 10.dp,
+                radius = 12.dp,
+            ) { draft = ScopePeriod.Year(pickerYear) }
+            PickerChip(
+                label = "All Time",
+                selected = draft is ScopePeriod.AllTime,
+                modifier = Modifier.weight(1f),
+                vertical = 10.dp,
+                radius = 12.dp,
+            ) { draft = ScopePeriod.AllTime }
+        }
 
-            androidx.compose.foundation.layout.Spacer(Modifier.height(12.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.height(180.dp),
-            ) {
-                items(Month.values().toList()) { month ->
-                    val ym = YearMonth.of(pickerYear, month)
-                    val inRange = !ym.isBefore(lowerBound) && !ym.isAfter(upperBound)
-                    val selected = draft is ScopePeriod.Month && (draft as ScopePeriod.Month).yearMonth == ym
-                    MonthCell(
-                        label = month.getDisplayName(TextStyle.SHORT, Locale.US),
-                        selected = selected,
-                        enabled = inRange,
-                        onClick = { draft = ScopePeriod.Month(ym) },
-                    )
+        Column(modifier = Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Month.values().toList().chunked(3).forEach { rowMonths ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    rowMonths.forEach { month ->
+                        val ym = YearMonth.of(pickerYear, month)
+                        val inRange = !ym.isBefore(lowerBound) && !ym.isAfter(upperBound)
+                        PickerChip(
+                            label = month.getDisplayName(TextStyle.SHORT, Locale.US),
+                            selected = draft is ScopePeriod.Month && (draft as ScopePeriod.Month).yearMonth == ym,
+                            enabled = inRange,
+                            modifier = Modifier.weight(1f),
+                            vertical = 12.dp,
+                            radius = 14.dp,
+                        ) { draft = ScopePeriod.Month(ym) }
+                    }
                 }
             }
+        }
 
-            androidx.compose.foundation.layout.Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp)
-                        .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(15.dp))
-                        .background(SyncSpendTheme.colors.card, RoundedCornerShape(15.dp))
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("Cancel", style = MaterialTheme.typography.labelLarge, color = SyncSpendTheme.colors.ink)
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(46.dp)
-                        .background(SyncSpendTheme.colors.dark, RoundedCornerShape(15.dp))
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                            onApply(draft)
-                        },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("Apply", style = MaterialTheme.typography.labelLarge, color = androidx.compose.ui.graphics.Color.White)
-                }
+        Row(modifier = Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            SheetButton("Cancel", primary = false, modifier = Modifier.weight(1f), onClick = close)
+            SheetButton("Apply", primary = true, modifier = Modifier.weight(1f)) {
+                onApply(draft)
+                close()
             }
-            androidx.compose.foundation.layout.Spacer(Modifier.height(10.dp))
         }
     }
 }
 
+/** Selectable pill used for scope chips and month cells. */
 @Composable
-private fun CloseChip(onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(30.dp)
-            .background(SyncSpendTheme.colors.tile, RoundedCornerShape(10.dp))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(SyncSpendIcons.Close, null, tint = SyncSpendTheme.colors.ink, modifier = Modifier.size(14.dp))
-    }
-}
-
-@Composable
-private fun RoundIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector, enabled: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(32.dp)
-            .background(SyncSpendTheme.colors.tile, RoundedCornerShape(11.dp))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                enabled = enabled,
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            icon,
-            null,
-            tint = if (enabled) SyncSpendTheme.colors.ink else SyncSpendTheme.colors.sub.copy(alpha = 0.4f),
-            modifier = Modifier.size(17.dp),
-        )
-    }
-}
-
-@Composable
-private fun ScopeChip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun PickerChip(
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    vertical: androidx.compose.ui.unit.Dp = 10.dp,
+    radius: androidx.compose.ui.unit.Dp = 12.dp,
+    onClick: () -> Unit,
+) {
     Box(
         modifier = modifier
             .background(
-                if (selected) SyncSpendTheme.colors.darkGradient else androidx.compose.ui.graphics.SolidColor(SyncSpendTheme.colors.pill),
-                RoundedCornerShape(12.dp),
+                if (selected) SyncSpendTheme.colors.selectedBrush else SolidColor(SyncSpendTheme.colors.pill),
+                RoundedCornerShape(radius),
             )
-            .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(12.dp))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(vertical = 10.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) androidx.compose.ui.graphics.Color.White else SyncSpendTheme.colors.sub,
-        )
-    }
-}
-
-@Composable
-private fun MonthCell(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(46.dp)
-            .background(
-                if (selected) SyncSpendTheme.colors.darkGradient else androidx.compose.ui.graphics.SolidColor(SyncSpendTheme.colors.pill),
-                RoundedCornerShape(14.dp),
-            )
-            .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(14.dp))
+            .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(radius))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 enabled = enabled,
                 onClick = onClick,
-            ),
+            )
+            .padding(vertical = vertical),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             label,
             style = MaterialTheme.typography.labelLarge,
             color = when {
-                selected -> androidx.compose.ui.graphics.Color.White
+                selected -> SyncSpendTheme.colors.onSelected
                 !enabled -> SyncSpendTheme.colors.sub.copy(alpha = 0.35f)
                 else -> SyncSpendTheme.colors.sub
             },
+        )
+    }
+}
+
+/** Cancel / Apply style footer button (46dp, 15dp radius). */
+@Composable
+fun SheetButton(label: String, primary: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier = modifier
+            .height(46.dp)
+            .background(if (primary) SyncSpendTheme.colors.button else SyncSpendTheme.colors.card, RoundedCornerShape(15.dp))
+            .then(if (primary) Modifier else Modifier.border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(15.dp)))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (primary) SyncSpendTheme.colors.onButton else SyncSpendTheme.colors.ink,
         )
     }
 }

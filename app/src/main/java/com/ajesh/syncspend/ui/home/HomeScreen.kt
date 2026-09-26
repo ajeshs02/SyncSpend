@@ -47,7 +47,6 @@ import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendCorners
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(onViewAllTransactions: () -> Unit) {
     val container = LocalAppContainer.current
@@ -232,7 +231,6 @@ fun HomeScreen(onViewAllTransactions: () -> Unit) {
     }
 
     if (periodPickerOpen) {
-        val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
         com.ajesh.syncspend.ui.components.PeriodPickerSheet(
             currentScope = state.currentScope,
             earliestTransactionDate = state.earliestTransactionDate,
@@ -241,7 +239,6 @@ fun HomeScreen(onViewAllTransactions: () -> Unit) {
                 periodPickerOpen = false
             },
             onDismiss = { periodPickerOpen = false },
-            sheetState = sheetState,
         )
     }
 }

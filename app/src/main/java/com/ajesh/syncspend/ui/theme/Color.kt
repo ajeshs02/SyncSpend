@@ -1,6 +1,5 @@
 package com.ajesh.syncspend.ui.theme
 
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
@@ -44,9 +43,16 @@ object SyncSpendPalette {
 
     val LightCardGradient = Brush.linearGradient(
         colorStops = arrayOf(0f to Color(0xFFFFFFFF), 0.6f to Color(0xFFF3F7F1), 1f to Color(0xFFEAF1E6)),
-        start = Offset.Zero,
-        end = Offset(1000f, 1000f), // 150deg approximation; direction refined per-composable via Modifier size
     )
+
+    // Selected segment / chip / calendar-day fill and its text, and the solid
+    // "Apply"/"OK" button pair (design: seg(), chip(), applyBg/applyFg).
+    val LightSelectedBrush = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF18251A), 1f to Color(0xFF0D150F)),
+    )
+    val LightOnSelected = Color(0xFFF4F7F1)
+    val LightButton = Color(0xFF101710)
+    val LightOnButton = Color(0xFFF4F7F1)
     val LightDarkGradient = Brush.linearGradient(
         colorStops = arrayOf(0f to Color(0xFF0F1A12), 0.52f to Color(0xFF16331F), 1f to Color(0xFF0C1B11)),
     )
@@ -98,4 +104,11 @@ object SyncSpendPalette {
     val DarkNavGradient = Brush.linearGradient(
         colorStops = arrayOf(0f to Color(0xFF1D251E), 1f to Color(0xFF10160F)),
     )
+
+    val DarkSelectedBrush = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFFF2F6EE), 1f to Color(0xFFDFE7DA)),
+    )
+    val DarkOnSelected = Color(0xFF101710)
+    val DarkButton = Color(0xFFF2F6EE)
+    val DarkOnButton = Color(0xFF101710)
 }

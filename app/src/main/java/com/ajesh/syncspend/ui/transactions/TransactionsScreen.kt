@@ -15,9 +15,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -37,7 +35,6 @@ import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionsScreen() {
     val container = LocalAppContainer.current
@@ -142,13 +139,11 @@ fun TransactionsScreen() {
     }
 
     if (state.periodPickerOpen) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         PeriodPickerSheet(
             currentScope = state.currentScope,
             earliestTransactionDate = state.earliestTransactionDate,
             onApply = viewModel::applyScope,
             onDismiss = viewModel::closePeriodPicker,
-            sheetState = sheetState,
         )
     }
 }
@@ -158,14 +153,14 @@ private fun FlowMenuItem(label: String, value: FlowType, current: FlowType, onPi
     val selected = value == current
     Row(
         modifier = Modifier
-            .background(if (selected) SyncSpendTheme.colors.darkGradient else androidx.compose.ui.graphics.SolidColor(Color.Transparent), RoundedCornerShape(10.dp))
+            .background(if (selected) SyncSpendTheme.colors.selectedBrush else androidx.compose.ui.graphics.SolidColor(Color.Transparent), RoundedCornerShape(10.dp))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onPick(value) }
             .padding(horizontal = 11.dp, vertical = 8.dp),
     ) {
         Text(
             label,
             style = MaterialTheme.typography.labelLarge,
-            color = if (selected) Color.White else SyncSpendTheme.colors.ink,
+            color = if (selected) SyncSpendTheme.colors.onSelected else SyncSpendTheme.colors.ink,
         )
     }
 }

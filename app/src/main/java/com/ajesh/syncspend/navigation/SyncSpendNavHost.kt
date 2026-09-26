@@ -26,7 +26,12 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
             HomeScreen(onViewAllTransactions = { navController.navigateToTab(Routes.TRANSACTIONS) })
         }
         composable(Routes.TRANSACTIONS) { TransactionsScreen() }
-        composable(Routes.ADD_ENTRY) { AddEntryScreen() }
+        composable(Routes.ADD_ENTRY) {
+            AddEntryScreen(
+                onBack = { navController.navigateToTab(Routes.HOME) },
+                onSaved = { navController.navigateToTab(Routes.HOME) },
+            )
+        }
         composable(Routes.CATEGORIES) { CategoriesScreen() }
         composable(Routes.SETTINGS) { SettingsScreen() }
     }

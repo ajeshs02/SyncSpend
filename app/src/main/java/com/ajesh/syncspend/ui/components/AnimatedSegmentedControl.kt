@@ -1,5 +1,6 @@
 package com.ajesh.syncspend.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -14,7 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,6 +32,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -42,19 +46,20 @@ import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
+/** Optional leading icon for a segment, with a tint per selection state. */
+data class SegmentIcon(val vector: ImageVector, val selectedTint: Color, val unselectedTint: Color)
+
 /**
  * Reusable segmented control where a single indicator pill *slides* from the
  * previously-selected segment to the newly-selected one, rather than each
  * option instantly recoloring itself (the design's original per-option
  * background swap). Used at every toggle site in the app: Expense/Income,
- * Entries/Categories/Stats, Light/Dark/System, Year/All-time, AM/PM.
+ * Entries/Categories/Stats, Light/Dark/System, AM/PM.
  *
- * How the slide works: every label reports its own laid-out bounds (via
- * [onGloballyPositioned] against this composable's own coordinate space), and
- * a pair of [Animatable]s (x offset + width, both in px) animate toward the
- * newly-selected label's bounds whenever [selectedIndex] changes. The very
- * first composition has no prior bounds to animate from, so it snaps instead
- * of sliding in from nowhere.
+ * Every label reports its laid-out bounds; a pair of [Animatable]s (x offset +
+ * width) animate toward the newly-selected label whenever [selectedIndex]
+ * changes. The very first placement snaps instead of sliding in from nowhere.
+ * Label colors cross-fade with the indicator so text never lags behind it.
  */
 @Composable
 fun AnimatedSegmentedControl(
@@ -63,10 +68,11 @@ fun AnimatedSegmentedControl(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     height: Dp = 40.dp,
+    icons: List<SegmentIcon?>? = null,
     trackColor: Color = SyncSpendTheme.colors.pill,
     trackBorderColor: Color = SyncSpendTheme.colors.line,
-    indicatorBrush: Brush = SyncSpendTheme.colors.darkGradient,
-    selectedContentColor: Color = Color.White,
+    indicatorBrush: Brush = SyncSpendTheme.colors.selectedBrush,
+    selectedContentColor: Color = SyncSpendTheme.colors.onSelected,
     unselectedContentColor: Color = SyncSpendTheme.colors.sub,
     textStyle: TextStyle = androidx.compose.material3.MaterialTheme.typography.labelLarge,
     outerShape: Shape = SyncSpendCorners.pillOuter,
@@ -84,8 +90,8 @@ fun AnimatedSegmentedControl(
             widthPx.snapTo(target.width)
             hasPlacedOnce = true
         } else {
-            launch { offsetX.animateTo(target.left, tween(250, easing = FastOutSlowInEasing)) }
-            launch { widthPx.animateTo(target.width, tween(250, easing = FastOutSlowInEasing)) }
+            launch { offsetX.animateTo(target.left, tween(260, easing = FastOutSlowInEasing)) }
+            launch { widthPx.animateTo(target.width, tween(260, easing = FastOutSlowInEasing)) }
         }
     }
 
@@ -105,11 +111,22 @@ fun AnimatedSegmentedControl(
                     .width(indicatorWidth)
                     .fillMaxHeight()
                     .background(indicatorBrush, innerShape),
-            ) {}
+            )
         }
         Row(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
             options.forEachIndexed { index, label ->
                 val selected = index == selectedIndex
+                val textColor by animateColorAsState(
+                    if (selected) selectedContentColor else unselectedContentColor,
+                    tween(200),
+                    label = "seg-text",
+                )
+                val icon = icons?.getOrNull(index)
+                val iconColor by animateColorAsState(
+                    if (selected) icon?.selectedTint ?: Color.Unspecified else icon?.unselectedTint ?: Color.Unspecified,
+                    tween(200),
+                    label = "seg-icon",
+                )
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -121,14 +138,25 @@ fun AnimatedSegmentedControl(
                         ) { onSelect(index) },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = label,
-                        style = textStyle,
-                        color = if (selected) selectedContentColor else unselectedContentColor,
-                        textAlign = TextAlign.Center,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (icon != null) {
+                            Icon(icon.vector, null, tint = iconColor, modifier = Modifier.size(15.dp))
+                            Box(Modifier.width(5.dp))
+                        }
+                        Text(text = label, style = textStyle, color = textColor, textAlign = TextAlign.Center)
+                    }
                 }
             }
         }
     }
+}
+
+/** The design's Expense / Income icon pair, tinted so it reads on either indicator theme. */
+@Composable
+fun flowSegmentIcons(): List<SegmentIcon> {
+    val c = SyncSpendTheme.colors
+    return listOf(
+        SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.ArrowOut, c.expenseOnSelected, c.neg),
+        SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.ArrowIn, Color(0xFF8ECF63), Color(0xFF8ECF63)),
+    )
 }

@@ -38,7 +38,7 @@ fun FilterChipsRow(
             Box(
                 modifier = Modifier
                     .background(
-                        if (isSelected) SyncSpendTheme.colors.darkGradient else SolidColor(SyncSpendTheme.colors.pill),
+                        if (isSelected) SyncSpendTheme.colors.selectedBrush else SolidColor(SyncSpendTheme.colors.pill),
                         RoundedCornerShape(15.dp),
                     )
                     .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(15.dp))
@@ -48,7 +48,7 @@ fun FilterChipsRow(
                 Text(
                     option.label,
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (isSelected) Color.White else SyncSpendTheme.colors.sub,
+                    color = if (isSelected) SyncSpendTheme.colors.onSelected else SyncSpendTheme.colors.sub,
                 )
             }
         }

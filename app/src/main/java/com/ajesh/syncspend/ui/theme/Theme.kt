@@ -41,6 +41,13 @@ data class SyncSpendColors(
     val sheet: Color,
     val screenGradient: Brush,
     val scrEnd: Color,
+    val selectedBrush: Brush,
+    val onSelected: Color,
+    val button: Color,
+    val onButton: Color,
+    /** Expense arrow tint when sitting on the selected (inverted) indicator. */
+    val expenseOnSelected: Color,
+    val isDark: Boolean,
 )
 
 private val LightColors = SyncSpendColors(
@@ -66,6 +73,12 @@ private val LightColors = SyncSpendColors(
     sheet = SyncSpendPalette.LightSheet,
     screenGradient = SyncSpendPalette.LightScreenGradient,
     scrEnd = SyncSpendPalette.LightScrEnd,
+    selectedBrush = SyncSpendPalette.LightSelectedBrush,
+    onSelected = SyncSpendPalette.LightOnSelected,
+    button = SyncSpendPalette.LightButton,
+    onButton = SyncSpendPalette.LightOnButton,
+    expenseOnSelected = Color(0xFFF08579),
+    isDark = false,
 )
 
 private val DarkColors = SyncSpendColors(
@@ -91,6 +104,12 @@ private val DarkColors = SyncSpendColors(
     sheet = SyncSpendPalette.DarkSheet,
     screenGradient = SyncSpendPalette.DarkScreenGradient,
     scrEnd = SyncSpendPalette.DarkScrEnd,
+    selectedBrush = SyncSpendPalette.DarkSelectedBrush,
+    onSelected = SyncSpendPalette.DarkOnSelected,
+    button = SyncSpendPalette.DarkButton,
+    onButton = SyncSpendPalette.DarkOnButton,
+    expenseOnSelected = Color(0xFFC0392B),
+    isDark = true,
 )
 
 private val LocalSyncSpendColors = staticCompositionLocalOf { LightColors }

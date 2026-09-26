@@ -57,7 +57,7 @@ private fun SyncSpendAppRoot() {
             },
             onAddClick = {
                 if (currentRoute != Routes.ADD_ENTRY) {
-                    navController.navigate(Routes.ADD_ENTRY)
+                    navController.navigateToTab(Routes.ADD_ENTRY)
                 }
             },
         )
