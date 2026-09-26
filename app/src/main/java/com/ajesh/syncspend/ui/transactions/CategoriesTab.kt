@@ -76,12 +76,7 @@ fun CategoriesTab(rollups: List<CategoryRollupUi>, modifier: Modifier = Modifier
                         modifier = Modifier
                             .fillMaxWidth((rollup.sharePercent / 100f).coerceIn(0f, 1f))
                             .height(5.dp)
-                            .background(
-                                androidx.compose.ui.graphics.Brush.horizontalGradient(
-                                    listOf(SyncSpendTheme.colors.acc2, SyncSpendTheme.colors.acc),
-                                ),
-                                RoundedCornerShape(3.dp),
-                            ),
+                            .background(SyncSpendTheme.colors.chartFill, RoundedCornerShape(3.dp)),
                     )
                 }
             }

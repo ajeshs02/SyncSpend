@@ -12,7 +12,10 @@ import androidx.compose.ui.graphics.Color
  */
 object SyncSpendPalette {
 
-    /** The bright green of the active nav icon — also the Income arrow and the Stats charts. Same in both themes. */
+    /**
+     * The vibrant green of the active nav icon and the Income arrows. It is only ever a glyph/icon
+     * tint — never a background or fill; fills use the mint gradient ([LightMintGradient]/[DarkMintGradient]).
+     */
     val BrandGreen = Color(0xFF8ECF63)
 
     // ---- Light ----
@@ -32,15 +35,16 @@ object SyncSpendPalette {
     val LightDim = Color(0x2E151A12) // rgba(21,26,18,.18)
     val LightOnAcc = Color(0xFFFFFFFF)
     val LightSheet = Color(0xFFFFFFFF)
-    val LightScrEnd = Color(0xFFE5EFE7)
+    val LightScrEnd = Color(0xFFE9F0EB)
 
     private val lightScrStops = arrayOf(
-        0.00f to Color(0xFFE1EEE3),
-        0.07f to Color(0xFFEFF5ED),
+        0.00f to Color(0xFFE6EFE8),
+        0.07f to Color(0xFFF1F6F0),
         0.15f to Color(0xFFFAFCF9),
-        0.85f to Color(0xFFFAFCF9),
-        0.93f to Color(0xFFEFF5ED),
-        1.00f to Color(0xFFE5EFE7),
+        // The bottom band is shorter than the top one (it sits behind the nav): it starts later.
+        0.88f to Color(0xFFFAFCF9),
+        0.95f to Color(0xFFF1F6F0),
+        1.00f to Color(0xFFE9F0EB),
     )
     val LightScreenGradient = Brush.verticalGradient(colorStops = lightScrStops)
 
@@ -61,6 +65,12 @@ object SyncSpendPalette {
     )
     val LightMintGradient = Brush.linearGradient(
         colorStops = arrayOf(0f to Color(0xFFCFE6CF), 0.45f to Color(0xFFBCDCBD), 1f to Color(0xFFA9D2AC)),
+    )
+    // Chart/bar fills: the mint gradient itself (Stats "Top spending" card, "Active reminders" header),
+    // and a paler take on it for the de-emphasised bars.
+    val LightChartFill = LightMintGradient
+    val LightChartFillDim = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFFE2F0E2), 0.45f to Color(0xFFD9EBDA), 1f to Color(0xFFCFE6CF)),
     )
     val LightNavGradient = Brush.linearGradient(
         colorStops = arrayOf(0f to Color(0xFF171D18), 1f to Color(0xFF0D120E)),
@@ -83,15 +93,15 @@ object SyncSpendPalette {
     val DarkDim = Color(0x42FFFFFF) // rgba(255,255,255,.26)
     val DarkOnAcc = Color(0xFF07120B)
     val DarkSheet = Color(0xFF1B231C)
-    val DarkScrEnd = Color(0xFF112619)
+    val DarkScrEnd = Color(0xFF142119)
 
     private val darkScrStops = arrayOf(
-        0.00f to Color(0xFF112619),
-        0.07f to Color(0xFF0C150E),
-        0.15f to Color(0xFF0A0E0B),
-        0.85f to Color(0xFF0A0E0B),
-        0.93f to Color(0xFF0C150E),
-        1.00f to Color(0xFF112619),
+        0.00f to Color(0xFF142119),
+        0.07f to Color(0xFF0E1610),
+        0.15f to Color(0xFF0C0F0D),
+        0.88f to Color(0xFF0C0F0D),
+        0.95f to Color(0xFF0E1610),
+        1.00f to Color(0xFF142119),
     )
     val DarkScreenGradient = Brush.verticalGradient(colorStops = darkScrStops)
 
@@ -103,6 +113,13 @@ object SyncSpendPalette {
     )
     val DarkMintGradient = Brush.linearGradient(
         colorStops = arrayOf(0f to Color(0xFF1C3A25), 0.45f to Color(0xFF16301D), 1f to Color(0xFF102316)),
+    )
+    // The same mint gradient, lifted in brightness: the card's own deep forest green would vanish on dark cards.
+    val DarkChartFill = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF4A9A68), 0.45f to Color(0xFF3F8A5B), 1f to Color(0xFF347A4E)),
+    )
+    val DarkChartFillDim = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF2C5B3E), 0.45f to Color(0xFF264F36), 1f to Color(0xFF204530)),
     )
     val DarkNavGradient = Brush.linearGradient(
         colorStops = arrayOf(0f to Color(0xFF1D251E), 1f to Color(0xFF10160F)),

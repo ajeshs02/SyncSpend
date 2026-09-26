@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  A ring with one segment picked out in mint, on the app's deep-green field. Drawn as two stroked arcs on the same circle: a full white ring,
+  A ring with one segment picked out in the brand green, on the app's deep-green field. Drawn as two stroked arcs on the same circle: a full white ring,
   then a heavier accent arc over roughly a quarter of it.
 
   The ring sits inside the 66dp adaptive-icon safe zone — radius 24 plus a
@@ -22,7 +22,7 @@
 
     <!-- Accent segment: from 12 o'clock clockwise to 3 o'clock -->
     <path
-        android:strokeColor="#7FD39A"
+        android:strokeColor="#8ECF63"
         android:strokeWidth="11"
         android:strokeLineCap="round"
         android:fillColor="@android:color/transparent"

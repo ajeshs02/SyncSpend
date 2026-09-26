@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -59,10 +60,13 @@ fun StatsTab(stats: StatsUi, onRangeSelect: (StatsRange) -> Unit, modifier: Modi
             selectedIndex = stats.range.ordinal,
             onSelect = { onRangeSelect(StatsRange.entries[it]) },
         )
+        // The gap sits outside the scroll region (like the Entries/Categories chips), so scrolled
+        // cards clip a clear band below the chips instead of running flush against them.
+        Spacer(Modifier.height(12.dp))
         Column(
             modifier = Modifier
                 .verticalScroll(rememberScrollState())
-                .padding(top = 12.dp, bottom = SyncSpendChrome.screenBottomContentPadding),
+                .padding(top = 2.dp, bottom = SyncSpendChrome.screenBottomContentPadding),
             verticalArrangement = Arrangement.spacedBy(11.dp),
         ) {
             Column(
@@ -169,7 +173,7 @@ fun StatsTab(stats: StatsUi, onRangeSelect: (StatsRange) -> Unit, modifier: Modi
                 Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
                     stats.findings.forEach { line ->
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Box(Modifier.padding(top = 5.dp).size(6.dp).background(colors.brand, RoundedCornerShape(50)))
+                            Box(Modifier.padding(top = 5.dp).size(6.dp).background(colors.chartFill, RoundedCornerShape(50)))
                             Text(line, fontSize = 11.5.sp, lineHeight = 16.7.sp, color = colors.ink)
                         }
                     }
@@ -259,7 +263,7 @@ private fun BarChart(bars: List<BarUi>, height: Dp, averageFraction: Float?) {
                                 transformOrigin = TransformOrigin(0.5f, 1f)
                             }
                             .background(
-                                if (bar.highlighted) colors.brand else colors.brand.copy(alpha = 0.26f),
+                                if (bar.highlighted) colors.chartFill else colors.chartFillDim,
                                 RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp, bottomStart = 2.dp, bottomEnd = 2.dp),
                             ),
                     )
@@ -314,7 +318,7 @@ private fun CategoryBar(bar: CategoryBarUi) {
                         scaleX = progress.value
                         transformOrigin = TransformOrigin(0f, 0.5f)
                     }
-                    .background(colors.brand, RoundedCornerShape(50)),
+                    .background(colors.chartFill, RoundedCornerShape(50)),
             )
         }
     }
@@ -325,12 +329,14 @@ private fun TipRow(tip: TipUi) {
     val colors = SyncSpendTheme.colors
     val (tint, icon) = when (tip.tone) {
         TipTone.WATCH -> colors.neg to SyncSpendIcons.Bolt
-        TipTone.GOOD -> colors.brand to SyncSpendIcons.Trend
+        TipTone.GOOD -> colors.mink to SyncSpendIcons.Trend
         TipTone.INFO -> colors.sub to SyncSpendIcons.Spark
     }
+    // A good-news tip sits on the mint gradient like every other green surface.
+    val chip = if (tip.tone == TipTone.GOOD) colors.chartFill else androidx.compose.ui.graphics.SolidColor(tint.copy(alpha = 0.14f))
     Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
         Box(
-            modifier = Modifier.size(28.dp).background(tint.copy(alpha = 0.14f), RoundedCornerShape(10.dp)),
+            modifier = Modifier.size(28.dp).background(chip, RoundedCornerShape(10.dp)),
             contentAlignment = Alignment.Center,
         ) { Icon(icon, null, tint = tint, modifier = Modifier.size(14.dp)) }
         Column(modifier = Modifier.weight(1f)) {
@@ -374,7 +380,7 @@ private fun PaceBar(pace: PaceUi) {
                         scaleX = progress.value
                         transformOrigin = TransformOrigin(0f, 0.5f)
                     }
-                    .background(colors.brand.copy(alpha = 0.28f), RoundedCornerShape(50)),
+                    .background(colors.chartFillDim, RoundedCornerShape(50)),
             )
             Box(
                 modifier = Modifier
@@ -384,7 +390,7 @@ private fun PaceBar(pace: PaceUi) {
                         scaleX = progress.value
                         transformOrigin = TransformOrigin(0f, 0.5f)
                     }
-                    .background(colors.brand, RoundedCornerShape(50)),
+                    .background(colors.chartFill, RoundedCornerShape(50)),
             )
         }
         Text(pace.caption, fontSize = 10.5.sp, lineHeight = 15.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
@@ -419,9 +425,9 @@ private fun TopEntryRow(rank: Int, entry: TopEntryUi) {
     val colors = SyncSpendTheme.colors
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Box(
-            modifier = Modifier.size(28.dp).background(colors.brand.copy(alpha = 0.18f), RoundedCornerShape(50)),
+            modifier = Modifier.size(28.dp).background(colors.chartFill, RoundedCornerShape(50)),
             contentAlignment = Alignment.Center,
-        ) { Text(rank.toString(), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.ink) }
+        ) { Text(rank.toString(), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.mink) }
         Column(modifier = Modifier.weight(1f)) {
             Text(entry.title, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1)
             Text(entry.subtitle, fontSize = 10.5.sp, color = colors.sub, maxLines = 1, modifier = Modifier.padding(top = 1.dp))

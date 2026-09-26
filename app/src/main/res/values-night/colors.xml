@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Dark-mode starting-window background. See values/colors.xml. -->
 <resources>
-    <color name="window_background">#FF0A0E0B</color>
+    <color name="window_background">#FF0C0F0D</color>
 
     <color name="widget_surface">#FF1C231D</color>
     <color name="widget_ink">#FFEEF3EA</color>

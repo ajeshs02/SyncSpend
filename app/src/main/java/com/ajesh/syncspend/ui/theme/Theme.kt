@@ -27,6 +27,10 @@ data class SyncSpendColors(
     val dark: Color,
     val darkGradient: Brush,
     val mintGradient: Brush,
+    /** Green fill for bars, share bars, dots and chips: the mint gradient (lifted in dark mode). */
+    val chartFill: Brush,
+    /** A paler [chartFill] for de-emphasised bars and projections. */
+    val chartFillDim: Brush,
     val acc: Color,
     val acc2: Color,
     val pos: Color,
@@ -47,7 +51,7 @@ data class SyncSpendColors(
     val onButton: Color,
     /** Expense arrow tint when sitting on the selected (inverted) indicator. */
     val expenseOnSelected: Color,
-    /** [SyncSpendPalette.BrandGreen]: the one bright green used by the nav, income cues and Stats charts. */
+    /** [SyncSpendPalette.BrandGreen]: the vibrant green — for the nav's selected icon and Income arrow icons only, never a fill. */
     val brand: Color,
     val isDark: Boolean,
 )
@@ -61,6 +65,8 @@ private val LightColors = SyncSpendColors(
     dark = SyncSpendPalette.LightDark,
     darkGradient = SyncSpendPalette.LightDarkGradient,
     mintGradient = SyncSpendPalette.LightMintGradient,
+    chartFill = SyncSpendPalette.LightChartFill,
+    chartFillDim = SyncSpendPalette.LightChartFillDim,
     acc = SyncSpendPalette.LightAcc,
     acc2 = SyncSpendPalette.LightAcc2,
     pos = SyncSpendPalette.LightPos,
@@ -93,6 +99,8 @@ private val DarkColors = SyncSpendColors(
     dark = SyncSpendPalette.DarkDark,
     darkGradient = SyncSpendPalette.DarkDarkGradient,
     mintGradient = SyncSpendPalette.DarkMintGradient,
+    chartFill = SyncSpendPalette.DarkChartFill,
+    chartFillDim = SyncSpendPalette.DarkChartFillDim,
     acc = SyncSpendPalette.DarkAcc,
     acc2 = SyncSpendPalette.DarkAcc2,
     pos = SyncSpendPalette.DarkPos,

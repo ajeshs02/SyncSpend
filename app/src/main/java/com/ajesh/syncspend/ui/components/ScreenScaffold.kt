@@ -26,5 +26,5 @@ object SyncSpendChrome {
 
     /** Gap between the pill and the navigation bar. */
     val bottomBarBottomInset = 14.dp
-    val bottomFadeHeight = 132.dp
+    val bottomFadeHeight = 100.dp
 }

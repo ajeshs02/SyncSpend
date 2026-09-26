@@ -108,7 +108,7 @@ fun BottomFadeAndNav(
                 .align(Alignment.BottomCenter)
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, SyncSpendTheme.colors.scrEnd),
+                        colors = listOf(Color.Transparent, SyncSpendTheme.colors.scrEnd.copy(alpha = 0.85f)),
                         startY = 0f,
                     ),
                 ),
@@ -156,7 +156,7 @@ private fun ActiveIndicator(slot: Int) {
             .size(width = width, height = CellHeight)
             .graphicsLayer { alpha = visible }
             .padding(horizontal = 3.dp, vertical = 3.dp)
-            .background(NavActiveTint.copy(alpha = 0.16f), RoundedCornerShape(PillRadius - PillVerticalPadding - 3.dp)),
+            .background(Color.White.copy(alpha = 0.10f), RoundedCornerShape(PillRadius - PillVerticalPadding - 3.dp)),
     )
 }
 
