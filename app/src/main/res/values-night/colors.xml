@@ -2,4 +2,11 @@
 <!-- Dark-mode starting-window background. See values/colors.xml. -->
 <resources>
     <color name="window_background">#FF0E130F</color>
+
+    <color name="widget_surface">#FF1C231D</color>
+    <color name="widget_ink">#FFEEF3EA</color>
+    <color name="widget_accent">#FF7FD39A</color>
+    <color name="widget_fab">#FF7FD39A</color>
+    <color name="widget_on_fab">#FF07120B</color>
+    <color name="widget_ripple">#33FFFFFF</color>
 </resources>

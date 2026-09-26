@@ -7,14 +7,14 @@
     android:viewportHeight="24">
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#FF8ECF63"
+        android:strokeColor="@color/widget_accent"
         android:strokeWidth="1.7"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:pathData="M4,12a8,8 0 1,0 16,0a8,8 0 1,0 -16,0" />
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#FF8ECF63"
+        android:strokeColor="@color/widget_accent"
         android:strokeWidth="1.7"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"

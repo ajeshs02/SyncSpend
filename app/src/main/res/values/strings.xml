@@ -3,6 +3,6 @@
     <string name="app_name">SyncSpend</string>
     <string name="widget_label">SyncSpend</string>
     <string name="widget_description">Log an expense in a couple of taps, without opening the app.</string>
-    <string name="widget_face_label">Expense +</string>
+    <string name="widget_face_label">Expense</string>
     <string name="widget_click_description">Add an expense</string>
 </resources>

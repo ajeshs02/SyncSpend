@@ -8,4 +8,16 @@
 -->
 <resources>
     <color name="window_background">#FFFAFCF9</color>
+
+    <!--
+      Home-screen widget colours. The widget does not paint its own gradient: it
+      takes a plain surface that follows the system light/dark setting (and, on
+      Android 12+, the wallpaper-derived Material You palette — see values-v31).
+    -->
+    <color name="widget_surface">#FFF4F7F1</color>
+    <color name="widget_ink">#FF151A12</color>
+    <color name="widget_accent">#FF2F7A45</color>
+    <color name="widget_fab">#FF2F7A45</color>
+    <color name="widget_on_fab">#FFFFFFFF</color>
+    <color name="widget_ripple">#1F151A12</color>
 </resources>
