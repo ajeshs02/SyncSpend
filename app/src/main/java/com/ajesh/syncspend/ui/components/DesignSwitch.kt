@@ -15,10 +15,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
@@ -36,7 +37,7 @@ fun DesignSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier:
         Box(
             Modifier
                 .size(width = 46.dp, height = 27.dp)
-                .alpha(trackOn)
+                .graphicsLayer { alpha = trackOn }
                 .background(
                     Brush.linearGradient(listOf(Color(0xFF7CC25C), Color(0xFF3F8F4E))),
                     RoundedCornerShape(14.dp),
@@ -44,7 +45,7 @@ fun DesignSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier:
         )
         Box(
             Modifier
-                .offset(x = 3.dp + knobX, y = 3.dp)
+                .offset { IntOffset((3.dp + knobX).roundToPx(), 3.dp.roundToPx()) } // read at layout time: no recomposition per frame
                 .size(21.dp)
                 .shadow(2.dp, CircleShape)
                 .background(Color.White, CircleShape),

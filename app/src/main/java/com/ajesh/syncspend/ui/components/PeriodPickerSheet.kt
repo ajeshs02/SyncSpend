@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -60,7 +61,7 @@ fun PeriodPickerSheet(
 
     var draft by remember { mutableStateOf(currentScope) }
     var pickerYear by remember {
-        mutableStateOf(
+        mutableIntStateOf(
             when (currentScope) {
                 is ScopePeriod.Month -> currentScope.yearMonth.year
                 is ScopePeriod.Year -> currentScope.year

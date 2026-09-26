@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -195,7 +196,7 @@ fun ReminderDialog(
 ) {
     var schedule by remember { mutableStateOf(ReminderSchedule.DAILY) }
     var date by remember { mutableStateOf(LocalDate.now()) }
-    var minute by remember { mutableStateOf(20 * 60) }
+    var minute by remember { mutableIntStateOf(20 * 60) }
     var pickingDate by remember { mutableStateOf(false) }
     var pickingTime by remember { mutableStateOf(false) }
 
@@ -297,7 +298,7 @@ fun ReminderEditSheet(
     var iconKey by remember(initial.id) { mutableStateOf(initial.iconKey) }
     var schedule by remember(initial.id) { mutableStateOf(initial.schedule) }
     var date by remember(initial.id) { mutableStateOf(initial.nextTriggerDate) }
-    var minute by remember(initial.id) { mutableStateOf(initial.timeMinuteOfDay) }
+    var minute by remember(initial.id) { mutableIntStateOf(initial.timeMinuteOfDay) }
     var pickingIcon by remember { mutableStateOf(false) }
     var pickingDate by remember { mutableStateOf(false) }
     var pickingTime by remember { mutableStateOf(false) }
