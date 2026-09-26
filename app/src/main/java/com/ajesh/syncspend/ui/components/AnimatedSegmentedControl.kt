@@ -1,6 +1,5 @@
 package com.ajesh.syncspend.ui.components
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -16,29 +15,29 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.inset
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.boundsInParent
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,8 +45,7 @@ import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.ui.theme.SyncSpendCorners
 import com.ajesh.syncspend.ui.theme.SyncSpendPalette
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
-import kotlin.math.roundToInt
-import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /** Optional leading icon for a segment, with a tint per selection state. */
 data class SegmentIcon(val vector: ImageVector, val selectedTint: Color, val unselectedTint: Color)
@@ -59,10 +57,10 @@ data class SegmentIcon(val vector: ImageVector, val selectedTint: Color, val uns
  * background swap). Used at every toggle site in the app: Expense/Income,
  * Entries/Categories/Stats, Light/Dark/System, AM/PM.
  *
- * Every label reports its laid-out bounds; a pair of [Animatable]s (x offset +
- * width) animate toward the newly-selected label whenever [selectedIndex]
- * changes. The very first placement snaps instead of sliding in from nowhere.
- * Label colors cross-fade with the indicator so text never lags behind it.
+ * Options are equal-width, so the pill's geometry is plain arithmetic
+ * (`position * cellWidth`) — nothing is measured and waited for, so it is already in the right
+ * place on the very first frame of a screen. One [Animatable] holds the fractional position and
+ * is read only in the draw phase (the pill, and each label's colour): a slide recomposes nothing.
  */
 @Composable
 fun AnimatedSegmentedControl(
@@ -82,21 +80,10 @@ fun AnimatedSegmentedControl(
     outerShape: Shape = SyncSpendCorners.pillOuter,
     innerShape: Shape = SyncSpendCorners.pillInner,
 ) {
-    val bounds = remember(options.size) { mutableStateListOf<Rect?>().apply { repeat(options.size) { add(null) } } }
-    val offsetX = remember { Animatable(0f) }
-    val widthPx = remember { Animatable(0f) }
-    var hasPlacedOnce by remember { mutableStateOf(false) }
-
-    LaunchedEffect(selectedIndex, bounds.getOrNull(selectedIndex)) {
-        val target = bounds.getOrNull(selectedIndex) ?: return@LaunchedEffect
-        if (!hasPlacedOnce) {
-            offsetX.snapTo(target.left)
-            widthPx.snapTo(target.width)
-            hasPlacedOnce = true
-        } else {
-            launch { offsetX.animateTo(target.left, tween(260, easing = FastOutSlowInEasing)) }
-            launch { widthPx.animateTo(target.width, tween(260, easing = FastOutSlowInEasing)) }
-        }
+    val count = options.size
+    val position = remember { Animatable(selectedIndex.toFloat()) }
+    LaunchedEffect(selectedIndex) {
+        position.animateTo(selectedIndex.toFloat(), tween(260, easing = FastOutSlowInEasing))
     }
 
     Box(
@@ -107,38 +94,31 @@ fun AnimatedSegmentedControl(
             .border(1.dp, trackBorderColor, outerShape)
             .padding(4.dp),
     ) {
-        if (hasPlacedOnce) {
-            // Width and offset are read in the layout/placement phases, so a slide
-            // re-lays-out one box per frame instead of recomposing the control.
-            Box(
-                modifier = Modifier
-                    .layout { measurable, constraints ->
-                        val w = widthPx.value.roundToInt().coerceAtLeast(0)
-                        val placeable = measurable.measure(Constraints.fixed(w, constraints.maxHeight))
-                        layout(w, placeable.height) { placeable.place(offsetX.value.roundToInt(), 0) }
+        // Own graphics layer: the slide only re-records this layer.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer()
+                .drawBehind {
+                    val cell = size.width / count
+                    val left = position.value * cell
+                    // inset() shrinks the draw scope to the pill, so a gradient brush spans the pill, not the track.
+                    inset(left = left, top = 0f, right = size.width - left - cell, bottom = 0f) {
+                        drawOutline(innerShape.createOutline(size, layoutDirection, this), indicatorBrush)
                     }
-                    .background(indicatorBrush, innerShape),
-            )
-        }
+                },
+        )
         Row(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
             options.forEachIndexed { index, label ->
-                val selected = index == selectedIndex
-                val textColor by animateColorAsState(
-                    if (selected) selectedContentColor else unselectedContentColor,
-                    tween(200),
-                    label = "seg-text",
-                )
                 val icon = icons?.getOrNull(index)
-                val iconColor by animateColorAsState(
-                    if (selected) icon?.selectedTint ?: Color.Unspecified else icon?.unselectedTint ?: Color.Unspecified,
-                    tween(200),
-                    label = "seg-icon",
-                )
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .onGloballyPositioned { coords -> bounds[index] = coords.boundsInParent() }
+                        .semantics {
+                            role = Role.Tab
+                            selected = index == selectedIndex
+                        }
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -147,14 +127,37 @@ fun AnimatedSegmentedControl(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (icon != null) {
-                            Icon(icon.vector, null, tint = iconColor, modifier = Modifier.size(iconSize))
+                            SegmentGlyph(icon, index, position, iconSize)
                             Box(Modifier.width(5.dp))
                         }
-                        Text(text = label, style = textStyle, color = textColor, textAlign = TextAlign.Center)
+                        BasicText(
+                            text = label,
+                            style = textStyle.copy(textAlign = TextAlign.Center),
+                            // Colour follows the pill: read in the draw phase, so it never lags or recomposes.
+                            color = { lerp(unselectedContentColor, selectedContentColor, closeness(position.value, index)) },
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+/** 1 when the pill is exactly over segment [index], fading to 0 one segment away. */
+internal fun closeness(position: Float, index: Int): Float = (1f - abs(position - index)).coerceIn(0f, 1f)
+
+/** A segment's icon in its selected and unselected tints, cross-faded by how far the pill is from it. */
+@Composable
+private fun SegmentGlyph(icon: SegmentIcon, index: Int, position: Animatable<Float, *>, size: Dp) {
+    Box {
+        Icon(
+            icon.vector, null, tint = icon.unselectedTint,
+            modifier = Modifier.size(size).graphicsLayer { alpha = 1f - closeness(position.value, index) },
+        )
+        Icon(
+            icon.vector, null, tint = icon.selectedTint,
+            modifier = Modifier.size(size).graphicsLayer { alpha = closeness(position.value, index) },
+        )
     }
 }
 
