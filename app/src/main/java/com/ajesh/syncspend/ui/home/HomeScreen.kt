@@ -49,7 +49,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.TransactionsTab
-import com.ajesh.syncspend.ui.components.AnimatedAmountText
+import com.ajesh.syncspend.domain.state.SharedSelectionState
+import com.ajesh.syncspend.ui.components.CascadingAmountText
 import com.ajesh.syncspend.ui.components.DateSeparator
 import com.ajesh.syncspend.ui.components.FlowToggle
 import com.ajesh.syncspend.ui.components.PeriodPickerSheet
@@ -142,6 +143,7 @@ fun HomeScreen(
         ) {
         HeroCard(
             state,
+            selection = container.selectionState,
             onClick = {
                 // Straight to the Stats tab: Transactions slides its tab pill over once it appears.
                 container.selectionState.pendingTransactionsTab.value = TransactionsTab.ANALYTICS
@@ -209,7 +211,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun HeroCard(state: HomeUiState, selection: SharedSelectionState, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -237,9 +239,11 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
             )
             Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(state.currencySymbol, fontSize = 23.sp, fontWeight = FontWeight.Normal, color = Color.White)
-                AnimatedAmountText(
+                CascadingAmountText(
                     target = state.total,
                     ready = state.loaded,
+                    playOnce = !selection.launchCountUpDone,
+                    onStart = { selection.launchCountUpDone = true },
                     color = Color.White,
                     fontSize = 34.sp,
                     fontWeight = FontWeight.Medium,
