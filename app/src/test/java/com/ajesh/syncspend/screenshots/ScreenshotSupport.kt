@@ -49,3 +49,10 @@ fun ComposeContentTestRule.snapshot(
     val dir = File("build/screenshots").apply { mkdirs() }
     File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
 }
+
+/** Writes the current frame to app/build/screenshots/<name>.png (for tests that drive the clock themselves). */
+fun ComposeContentTestRule.captureFrame(name: String) {
+    val bitmap = onRoot().captureToImage().asAndroidBitmap()
+    val dir = File("build/screenshots").apply { mkdirs() }
+    File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+}

@@ -1,8 +1,7 @@
 package com.ajesh.syncspend.ui.components
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -10,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -18,17 +18,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -40,12 +47,12 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendPalette
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
-import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** The 4 tab destinations, in the order they render either side of the center Add button. */
 enum class NavDestination(val route: String) {
@@ -57,6 +64,7 @@ enum class NavDestination(val route: String) {
 
 private val NavPillDark = Color(0xFF050806)
 private val NavActiveTint = SyncSpendPalette.BrandGreen
+private val NavIndicatorFill = Color.White.copy(alpha = 0.10f) // neutral: the vibrant green is only ever the glyph
 private val NavInactiveTint = Color(0x7AFFFFFF) // rgba(255,255,255,.48)
 private val NavAddInactiveTint = Color(0x99FFFFFF) // rgba(255,255,255,.6)
 
@@ -91,6 +99,11 @@ internal fun navSlotOffset(slot: Int): Dp = (0 until slot).fold(0.dp) { acc, i -
  * including Add Entry — the design keeps the nav visible everywhere and only
  * true modals/sheets paint above it. The design's soft fill under the active
  * icon is a single indicator that slides between tabs.
+ *
+ * Feel: the highlighted slot is *optimistic* — it changes on the tap itself, not once the
+ * destination has composed — so the pill leaves on the tap frame while the new screen is
+ * still being built. Every animation here (pill slide, icon cross-fade, press scale) is read
+ * in the draw/graphics-layer phase, so none of them recompose anything per frame.
  */
 @Composable
 fun BottomFadeAndNav(
@@ -99,19 +112,28 @@ fun BottomFadeAndNav(
     onAddClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val routeSlot = navSlotFor(currentRoute)
+    var selected by remember { mutableIntStateOf(routeSlot) }
+    LaunchedEffect(routeSlot) { selected = routeSlot }
+    // If a tap never turned into a navigation, fall back to what the route says.
+    val latestRouteSlot by rememberUpdatedState(routeSlot)
+    LaunchedEffect(selected) {
+        if (selected != latestRouteSlot) {
+            delay(700)
+            selected = latestRouteSlot
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val scrEnd = SyncSpendTheme.colors.scrEnd
+        val fade = remember(scrEnd) { Brush.verticalGradient(colors = listOf(Color.Transparent, scrEnd.copy(alpha = 0.85f))) }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(SyncSpendChrome.bottomFadeHeight + navInset)
                 .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, SyncSpendTheme.colors.scrEnd.copy(alpha = 0.85f)),
-                        startY = 0f,
-                    ),
-                ),
+                .background(fade),
         )
         Box(
             modifier = Modifier
@@ -122,49 +144,105 @@ fun BottomFadeAndNav(
                 .background(NavPillDark, RoundedCornerShape(PillRadius))
                 .padding(horizontal = PillPadding, vertical = PillVerticalPadding),
         ) {
-            val slot = navSlotFor(currentRoute)
-            ActiveIndicator(slot)
+            ActiveIndicator(selected)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                NavIconButton(NavDestination.Home, SyncSpendIcons.Home, "Home", slot == 0) { onNavigate(NavDestination.Home) }
-                NavIconButton(NavDestination.Transactions, SyncSpendIcons.Swap, "Transactions", slot == 1) { onNavigate(NavDestination.Transactions) }
-                AddButton(active = slot == NAV_ADD_SLOT, onClick = onAddClick)
-                NavIconButton(NavDestination.Categories, SyncSpendIcons.Layers, "Categories", slot == 3) { onNavigate(NavDestination.Categories) }
-                NavIconButton(NavDestination.Settings, SyncSpendIcons.Cog, "Settings", slot == 4) { onNavigate(NavDestination.Settings) }
+                NavIconButton(SyncSpendIcons.Home, "Home", selected == 0) {
+                    selected = 0
+                    onNavigate(NavDestination.Home)
+                }
+                NavIconButton(SyncSpendIcons.Swap, "Transactions", selected == 1) {
+                    selected = 1
+                    onNavigate(NavDestination.Transactions)
+                }
+                AddButton(active = selected == NAV_ADD_SLOT) {
+                    selected = NAV_ADD_SLOT
+                    onAddClick()
+                }
+                NavIconButton(SyncSpendIcons.Layers, "Categories", selected == 3) {
+                    selected = 3
+                    onNavigate(NavDestination.Categories)
+                }
+                NavIconButton(SyncSpendIcons.Cog, "Settings", selected == 4) {
+                    selected = 4
+                    onNavigate(NavDestination.Settings)
+                }
             }
         }
     }
 }
 
 /**
- * One soft pill that glides behind the current tab and fades away when no tab
- * is current. Position and alpha are read in the layout/draw phases, so the
- * slide never recomposes the nav.
+ * One soft pill that glides behind the current tab and fades away when no tab is current.
+ * Position, width and alpha are [Animatable]s read only inside `drawBehind` on the indicator's
+ * own graphics layer: a slide neither recomposes nor re-lays-out anything, and it does not
+ * invalidate the shadowed pill it sits in.
  */
 @Composable
-private fun ActiveIndicator(slot: Int) {
+private fun BoxScope.ActiveIndicator(slot: Int) {
+    val density = LocalDensity.current
     // Keep the last real slot while hidden so the pill fades out in place instead of flying off.
     // A plain holder (not snapshot state): it only remembers the last tab for the fade-out.
-    val last = remember { IntArray(1) }
+    val last = remember { IntArray(1) { slot.coerceAtLeast(0) } }
     if (slot >= 0) last[0] = slot
-    val x by animateDpAsState(navSlotOffset(last[0]), tween(280, easing = FastOutSlowInEasing), label = "nav-x")
-    val width by animateDpAsState(navSlotWidth(last[0]), tween(280, easing = FastOutSlowInEasing), label = "nav-w")
-    val visible by animateFloatAsState(if (slot >= 0) 1f else 0f, tween(180), label = "nav-visible")
-    val density = LocalDensity.current
+    val x = remember { Animatable(with(density) { navSlotOffset(last[0]).toPx() }) }
+    val width = remember { Animatable(with(density) { navSlotWidth(last[0]).toPx() }) }
+    val alpha = remember { Animatable(if (slot >= 0) 1f else 0f) }
+
+    LaunchedEffect(slot) {
+        if (slot >= 0) {
+            val slide = tween<Float>(280, easing = FastOutSlowInEasing)
+            launch { x.animateTo(with(density) { navSlotOffset(slot).toPx() }, slide) }
+            launch { width.animateTo(with(density) { navSlotWidth(slot).toPx() }, slide) }
+            launch { alpha.animateTo(1f, tween(140)) }
+        } else {
+            alpha.animateTo(0f, tween(180))
+        }
+    }
+
     Box(
         modifier = Modifier
-            .offset { IntOffset(with(density) { x.toPx() }.roundToInt(), 0) }
-            .size(width = width, height = CellHeight)
-            .graphicsLayer { alpha = visible }
-            .padding(horizontal = 3.dp, vertical = 3.dp)
-            .background(Color.White.copy(alpha = 0.10f), RoundedCornerShape(PillRadius - PillVerticalPadding - 3.dp)),
+            .matchParentSize()
+            .graphicsLayer()
+            .drawBehind {
+                val a = alpha.value
+                if (a <= 0f) return@drawBehind
+                val inset = 3.dp.toPx()
+                val radius = (PillRadius - PillVerticalPadding - 3.dp).toPx()
+                drawRoundRect(
+                    color = NavIndicatorFill,
+                    topLeft = Offset(x.value + inset, inset),
+                    size = Size(width.value - 2 * inset, size.height - 2 * inset),
+                    cornerRadius = CornerRadius(radius, radius),
+                    alpha = a,
+                )
+            },
     )
 }
 
+/**
+ * A nav glyph in two tints stacked on each other and cross-faded through the layer alpha, so the
+ * active/inactive change costs no recomposition per frame.
+ */
 @Composable
-private fun NavIconButton(destination: NavDestination, icon: ImageVector, label: String, active: Boolean, onClick: () -> Unit) {
+private fun NavGlyph(icon: ImageVector, active: Boolean, inactiveTint: Color, size: Dp) {
+    val fraction = remember { Animatable(if (active) 1f else 0f) }
+    LaunchedEffect(active) { fraction.animateTo(if (active) 1f else 0f, tween(200)) }
+    Box(contentAlignment = Alignment.Center) {
+        Icon(
+            imageVector = icon, contentDescription = null, tint = inactiveTint,
+            modifier = Modifier.size(size).graphicsLayer { alpha = 1f - fraction.value },
+        )
+        Icon(
+            imageVector = icon, contentDescription = null, tint = NavActiveTint,
+            modifier = Modifier.size(size).graphicsLayer { alpha = fraction.value },
+        )
+    }
+}
+
+@Composable
+private fun NavIconButton(icon: ImageVector, label: String, active: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val tint by animateColorAsState(if (active) NavActiveTint else NavInactiveTint, tween(200), label = "nav-tint")
     val press by animateFloatAsState(if (pressed) 0.9f else 1f, tween(90), label = "nav-press")
     Box(
         modifier = Modifier
@@ -181,7 +259,7 @@ private fun NavIconButton(destination: NavDestination, icon: ImageVector, label:
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
+        NavGlyph(icon, active, NavInactiveTint, 24.dp)
     }
 }
 
@@ -189,7 +267,6 @@ private fun NavIconButton(destination: NavDestination, icon: ImageVector, label:
 private fun AddButton(active: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val tint by animateColorAsState(if (active) NavActiveTint else NavAddInactiveTint, tween(200), label = "nav-add-tint")
     val press by animateFloatAsState(if (pressed) 0.9f else 1f, tween(90), label = "nav-add-press")
     Box(
         modifier = Modifier
@@ -206,6 +283,6 @@ private fun AddButton(active: Boolean, onClick: () -> Unit) {
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(imageVector = SyncSpendIcons.Plus, contentDescription = null, tint = tint, modifier = Modifier.size(32.dp))
+        NavGlyph(SyncSpendIcons.Plus, active, NavAddInactiveTint, 32.dp)
     }
 }

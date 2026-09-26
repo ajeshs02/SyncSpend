@@ -1,10 +1,16 @@
 package com.ajesh.syncspend.screenshots
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import com.ajesh.syncspend.ui.components.BottomFadeAndNav
@@ -31,5 +37,28 @@ class NavBarScreenshotTest {
                 }
             }
         }
+    }
+
+    /** Tapping a tab moves the highlight at once (before any route change) and slides it across over ~280ms. */
+    @Test fun pillLeavesOnTheTapAndSlidesAcross() {
+        var route by mutableStateOf("home")
+        rule.mainClock.autoAdvance = false
+        rule.setContent {
+            com.ajesh.syncspend.ui.theme.SyncSpendTheme(themeMode = com.ajesh.syncspend.domain.model.ThemeMode.DARK) {
+                Box(Modifier.fillMaxWidth().height(90.dp).background(com.ajesh.syncspend.ui.theme.SyncSpendTheme.colors.screenGradient)) {
+                    // The route deliberately never changes: only the tap can move the pill.
+                    BottomFadeAndNav(currentRoute = route, onNavigate = {}, onAddClick = {})
+                }
+            }
+        }
+        rule.mainClock.advanceTimeBy(500)
+        rule.onNodeWithContentDescription("Settings").performClick()
+        rule.mainClock.advanceTimeBy(120)
+        rule.captureFrame("nav_pill_mid_slide")
+        rule.mainClock.advanceTimeBy(300)
+        rule.captureFrame("nav_pill_after_tap")
+        // The route never followed the tap, so after the grace period the pill returns to Home.
+        rule.mainClock.advanceTimeBy(1000)
+        rule.captureFrame("nav_pill_reverted")
     }
 }
