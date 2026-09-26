@@ -10,4 +10,12 @@ sealed class ScopePeriod {
     data class Month(val yearMonth: YearMonth) : ScopePeriod()
     data class Year(val year: Int) : ScopePeriod()
     data object AllTime : ScopePeriod()
+
+    /**
+     * The [months] calendar months ending with [endMonth] (e.g. "Last 3 months" while
+     * [endMonth] is the current month). Stepping the window just moves [endMonth].
+     */
+    data class LastMonths(val months: Int, val endMonth: YearMonth) : ScopePeriod() {
+        val startMonth: YearMonth get() = endMonth.minusMonths(months - 1L)
+    }
 }

@@ -251,6 +251,7 @@ fun SettingsScreen() {
         PeriodPickerSheet(
             currentScope = current,
             earliestTransactionDate = earliest,
+            showAllTime = true,
             onApply = { chosen ->
                 pendingExportScope = chosen
                 exportPickerOpen = false

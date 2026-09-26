@@ -1,6 +1,7 @@
 package com.ajesh.syncspend.util
 
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -27,6 +28,13 @@ object DateUtils {
         } else {
             "${shortDateYear(start)} – ${shortDateYear(end)}"
         }
+    }
+
+    /** "Jul – Sep 2026", or with both years when the span crosses one ("Nov 2025 – Jan 2026"). */
+    fun monthSpanLabel(first: YearMonth, last: YearMonth): String {
+        fun short(m: YearMonth) = m.month.getDisplayName(TextStyle.SHORT, Locale.US)
+        return if (first.year == last.year) "${short(first)} – ${short(last)} ${last.year}"
+        else "${short(first)} ${first.year} – ${short(last)} ${last.year}"
     }
 
     /** "12:05 AM"-style label from minute-of-day, matching the design's `fmt12`. */

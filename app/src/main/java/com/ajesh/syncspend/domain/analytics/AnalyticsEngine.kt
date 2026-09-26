@@ -14,6 +14,7 @@ import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.model.SmallPurchases
 import com.ajesh.syncspend.domain.model.StatsSummary
 import com.ajesh.syncspend.domain.model.WeekdayStat
+import com.ajesh.syncspend.util.DateUtils
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -33,6 +34,8 @@ object AnalyticsEngine {
     fun inScope(tx: TransactionEntity, scope: ScopePeriod): Boolean = when (scope) {
         is ScopePeriod.Month -> inMonth(tx.date, scope.yearMonth)
         is ScopePeriod.Year -> tx.date.year == scope.year
+        is ScopePeriod.LastMonths -> tx.date.year * 12 + tx.date.monthValue in
+            (scope.startMonth.year * 12 + scope.startMonth.monthValue)..(scope.endMonth.year * 12 + scope.endMonth.monthValue)
         ScopePeriod.AllTime -> true
     }
 
@@ -49,12 +52,36 @@ object AnalyticsEngine {
     fun previousScope(scope: ScopePeriod): ScopePeriod? = when (scope) {
         is ScopePeriod.Month -> ScopePeriod.Month(scope.yearMonth.minusMonths(1))
         is ScopePeriod.Year -> ScopePeriod.Year(scope.year - 1)
+        is ScopePeriod.LastMonths -> ScopePeriod.LastMonths(scope.months, scope.endMonth.minusMonths(scope.months.toLong()))
         ScopePeriod.AllTime -> null
     }
 
-    fun scopeLabel(scope: ScopePeriod): String = when (scope) {
+    /**
+     * Moves [scope] one step back (-1) or forward (+1): a month, a year, or the
+     * end of a last-N-months window. Returns null at the edges — nothing after
+     * [now], nothing before [lower] (the earliest month worth browsing).
+     */
+    fun stepScope(scope: ScopePeriod, delta: Int, now: YearMonth, lower: YearMonth): ScopePeriod? = when (scope) {
+        is ScopePeriod.Month -> scope.yearMonth.plusMonths(delta.toLong())
+            .takeIf { !it.isAfter(now) && !it.isBefore(lower) }?.let { ScopePeriod.Month(it) }
+        is ScopePeriod.Year -> (scope.year + delta)
+            .takeIf { it <= now.year && it >= lower.year }?.let { ScopePeriod.Year(it) }
+        is ScopePeriod.LastMonths -> ScopePeriod.LastMonths(scope.months, scope.endMonth.plusMonths(delta.toLong()))
+            .takeIf { !it.endMonth.isAfter(now) && !it.startMonth.isBefore(lower) }
+        ScopePeriod.AllTime -> null
+    }
+
+    /** "Last 3 months" while the window ends this month, otherwise its span ("Apr – Jun 2026"). */
+    fun scopeLabel(scope: ScopePeriod, now: YearMonth = YearMonth.now()): String = when (scope) {
+        is ScopePeriod.LastMonths ->
+            if (scope.endMonth == now) "Last ${scope.months} months" else DateUtils.monthSpanLabel(scope.startMonth, scope.endMonth)
+        else -> scopeLabelPlain(scope)
+    }
+
+    private fun scopeLabelPlain(scope: ScopePeriod): String = when (scope) {
         is ScopePeriod.Month -> "${scope.yearMonth.month.getDisplayName(TextStyle.FULL, Locale.US)} ${scope.yearMonth.year}"
         is ScopePeriod.Year -> scope.year.toString()
+        is ScopePeriod.LastMonths -> DateUtils.monthSpanLabel(scope.startMonth, scope.endMonth)
         ScopePeriod.AllTime -> "All time"
     }
 

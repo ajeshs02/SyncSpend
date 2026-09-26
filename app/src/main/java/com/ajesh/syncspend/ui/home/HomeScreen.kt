@@ -117,7 +117,7 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            NavArrow(SyncSpendIcons.Prev, "Previous month", viewModel::prevMonth)
+            NavArrow(SyncSpendIcons.Prev, "Previous period", state.canGoPrev, viewModel::prevPeriod)
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -133,7 +133,7 @@ fun HomeScreen(
                 }
                 Text(state.scopeSubLabel, fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 1.dp))
             }
-            NavArrow(SyncSpendIcons.Next, "Next month", viewModel::nextMonth)
+            NavArrow(SyncSpendIcons.Next, "Next period", state.canGoNext, viewModel::nextPeriod)
         }
 
         HeroCard(state, modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp))
@@ -188,6 +188,7 @@ fun HomeScreen(
         PeriodPickerSheet(
             currentScope = state.currentScope,
             earliestTransactionDate = state.earliestTransactionDate,
+            showAllTime = false,
             onApply = viewModel::applyScope,
             onDismiss = { periodPickerOpen = false },
         )
@@ -272,15 +273,17 @@ private fun HeroCard(state: HomeUiState, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun NavArrow(icon: ImageVector, description: String, onClick: () -> Unit) {
+private fun NavArrow(icon: ImageVector, description: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(32.dp)
             .background(SyncSpendTheme.colors.card, RoundedCornerShape(11.dp))
             .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(11.dp))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, description, tint = SyncSpendTheme.colors.ink, modifier = Modifier.size(17.dp)) }
+    ) {
+        Icon(icon, description, tint = SyncSpendTheme.colors.ink.copy(alpha = if (enabled) 1f else 0.3f), modifier = Modifier.size(17.dp))
+    }
 }
 
 @Composable

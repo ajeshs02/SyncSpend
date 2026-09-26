@@ -34,16 +34,18 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 /**
- * The design's month/year/all-time scope picker, with one deliberate change
- * from the design (user requirement): rather than letting the year nav page
- * back indefinitely, the browsable range defaults to the last 2 months
- * through the current month, extended further back only if an existing
- * transaction is older than that.
+ * The design's month/year scope picker, plus rolling "Last 3 / 6 / 12 months"
+ * windows. [showAllTime] adds the "All Time" option — Home leaves it out, the
+ * CSV export picker needs it. Rather than letting the year nav page back
+ * indefinitely, the browsable range defaults to the last 2 months through the
+ * current month, extended further back only if an existing transaction is
+ * older than that.
  */
 @Composable
 fun PeriodPickerSheet(
     currentScope: ScopePeriod,
     earliestTransactionDate: LocalDate?,
+    showAllTime: Boolean,
     onApply: (ScopePeriod) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -61,6 +63,7 @@ fun PeriodPickerSheet(
             when (currentScope) {
                 is ScopePeriod.Month -> currentScope.yearMonth.year
                 is ScopePeriod.Year -> currentScope.year
+                is ScopePeriod.LastMonths -> currentScope.endMonth.year
                 ScopePeriod.AllTime -> upperBound.year
             }.coerceIn(lowerBound.year, upperBound.year),
         )
@@ -87,21 +90,29 @@ fun PeriodPickerSheet(
             )
         }
 
-        Row(modifier = Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            PickerChip(
-                label = "Year $pickerYear",
-                selected = draft is ScopePeriod.Year && (draft as ScopePeriod.Year).year == pickerYear,
-                modifier = Modifier.weight(1f),
-                vertical = 10.dp,
-                radius = 12.dp,
-            ) { draft = ScopePeriod.Year(pickerYear) }
-            PickerChip(
-                label = "All Time",
-                selected = draft is ScopePeriod.AllTime,
-                modifier = Modifier.weight(1f),
-                vertical = 10.dp,
-                radius = 12.dp,
-            ) { draft = ScopePeriod.AllTime }
+        val options = buildList {
+            add(Triple("Year $pickerYear", draft is ScopePeriod.Year && (draft as ScopePeriod.Year).year == pickerYear) { draft = ScopePeriod.Year(pickerYear) })
+            listOf(3, 6, 12).forEach { n ->
+                add(Triple("Last $n months", (draft as? ScopePeriod.LastMonths)?.months == n) { draft = ScopePeriod.LastMonths(n, upperBound) })
+            }
+            if (showAllTime) add(Triple("All Time", draft is ScopePeriod.AllTime) { draft = ScopePeriod.AllTime })
+        }
+        Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            options.chunked(2).forEach { pair ->
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    pair.forEach { (label, selected, onPick) ->
+                        PickerChip(
+                            label = label,
+                            selected = selected,
+                            modifier = Modifier.weight(1f),
+                            vertical = 10.dp,
+                            radius = 12.dp,
+                            onClick = onPick,
+                        )
+                    }
+                    if (pair.size == 1) Box(Modifier.weight(1f))
+                }
+            }
         }
 
         Column(modifier = Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -45,6 +45,8 @@ data class HomeUiState(
     val subsCount: Int = 0,
     val remindersCount: Int = 0,
     val currentScope: ScopePeriod = ScopePeriod.Month(java.time.YearMonth.now()),
+    val canGoPrev: Boolean = false,
+    val canGoNext: Boolean = false,
     val earliestTransactionDate: java.time.LocalDate? = null,
     val entryCountLabel: String = "",
     val avgNote: String = "",
@@ -90,6 +92,8 @@ class HomeViewModel(
         val prevTotal = prevScope?.let { AnalyticsEngine.scopeFilter(flowTx, it).sumOf { t -> kotlin.math.abs(t.amount) } } ?: 0.0
         val trend = AnalyticsEngine.trendPercent(total, prevTotal)
         val cur = sources.prefs.currencyCode.symbol
+        val now = java.time.YearMonth.now()
+        val lower = lowerBrowseMonth(sources.tx.minOfOrNull { it.date }, now)
         val recent = scopeTx.sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt }).take(10)
         val categoriesById = sources.categories.associateBy { it.id }
 
@@ -109,6 +113,8 @@ class HomeViewModel(
             subsCount = sources.subs.count { it.active },
             remindersCount = sources.reminders.count { it.active },
             currentScope = scope,
+            canGoPrev = AnalyticsEngine.stepScope(scope, -1, now, lower) != null,
+            canGoNext = AnalyticsEngine.stepScope(scope, 1, now, lower) != null,
             earliestTransactionDate = sources.tx.minOfOrNull { it.date },
             entryCountLabel = "${scopeTx.size} entries",
             avgNote = "Averaging $cur${CurrencyFormatter.amount(if (scopeTx.isEmpty()) 0.0 else total / scopeTx.size)} per entry",
@@ -137,15 +143,20 @@ class HomeViewModel(
         selection.scope.value = newScope
     }
 
-    fun prevMonth() {
-        val current = selection.scope.value
-        if (current is ScopePeriod.Month) selection.scope.value = ScopePeriod.Month(current.yearMonth.minusMonths(1))
+    /** ‹ › step the current selection by one month / year / window, never past the present or before the earliest month worth browsing. */
+    fun prevPeriod() = step(-1)
+
+    fun nextPeriod() = step(1)
+
+    private fun step(delta: Int) {
+        val now = java.time.YearMonth.now()
+        val lower = lowerBrowseMonth(uiState.value.earliestTransactionDate, now)
+        AnalyticsEngine.stepScope(selection.scope.value, delta, now, lower)?.let { selection.scope.value = it }
     }
 
-    fun nextMonth() {
-        val current = selection.scope.value
-        if (current is ScopePeriod.Month) selection.scope.value = ScopePeriod.Month(current.yearMonth.plusMonths(1))
-    }
+    /** Same lower bound the calendars use: two months back, or the earliest entry if that is older. */
+    private fun lowerBrowseMonth(earliest: java.time.LocalDate?, now: java.time.YearMonth): java.time.YearMonth =
+        minOf(now.minusMonths(2), earliest?.let { java.time.YearMonth.from(it) } ?: now)
 
     fun setFlow(type: FlowType) {
         selection.flow.value = type
