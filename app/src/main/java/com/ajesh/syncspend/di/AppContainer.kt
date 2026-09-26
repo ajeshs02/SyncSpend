@@ -5,6 +5,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.room.Room
 import com.ajesh.syncspend.alarm.AlarmScheduler
 import com.ajesh.syncspend.alarm.AlarmSchedulerImpl
+import com.ajesh.syncspend.alarm.DailyReminderManager
 import com.ajesh.syncspend.data.datastore.PreferencesRepository
 import com.ajesh.syncspend.data.db.AppDatabase
 import com.ajesh.syncspend.data.repository.CategoryRepository
@@ -28,6 +29,7 @@ interface AppContainer {
     val preferencesRepository: PreferencesRepository
     val selectionState: SharedSelectionState
     val alarmScheduler: AlarmScheduler
+    val dailyReminderManager: DailyReminderManager
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -63,6 +65,10 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val alarmScheduler: AlarmScheduler by lazy {
         AlarmSchedulerImpl(context, subscriptionRepository, reminderRepository, preferencesRepository)
+    }
+
+    override val dailyReminderManager: DailyReminderManager by lazy {
+        DailyReminderManager(preferencesRepository, alarmScheduler)
     }
 }
 

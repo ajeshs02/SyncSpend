@@ -2,6 +2,7 @@ package com.ajesh.syncspend.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ajesh.syncspend.alarm.DailyReminderManager
 import com.ajesh.syncspend.data.datastore.PreferencesRepository
 import com.ajesh.syncspend.data.datastore.UserPreferences
 import com.ajesh.syncspend.data.repository.TransactionRepository
@@ -24,7 +25,7 @@ class SettingsViewModel(
     private val preferencesRepository: PreferencesRepository,
     private val transactionRepository: TransactionRepository,
     private val selection: SharedSelectionState,
-    private val onDailyReminderChanged: (enabled: Boolean, minuteOfDay: Int) -> Unit,
+    private val dailyReminder: DailyReminderManager,
 ) : ViewModel() {
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -45,17 +46,10 @@ class SettingsViewModel(
     }
 
     fun setReminderEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            val minute = uiState.value.prefs.dailyReminderMinuteOfDay
-            preferencesRepository.setDailyReminder(enabled, minute)
-            onDailyReminderChanged(enabled, minute)
-        }
+        viewModelScope.launch { dailyReminder.setEnabled(enabled) }
     }
 
     fun setReminderTime(minuteOfDay: Int) {
-        viewModelScope.launch {
-            preferencesRepository.setDailyReminder(true, minuteOfDay)
-            onDailyReminderChanged(true, minuteOfDay)
-        }
+        viewModelScope.launch { dailyReminder.setTime(minuteOfDay) }
     }
 }

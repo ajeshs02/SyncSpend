@@ -1,7 +1,11 @@
 package com.ajesh.syncspend.ui.subsreminders
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,7 +38,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.data.db.entity.ReminderEntity
 import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.di.LocalAppContainer
-import com.ajesh.syncspend.ui.components.ConfirmDialog
+import com.ajesh.syncspend.ui.components.DesignSwitch
 import com.ajesh.syncspend.ui.components.HeaderAddButton
 import com.ajesh.syncspend.ui.components.SquareIconButton
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
@@ -53,6 +58,7 @@ fun SubsRemindersScreen(listMode: String, onBack: () -> Unit) {
                     container.reminderRepository,
                     container.preferencesRepository,
                     container.alarmScheduler,
+                    container.dailyReminderManager,
                 )
             }
         },
@@ -64,10 +70,8 @@ fun SubsRemindersScreen(listMode: String, onBack: () -> Unit) {
 
     var showAddSub by remember { mutableStateOf(false) }
     var editingSub by remember { mutableStateOf<SubscriptionEntity?>(null) }
-    var deletingSub by remember { mutableStateOf<SubscriptionEntity?>(null) }
     var showAddReminder by remember { mutableStateOf(false) }
     var editingReminder by remember { mutableStateOf<ReminderEntity?>(null) }
-    var deletingReminder by remember { mutableStateOf<ReminderEntity?>(null) }
 
     val rows = if (isSubs) state.subscriptionRows else state.reminderRows
 
@@ -125,84 +129,122 @@ fun SubsRemindersScreen(listMode: String, onBack: () -> Unit) {
                 contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 12.dp, bottom = SyncSpendChrome.screenBottomContentPadding),
                 verticalArrangement = Arrangement.spacedBy(9.dp),
             ) {
-                items(rows, key = { it.id }) { row ->
-                    Row(
-                        modifier = Modifier
-                            .animateItem()
-                            .fillMaxWidth()
-                            .background(colors.card, RoundedCornerShape(16.dp))
-                            .border(1.dp, colors.line, RoundedCornerShape(16.dp))
-                            .padding(horizontal = 13.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(11.dp),
-                    ) {
-                        Box(
-                            modifier = Modifier.size(34.dp).background(colors.tile, RoundedCornerShape(11.dp)),
-                            contentAlignment = Alignment.Center,
-                        ) { Icon(SyncSpendIcons.iconFor(row.iconKey), null, tint = colors.ink, modifier = Modifier.size(16.dp)) }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(row.name, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1)
-                            Text(row.meta, fontSize = 10.5.sp, color = colors.sub, modifier = Modifier.padding(top = 2.dp), maxLines = 1)
-                        }
-                        SquareIconButton(SyncSpendIcons.Pencil, {
+                items(rows, key = { it.id }, contentType = { "row" }) { row ->
+                    ListRow(
+                        row = row,
+                        modifier = Modifier.animateItem(),
+                        onClick = {
                             if (isSubs) editingSub = state.subscriptions.find { it.id == row.id }
-                            else editingReminder = state.reminders.find { it.id == row.id }
-                        }, size = 30.dp, iconSize = 15.dp)
-                        SquareIconButton(SyncSpendIcons.Trash, {
-                            if (isSubs) deletingSub = state.subscriptions.find { it.id == row.id }
-                            else deletingReminder = state.reminders.find { it.id == row.id }
-                        }, size = 30.dp, iconSize = 15.dp)
-                    }
+                            else if (!row.builtIn) editingReminder = state.reminders.find { it.id == row.id }
+                        },
+                        onToggle = { on ->
+                            when {
+                                row.builtIn -> if (on) gate { viewModel.setDailyEnabled(true) } else viewModel.setDailyEnabled(false)
+                                isSubs -> state.subscriptions.find { it.id == row.id }?.let { sub ->
+                                    if (on) gate(onDenied = { viewModel.setSubscriptionActive(sub, true) }) { viewModel.setSubscriptionActive(sub, true) }
+                                    else viewModel.setSubscriptionActive(sub, false)
+                                }
+                                else -> state.reminders.find { it.id == row.id }?.let { reminder ->
+                                    if (on) {
+                                        gate(onDenied = { if (!viewModel.setReminderActive(reminder, true)) editingReminder = reminder }) {
+                                            // A one-time reminder that already passed can't just be switched on: ask for a new date.
+                                            if (!viewModel.setReminderActive(reminder, true)) editingReminder = reminder
+                                        }
+                                    } else viewModel.setReminderActive(reminder, false)
+                                }
+                            }
+                        },
+                    )
                 }
             }
         }
     }
 
-    if (showAddSub || editingSub != null) {
-        val editing = editingSub
+    if (showAddSub) {
         SubscriptionDialog(
-            initial = editing,
             currencySymbol = state.currencySymbol,
             onSave = { name, icon, amount, cycle, due ->
                 showAddSub = false
-                editingSub = null
-                gate(onDenied = { viewModel.saveSubscription(editing, name, icon, amount, cycle, due) }) {
-                    viewModel.saveSubscription(editing, name, icon, amount, cycle, due)
+                gate(onDenied = { viewModel.saveSubscription(null, name, icon, amount, cycle, due) }) {
+                    viewModel.saveSubscription(null, name, icon, amount, cycle, due)
                 }
             },
-            onDismiss = { showAddSub = false; editingSub = null },
+            onDismiss = { showAddSub = false },
         )
     }
-    if (showAddReminder || editingReminder != null) {
-        val editing = editingReminder
+    editingSub?.let { sub ->
+        SubscriptionEditSheet(
+            initial = sub,
+            currencySymbol = state.currencySymbol,
+            onSave = { name, icon, amount, cycle, due ->
+                gate(onDenied = { viewModel.saveSubscription(sub, name, icon, amount, cycle, due) }) {
+                    viewModel.saveSubscription(sub, name, icon, amount, cycle, due)
+                }
+            },
+            onDelete = { viewModel.deleteSubscription(sub) },
+            onDismiss = { editingSub = null },
+        )
+    }
+    if (showAddReminder) {
         ReminderDialog(
-            initial = editing,
             onSave = { label, icon, schedule, date, minute ->
                 showAddReminder = false
-                editingReminder = null
-                gate(onDenied = { viewModel.saveReminder(editing, label, icon, schedule, date, minute) }) {
-                    viewModel.saveReminder(editing, label, icon, schedule, date, minute)
+                gate(onDenied = { viewModel.saveReminder(null, label, icon, schedule, date, minute) }) {
+                    viewModel.saveReminder(null, label, icon, schedule, date, minute)
                 }
             },
-            onDismiss = { showAddReminder = false; editingReminder = null },
+            onDismiss = { showAddReminder = false },
         )
     }
-    deletingSub?.let { sub ->
-        ConfirmDialog(
-            title = "Delete subscription?",
-            body = "“${sub.name}” will stop appearing on your list and its reminder is cancelled.",
-            cta = "Delete",
-            onConfirm = { viewModel.deleteSubscription(sub); deletingSub = null },
-            onDismiss = { deletingSub = null },
+    editingReminder?.let { reminder ->
+        ReminderEditSheet(
+            initial = reminder,
+            onSave = { label, icon, schedule, date, minute ->
+                gate(onDenied = { viewModel.saveReminder(reminder, label, icon, schedule, date, minute) }) {
+                    viewModel.saveReminder(reminder, label, icon, schedule, date, minute)
+                }
+            },
+            onDelete = { viewModel.deleteReminder(reminder) },
+            onDismiss = { editingReminder = null },
         )
     }
-    deletingReminder?.let { r ->
-        ConfirmDialog(
-            title = "Delete reminder?",
-            body = "“${r.label}” will stop appearing on your list and its notification is cancelled.",
-            cta = "Delete",
-            onConfirm = { viewModel.deleteReminder(r); deletingReminder = null },
-            onDismiss = { deletingReminder = null },
-        )
+}
+
+/** Icon · name/meta · on/off switch. Tap the row to edit; the switch mutes or resumes its notification. */
+@Composable
+private fun ListRow(row: ListRowUi, onClick: () -> Unit, onToggle: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    val colors = SyncSpendTheme.colors
+    val dim by animateFloatAsState(if (row.active) 1f else 0.5f, tween(200), label = "row-dim")
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(colors.card, RoundedCornerShape(16.dp))
+            .border(1.dp, colors.line, RoundedCornerShape(16.dp))
+            .clickable(enabled = !row.builtIn, interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+            .padding(horizontal = 13.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
+    ) {
+        Box(
+            modifier = Modifier.size(34.dp).graphicsLayer { alpha = dim }.background(colors.tile, RoundedCornerShape(11.dp)),
+            contentAlignment = Alignment.Center,
+        ) { Icon(SyncSpendIcons.iconFor(row.iconKey), null, tint = colors.ink, modifier = Modifier.size(16.dp)) }
+        Column(modifier = Modifier.weight(1f).graphicsLayer { alpha = dim }) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(row.name, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
+                if (row.builtIn) {
+                    Text(
+                        "Built-in",
+                        fontSize = 9.sp,
+                        color = colors.sub,
+                        modifier = Modifier
+                            .background(colors.tile, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                }
+            }
+            Text(row.meta, fontSize = 10.5.sp, color = colors.sub, modifier = Modifier.padding(top = 2.dp), maxLines = 2)
+        }
+        DesignSwitch(checked = row.active, onCheckedChange = onToggle)
     }
 }

@@ -69,4 +69,26 @@ object AlarmTimes {
         }
         return millis
     }
+
+    /** The due date to show once a paused subscription is switched back on: the first one after [now]. */
+    fun nextSubscriptionDate(due: LocalDate, cycle: BillingCycle, now: Long = System.currentTimeMillis()): LocalDate {
+        var date = due
+        var guard = 0
+        while (toMillis(date, SUBSCRIPTION_MINUTE_OF_DAY) <= now && guard++ < 2000) date = advance(date, cycle)
+        return date
+    }
+
+    /** Same for a reminder; null for a ONCE reminder whose moment has passed (it needs a new date). */
+    fun nextReminderDate(
+        start: LocalDate,
+        schedule: ReminderSchedule,
+        minuteOfDay: Int,
+        now: Long = System.currentTimeMillis(),
+    ): LocalDate? {
+        var date = start
+        if (schedule == ReminderSchedule.ONCE) return if (toMillis(date, minuteOfDay) > now) date else null
+        var guard = 0
+        while (toMillis(date, minuteOfDay) <= now && guard++ < 5000) date = advance(date, schedule)
+        return date
+    }
 }

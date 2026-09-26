@@ -41,4 +41,32 @@ class AlarmTimesTest {
             AlarmTimes.nextReminder(LocalDate.of(2026, 9, 7), ReminderSchedule.WEEKLY, 9 * 60, now),
         )
     }
+
+    @Test fun resumedSubscriptionShowsItsNextFutureDueDate() {
+        assertEquals(
+            LocalDate.of(2026, 9, 22),
+            AlarmTimes.nextSubscriptionDate(LocalDate.of(2026, 6, 22), BillingCycle.MONTHLY, now),
+        )
+        // Already in the future: unchanged.
+        assertEquals(
+            LocalDate.of(2026, 10, 1),
+            AlarmTimes.nextSubscriptionDate(LocalDate.of(2026, 10, 1), BillingCycle.MONTHLY, now),
+        )
+    }
+
+    @Test fun resumedReminderRollsForwardOrAsksForANewDate() {
+        assertEquals(
+            LocalDate.of(2026, 9, 15),
+            AlarmTimes.nextReminderDate(LocalDate.of(2026, 9, 1), ReminderSchedule.DAILY, 9 * 60, now),
+        )
+        assertEquals(
+            LocalDate.of(2026, 9, 14),
+            AlarmTimes.nextReminderDate(LocalDate.of(2026, 9, 14), ReminderSchedule.DAILY, 20 * 60, now),
+        )
+        assertNull(AlarmTimes.nextReminderDate(LocalDate.of(2026, 9, 1), ReminderSchedule.ONCE, 9 * 60, now))
+        assertEquals(
+            LocalDate.of(2026, 9, 20),
+            AlarmTimes.nextReminderDate(LocalDate.of(2026, 9, 20), ReminderSchedule.ONCE, 9 * 60, now),
+        )
+    }
 }

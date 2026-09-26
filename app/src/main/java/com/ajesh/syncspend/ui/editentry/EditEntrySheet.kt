@@ -43,6 +43,7 @@ import com.ajesh.syncspend.ui.components.DesignTextField
 import com.ajesh.syncspend.ui.components.FlowToggle
 import com.ajesh.syncspend.ui.components.NameIconDialog
 import com.ajesh.syncspend.ui.components.PrimaryGradientButton
+import com.ajesh.syncspend.ui.components.SheetDeleteButton
 import com.ajesh.syncspend.ui.components.SheetHeader
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
@@ -197,19 +198,7 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
         }
 
         Row(modifier = Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            Row(
-                modifier = Modifier
-                    .height(48.dp)
-                    .background(colors.card, RoundedCornerShape(16.dp))
-                    .border(1.dp, colors.line, RoundedCornerShape(16.dp))
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { showDelete = true }
-                    .padding(horizontal = 18.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
-            ) {
-                Icon(SyncSpendIcons.Trash, null, tint = colors.neg, modifier = Modifier.size(15.dp))
-                Text("Delete", style = MaterialTheme.typography.labelLarge, color = colors.neg)
-            }
+            SheetDeleteButton(onClick = { showDelete = true })
             PrimaryGradientButton(
                 text = "Save Changes",
                 enabled = canSave,

@@ -75,10 +75,7 @@ fun SettingsScreen() {
                     container.preferencesRepository,
                     container.transactionRepository,
                     container.selectionState,
-                    onDailyReminderChanged = { enabled, minute ->
-                        if (enabled) container.alarmScheduler.scheduleDailyReminder(minute)
-                        else container.alarmScheduler.cancelDailyReminder()
-                    },
+                    container.dailyReminderManager,
                 )
             }
         },
