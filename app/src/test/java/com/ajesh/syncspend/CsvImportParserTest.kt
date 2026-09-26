@@ -48,7 +48,7 @@ class CsvImportParserTest {
     }
 
     @Test fun columnOrderAndCaseDoNotMatter() {
-        val out = CsvImportParser.parse("﻿ AMOUNT ,note,TYPE,Date,Category\n99.5,tea,expense,2026-01-02,Snacks\n")
+        val out = CsvImportParser.parse("\uFEFF AMOUNT ,note,TYPE,Date,Category\n99.5,tea,expense,2026-01-02,Snacks\n")
         assertNull(out.headerError)
         val r = out.rows.single()
         assertEquals(99.5, r.amount, 0.0)

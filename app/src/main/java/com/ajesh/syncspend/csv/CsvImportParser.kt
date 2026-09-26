@@ -55,16 +55,16 @@ object CsvImportParser {
     fun decode(bytes: ByteArray): String = when {
         bytes.size >= 2 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xFE.toByte() -> String(bytes, 2, bytes.size - 2, Charsets.UTF_16LE)
         bytes.size >= 2 && bytes[0] == 0xFE.toByte() && bytes[1] == 0xFF.toByte() -> String(bytes, 2, bytes.size - 2, Charsets.UTF_16BE)
-        else -> String(bytes, Charsets.UTF_8).removePrefix("﻿")
+        else -> String(bytes, Charsets.UTF_8).removePrefix("\uFEFF")
     }
 
     fun parse(text: String): ParseOutcome {
-        val clean = text.removePrefix("﻿")
+        val clean = text.removePrefix("\uFEFF")
         val delimiter = sniffDelimiter(clean)
         val table = CsvFormat.parse(clean, delimiter)
         if (table.isEmpty()) return ParseOutcome(emptyList(), 0, emptyList(), headerError = "The file is empty.")
 
-        val header = table.first().map { it.trim().lowercase().removePrefix("﻿") }
+        val header = table.first().map { it.trim().lowercase().removePrefix("\uFEFF") }
         fun col(aliases: Set<String>) = header.indexOfFirst { it in aliases }
         val dateCol = col(dateAliases)
         val typeCol = col(typeAliases)
