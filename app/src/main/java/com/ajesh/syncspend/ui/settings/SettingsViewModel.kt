@@ -10,9 +10,11 @@ import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
 import com.ajesh.syncspend.domain.model.CurrencyCode
 import com.ajesh.syncspend.domain.model.ThemeMode
 import com.ajesh.syncspend.domain.state.SharedSelectionState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -35,7 +37,8 @@ class SettingsViewModel(
     ) { prefs, tx, scope ->
         val inScope = AnalyticsEngine.scopeFilter(tx, scope).size
         SettingsUiState(prefs, "$inScope entries · ${AnalyticsEngine.scopeLabel(scope)} selected")
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     fun setTheme(mode: ThemeMode) {
         viewModelScope.launch { preferencesRepository.setThemeMode(mode) }

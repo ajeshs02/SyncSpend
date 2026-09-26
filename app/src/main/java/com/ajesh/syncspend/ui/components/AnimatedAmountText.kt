@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -48,7 +49,8 @@ fun AnimatedAmountText(
     val shown = from.doubleValue + (to.doubleValue - from.doubleValue) * progress.value
     Text(
         text = CurrencyFormatter.amount(shown),
-        modifier = modifier,
+        // Its own layer: the per-frame text change re-records just this layer, not the whole screen.
+        modifier = modifier.graphicsLayer(),
         color = color,
         fontSize = fontSize,
         fontWeight = fontWeight,

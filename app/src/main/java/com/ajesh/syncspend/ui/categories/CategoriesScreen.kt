@@ -101,7 +101,7 @@ fun CategoriesScreen() {
                 contentPadding = PaddingValues(start = 22.dp, end = 22.dp, bottom = SyncSpendChrome.screenBottomContentPadding),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                itemsIndexed(state.categories, key = { _, c -> c.id }) { index, cat ->
+                itemsIndexed(state.categories, key = { _, c -> c.id }, contentType = { _, _ -> "category" }) { index, cat ->
                     CategoryRow(
                         category = cat,
                         canMoveUp = index > 0,

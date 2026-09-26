@@ -2,10 +2,12 @@ package com.ajesh.syncspend
 
 import android.graphics.Color as AndroidColor
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -28,13 +30,23 @@ import com.ajesh.syncspend.ui.components.BottomFadeAndNav
 import com.ajesh.syncspend.ui.editentry.EditEntryHost
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
+private const val SPLASH_MAX_MILLIS = 1_500L
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Must run before super.onCreate. The splash stays up until the shared data streams are
+        // loaded (normally well under 200ms; capped so a slow disk can never trap the user on it),
+        // so the first frame is complete and already in the saved theme.
+        val splash = installSplashScreen()
+        val startedAt = SystemClock.uptimeMillis()
+        val container = (application as SyncSpendApp).container
+        splash.setKeepOnScreenCondition { !container.ready.value && SystemClock.uptimeMillis() - startedAt < SPLASH_MAX_MILLIS }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val container = (application as SyncSpendApp).container
         setContent {
-            val prefs by container.preferencesRepository.preferences.collectAsStateWithLifecycle(UserPreferences())
+            val prefs by container.preferencesRepository.preferences.collectAsStateWithLifecycle(
+                container.preferencesRepository.current() ?: UserPreferences(),
+            )
             val dark = when (prefs.themeMode) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true

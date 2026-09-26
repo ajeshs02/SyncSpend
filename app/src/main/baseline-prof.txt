@@ -1,0 +1,18 @@
+# SyncSpend baseline profile (hand-authored wildcard rules).
+#
+# Tells ART to ahead-of-time compile the app's own code and the libraries it
+# leans on at start-up (navigation, Room, DataStore, coroutines), instead of
+# interpreting it on the first launches. Compose/lifecycle ship their own profiles,
+# which AGP merges. Flags: H = hot, S = start-up, P = post-start-up.
+#
+# A device-measured profile (Macrobenchmark) would be more precise; these rules are
+# the no-device approximation and only ever add compilation, never change behaviour.
+
+HSPLcom/ajesh/syncspend/**;->**(**)**
+Lcom/ajesh/syncspend/**;
+
+HSPLandroidx/navigation/**;->**(**)**
+HSPLandroidx/room/**;->**(**)**
+HSPLandroidx/datastore/**;->**(**)**
+HSPLandroidx/core/splashscreen/**;->**(**)**
+HSPLkotlinx/coroutines/**;->**(**)**

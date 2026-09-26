@@ -13,6 +13,14 @@ import com.ajesh.syncspend.data.repository.ReminderRepository
 import com.ajesh.syncspend.data.repository.SubscriptionRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
 import com.ajesh.syncspend.domain.state.SharedSelectionState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 
 /**
  * Manual DI root (no Hilt/Dagger/Koin). [com.ajesh.syncspend.SyncSpendApp] owns
@@ -30,9 +38,28 @@ interface AppContainer {
     val selectionState: SharedSelectionState
     val alarmScheduler: AlarmScheduler
     val dailyReminderManager: DailyReminderManager
+
+    /** App-lifetime scope for the shared, always-warm data streams. */
+    val appScope: CoroutineScope
+
+    /** True once transactions, categories and preferences are loaded — the splash screen waits for it. */
+    val ready: StateFlow<Boolean>
+
+    /** Loads the shared streams so the first screen can draw complete data. */
+    suspend fun warmUp()
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
+
+    override val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private val _ready = MutableStateFlow(false)
+    override val ready: StateFlow<Boolean> = _ready.asStateFlow()
+
+    override suspend fun warmUp() {
+        combine(transactionRepository.getAll(), categoryRepository.getAll(), preferencesRepository.preferences) { _, _, _ -> }.first()
+        _ready.value = true
+    }
 
     override val database: AppDatabase by lazy {
         // Deliberately no destructive fallback: the database holds real data now.
@@ -42,11 +69,11 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     }
 
     override val categoryRepository: CategoryRepository by lazy {
-        CategoryRepository(database.categoryDao())
+        CategoryRepository(database.categoryDao(), appScope)
     }
 
     override val transactionRepository: TransactionRepository by lazy {
-        TransactionRepository(database.transactionDao())
+        TransactionRepository(database.transactionDao(), appScope)
     }
 
     override val subscriptionRepository: SubscriptionRepository by lazy {
@@ -58,7 +85,7 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     }
 
     override val preferencesRepository: PreferencesRepository by lazy {
-        PreferencesRepository(context)
+        PreferencesRepository(context, appScope)
     }
 
     override val selectionState: SharedSelectionState by lazy { SharedSelectionState() }

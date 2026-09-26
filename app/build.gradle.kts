@@ -64,6 +64,13 @@ composeCompiler {
     stabilityConfigurationFiles.add(
         rootProject.layout.projectDirectory.file("compose_stability.conf"),
     )
+
+    // `./gradlew assembleRelease -PcomposeReports=true` writes skippability/stability
+    // reports to app/build/compose_compiler for auditing hot composables.
+    if (providers.gradleProperty("composeReports").orNull == "true") {
+        reportsDestination.set(layout.buildDirectory.dir("compose_compiler"))
+        metricsDestination.set(layout.buildDirectory.dir("compose_compiler"))
+    }
 }
 
 dependencies {
@@ -81,6 +88,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
     implementation("androidx.navigation:navigation-compose:2.10.1")
+
+    // Platform splash on every API level, held on screen until the first real data is ready
+    // so the first frame is complete (and in the saved theme) instead of empty and re-themed.
+    implementation("androidx.core:core-splashscreen:1.2.0")
 
     // Installs Compose's bundled baseline profiles so ART can AOT-compile hot
     // composition paths instead of interpreting them on first use.

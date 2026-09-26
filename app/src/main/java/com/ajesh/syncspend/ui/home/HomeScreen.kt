@@ -34,7 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -201,19 +201,16 @@ private fun HeroCard(state: HomeUiState, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .clip(SyncSpendCorners.hero)
             .background(SyncSpendTheme.colors.darkGradient)
-            .drawBehind {
-                // The design's soft green glow tucked into the top-right corner.
+            .drawWithCache {
+                // The design's soft green glow tucked into the top-right corner (brush built once per size, not per draw).
                 val r = 100.dp.toPx()
                 val center = Offset(size.width - 50.dp.toPx(), 30.dp.toPx())
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colorStops = arrayOf(0f to Color(0x615FBF7D), 0.7f to Color.Transparent),
-                        center = center,
-                        radius = r,
-                    ),
-                    radius = r,
+                val glow = Brush.radialGradient(
+                    colorStops = arrayOf(0f to Color(0x615FBF7D), 0.7f to Color.Transparent),
                     center = center,
+                    radius = r,
                 )
+                onDrawBehind { drawCircle(brush = glow, radius = r, center = center) }
             }
             .padding(20.dp),
     ) {

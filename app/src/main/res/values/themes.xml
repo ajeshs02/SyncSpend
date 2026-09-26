@@ -10,6 +10,14 @@
         <item name="android:windowBackground">@color/window_background</item>
     </style>
 
+    <!-- Cold-start splash (androidx core-splashscreen): the day/night window colour with the
+         app glyph, shown until the first real data is loaded, then the normal app theme. -->
+    <style name="Theme.SyncSpend.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/window_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.SyncSpend</item>
+    </style>
+
     <!-- The widget's quick-add overlay. Translucent so the home screen stays
          visible behind the panel; window animations are cleared because the
          panel animates itself (a system transition on top reads as a stutter). -->

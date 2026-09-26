@@ -183,8 +183,10 @@ fun FlowToggle(
 @Composable
 fun flowSegmentIcons(): List<SegmentIcon> {
     val c = SyncSpendTheme.colors
-    return listOf(
-        SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.ArrowOut, c.expenseOnSelected, c.neg),
-        SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.ArrowIn, Color(0xFF8ECF63), Color(0xFF8ECF63)),
-    )
+    return remember(c) {
+        listOf(
+            SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.ArrowOut, c.expenseOnSelected, c.neg),
+            SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.ArrowIn, Color(0xFF8ECF63), Color(0xFF8ECF63)),
+        )
+    }
 }

@@ -8,12 +8,15 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.ajesh.syncspend.domain.model.CurrencyCode
 import com.ajesh.syncspend.domain.model.ThemeMode
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 
 val Context.dataStore by preferencesDataStore(name = "syncspend_prefs")
 
-class PreferencesRepository(private val context: Context) {
+class PreferencesRepository(private val context: Context, scope: CoroutineScope) {
 
     private object Keys {
         val THEME_MODE = stringPreferencesKey("theme_mode")
@@ -23,7 +26,11 @@ class PreferencesRepository(private val context: Context) {
         val NOTIF_PERMISSION_REQUESTED = booleanPreferencesKey("notif_permission_requested")
     }
 
-    val preferences: Flow<UserPreferences> = context.dataStore.data.map { prefs ->
+    /**
+     * Replays the latest value, so the first frame can already use the saved
+     * theme (see [current]) instead of flashing the default and switching.
+     */
+    val preferences: SharedFlow<UserPreferences> = context.dataStore.data.map { prefs ->
         UserPreferences(
             themeMode = prefs[Keys.THEME_MODE]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
                 ?: ThemeMode.SYSTEM,
@@ -33,7 +40,10 @@ class PreferencesRepository(private val context: Context) {
             dailyReminderMinuteOfDay = prefs[Keys.DAILY_REMINDER_MINUTE_OF_DAY] ?: (20 * 60),
             notifPermissionRequested = prefs[Keys.NOTIF_PERMISSION_REQUESTED] ?: false,
         )
-    }
+    }.shareIn(scope, SharingStarted.Eagerly, replay = 1)
+
+    /** The latest loaded preferences, or null while DataStore is still reading. */
+    fun current(): UserPreferences? = preferences.replayCache.firstOrNull()
 
     suspend fun setThemeMode(mode: ThemeMode) {
         context.dataStore.edit { it[Keys.THEME_MODE] = mode.name }

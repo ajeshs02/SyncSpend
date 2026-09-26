@@ -97,7 +97,9 @@ class QuickAddActivity : ComponentActivity() {
         enableEdgeToEdge()
         val container = (application as SyncSpendApp).container
         setContent {
-            val prefs by container.preferencesRepository.preferences.collectAsStateWithLifecycle(UserPreferences())
+            val prefs by container.preferencesRepository.preferences.collectAsStateWithLifecycle(
+                container.preferencesRepository.current() ?: UserPreferences(),
+            )
             val dark = when (prefs.themeMode) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
