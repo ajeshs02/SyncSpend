@@ -19,6 +19,7 @@ import com.ajesh.syncspend.navigation.SyncSpendNavHost
 import com.ajesh.syncspend.navigation.navigateToTab
 import com.ajesh.syncspend.ui.components.BottomFadeAndNav
 import com.ajesh.syncspend.ui.components.NavDestination
+import com.ajesh.syncspend.ui.editentry.EditEntryHost
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
 class MainActivity : ComponentActivity() {
@@ -61,5 +62,6 @@ private fun SyncSpendAppRoot() {
                 }
             },
         )
+        EditEntryHost()
     }
 }

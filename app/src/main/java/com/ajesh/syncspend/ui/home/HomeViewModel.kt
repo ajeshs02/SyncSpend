@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ajesh.syncspend.data.datastore.PreferencesRepository
 import com.ajesh.syncspend.data.datastore.UserPreferences
+import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.ReminderEntity
 import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
+import com.ajesh.syncspend.data.repository.CategoryRepository
 import com.ajesh.syncspend.data.repository.ReminderRepository
 import com.ajesh.syncspend.data.repository.SubscriptionRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
@@ -14,7 +16,9 @@ import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.state.SharedSelectionState
+import com.ajesh.syncspend.ui.transactions.TxRow
 import com.ajesh.syncspend.util.CurrencyFormatter
+import com.ajesh.syncspend.util.DateUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +41,9 @@ data class HomeUiState(
     val remindersCount: Int = 0,
     val currentScope: ScopePeriod = ScopePeriod.Month(java.time.YearMonth.now()),
     val earliestTransactionDate: java.time.LocalDate? = null,
+    val entryCountLabel: String = "",
+    val avgNote: String = "",
+    val recent: List<TxRow> = emptyList(),
 )
 
 class HomeViewModel(
@@ -44,6 +51,7 @@ class HomeViewModel(
     private val subscriptionRepository: SubscriptionRepository,
     private val reminderRepository: ReminderRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val categoryRepository: CategoryRepository,
     private val selection: SharedSelectionState,
 ) : ViewModel() {
 
@@ -52,6 +60,7 @@ class HomeViewModel(
         val subs: List<SubscriptionEntity>,
         val reminders: List<ReminderEntity>,
         val prefs: UserPreferences,
+        val categories: List<CategoryEntity>,
     )
 
     private val sources = combine(
@@ -59,7 +68,8 @@ class HomeViewModel(
         subscriptionRepository.getAll(),
         reminderRepository.getAll(),
         preferencesRepository.preferences,
-    ) { tx, subs, reminders, prefs -> Sources(tx, subs, reminders, prefs) }
+        categoryRepository.getAll(),
+    ) { tx, subs, reminders, prefs, cats -> Sources(tx, subs, reminders, prefs, cats) }
 
     val uiState: StateFlow<HomeUiState> = combine(sources, selection.scope, selection.flow, ::compute)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
@@ -72,6 +82,8 @@ class HomeViewModel(
         val prevScope = AnalyticsEngine.previousScope(scope)
         val prevTotal = prevScope?.let { AnalyticsEngine.scopeFilter(flowTx, it).sumOf { t -> kotlin.math.abs(t.amount) } } ?: 0.0
         val trend = AnalyticsEngine.trendPercent(total, prevTotal)
+        val cur = sources.prefs.currencyCode.symbol
+        val sorted = scopeTx.sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
 
         return HomeUiState(
             flow = flowType,
@@ -89,6 +101,20 @@ class HomeViewModel(
             remindersCount = sources.reminders.count { it.active },
             currentScope = scope,
             earliestTransactionDate = sources.tx.minOfOrNull { it.date },
+            entryCountLabel = "${scopeTx.size} entries",
+            avgNote = "Averaging $cur${CurrencyFormatter.amount(if (scopeTx.isEmpty()) 0.0 else total / scopeTx.size)} per entry",
+            recent = sorted.take(10).map { t ->
+                val category = sources.categories.find { it.id == t.categoryId }
+                TxRow(
+                    id = t.id,
+                    name = t.description,
+                    categoryLabel = category?.name ?: "Deleted category",
+                    amountFormatted = cur + CurrencyFormatter.amount(t.amount),
+                    isPositive = t.amount > 0,
+                    dayLabel = DateUtils.shortDate(t.date),
+                    iconKey = category?.iconKey ?: "receipt",
+                )
+            },
         )
     }
 

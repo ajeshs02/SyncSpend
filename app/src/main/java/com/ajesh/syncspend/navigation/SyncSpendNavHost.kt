@@ -23,7 +23,11 @@ import com.ajesh.syncspend.ui.transactions.TransactionsScreen
 fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
     NavHost(navController = navController, startDestination = Routes.HOME, modifier = modifier) {
         composable(Routes.HOME) {
-            HomeScreen(onViewAllTransactions = { navController.navigateToTab(Routes.TRANSACTIONS) })
+            HomeScreen(
+                onViewAllTransactions = { navController.navigateToTab(Routes.TRANSACTIONS) },
+                onOpenSubscriptions = { /* wired with the Subscriptions screen in Phase 8b */ },
+                onOpenReminders = { /* wired with the Reminders screen in Phase 8b */ },
+            )
         }
         composable(Routes.TRANSACTIONS) { TransactionsScreen() }
         composable(Routes.ADD_ENTRY) {

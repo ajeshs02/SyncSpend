@@ -128,7 +128,7 @@ fun TransactionsScreen() {
         when (state.tab) {
             TransactionsTab.ENTRIES -> EntriesTab(
                 groups = state.dayGroups,
-                onRowClick = { /* Edit Entry sheet lands in Phase 5 */ },
+                onRowClick = { container.selectionState.editingTransactionId.value = it },
                 modifier = Modifier.fillMaxWidth(),
             )
             TransactionsTab.CATEGORIES -> CategoriesTab(rollups = state.categoryRollups, modifier = Modifier.fillMaxWidth())

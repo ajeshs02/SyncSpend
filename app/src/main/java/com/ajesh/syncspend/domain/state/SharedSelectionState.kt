@@ -16,4 +16,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 class SharedSelectionState {
     val scope = MutableStateFlow<ScopePeriod>(ScopePeriod.Month(YearMonth.now()))
     val flow = MutableStateFlow(FlowType.EXPENSE)
+
+    /**
+     * Which transaction the Edit Entry sheet is open for (null = closed). Home's
+     * recent rows and Transactions' entry rows both set this; one host at the
+     * app root renders the sheet so it paints above the floating nav.
+     */
+    val editingTransactionId = MutableStateFlow<Long?>(null)
 }
