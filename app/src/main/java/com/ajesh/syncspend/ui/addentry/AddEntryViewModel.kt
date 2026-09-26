@@ -111,15 +111,6 @@ class AddEntryViewModel(
         selectedCategory.value = null
     }
 
-    fun createCategory(name: String, iconKey: String, onCreated: (CategoryEntity) -> Unit) {
-        viewModelScope.launch {
-            val created = categoryRepository.createNext(name, iconKey, type.value)
-            selectedCategory.value = created
-            categoryPickerOpen.value = false
-            onCreated(created)
-        }
-    }
-
     /** Mirrors the design's saveDraft: no category → open the picker; zero amount → just leave without saving. */
     fun save(onDone: () -> Unit) {
         val category = selectedCategory.value

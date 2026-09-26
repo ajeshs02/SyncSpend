@@ -201,7 +201,6 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
             onPick = { cat ->
                 if (cat == null) viewModel.clearCategory() else viewModel.selectCategory(cat)
             },
-            onCreate = { name, icon -> viewModel.createCategory(name, icon) {} },
             onDismiss = viewModel::closeCategoryPicker,
         )
     }

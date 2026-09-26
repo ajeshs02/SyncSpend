@@ -76,7 +76,7 @@ fun CategoriesScreen() {
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
         )
         Text(
-            "Use the arrows to reorder · tap a category to rename it or change its icon",
+            "Use the arrows to reorder · tap a category to rename it, change its icon or delete it",
             fontSize = 10.5.sp,
             color = colors.sub,
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp, bottom = 8.dp),
@@ -109,7 +109,6 @@ fun CategoriesScreen() {
                         onEdit = { editing = cat },
                         onUp = { viewModel.move(cat, -1) },
                         onDown = { viewModel.move(cat, 1) },
-                        onDelete = { deleting = cat },
                         modifier = Modifier.animateItem(),
                     )
                 }
@@ -144,6 +143,11 @@ fun CategoriesScreen() {
                 viewModel.update(cat, name, icon)
                 editing = null
             },
+            onDelete = {
+                editing = null
+                deleting = cat
+            },
+            deleteLabel = "Delete category",
             onDismiss = { editing = null },
         )
     }
@@ -169,7 +173,6 @@ private fun CategoryRow(
     onEdit: () -> Unit,
     onUp: () -> Unit,
     onDown: () -> Unit,
-    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = SyncSpendTheme.colors
@@ -197,6 +200,5 @@ private fun CategoryRow(
         }
         SquareIconButton(SyncSpendIcons.Up, onUp, enabled = canMoveUp)
         SquareIconButton(SyncSpendIcons.Down, onDown, enabled = canMoveDown)
-        SquareIconButton(SyncSpendIcons.Trash, onDelete)
     }
 }

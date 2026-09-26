@@ -311,7 +311,6 @@ private fun QuickAddPanel(container: AppContainer, onFinished: () -> Unit, onOpe
             categories = state.categoriesForType,
             selectedId = state.selectedCategory?.id,
             onPick = { cat -> if (cat == null) viewModel.clearCategory() else viewModel.selectCategory(cat) },
-            onCreate = { name, icon -> viewModel.createCategory(name, icon) { hint = null } },
             onDismiss = viewModel::closeCategoryPicker,
         )
     }

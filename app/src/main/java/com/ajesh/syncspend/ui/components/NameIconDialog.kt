@@ -1,6 +1,18 @@
 package com.ajesh.syncspend.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -14,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
 /**
@@ -23,7 +36,8 @@ import com.ajesh.syncspend.ui.theme.SyncSpendTheme
  * fields (amount, cycle, date, time...) below the name.
  *
  * [initialIconKey] = null means "no icon yet": the icon is then mandatory and
- * the confirm button stays disabled until one is picked.
+ * the confirm button stays disabled until one is picked. Passing [onDelete]
+ * (edit mode) adds a red delete button above Cancel/Save, labelled [deleteLabel].
  */
 @Composable
 fun NameIconDialog(
@@ -36,6 +50,8 @@ fun NameIconDialog(
     onConfirm: (name: String, iconKey: String) -> Unit,
     onDismiss: () -> Unit,
     extraValid: Boolean = true,
+    onDelete: (() -> Unit)? = null,
+    deleteLabel: String = "Delete",
     extra: @Composable () -> Unit = {},
 ) {
     var name by remember { mutableStateOf(initialName) }
@@ -70,6 +86,9 @@ fun NameIconDialog(
             }
             extra()
         }
+        if (onDelete != null) {
+            DeleteRow(label = deleteLabel, onClick = onDelete)
+        }
         DialogButtons(
             cta = cta,
             onCancel = onDismiss,
@@ -87,5 +106,25 @@ fun NameIconDialog(
             },
             onDismiss = { pickingIcon = false },
         )
+    }
+}
+
+/** Full-width red "Delete …" button used inside edit dialogs. */
+@Composable
+private fun DeleteRow(label: String, onClick: () -> Unit) {
+    val colors = SyncSpendTheme.colors
+    Row(
+        modifier = Modifier
+            .padding(top = 16.dp)
+            .fillMaxWidth()
+            .height(44.dp)
+            .background(colors.neg.copy(alpha = 0.10f), RoundedCornerShape(15.dp))
+            .border(1.dp, colors.neg.copy(alpha = 0.28f), RoundedCornerShape(15.dp))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Icon(SyncSpendIcons.Trash, null, tint = colors.neg, modifier = Modifier.size(15.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = colors.neg, modifier = Modifier.padding(start = 7.dp))
     }
 }

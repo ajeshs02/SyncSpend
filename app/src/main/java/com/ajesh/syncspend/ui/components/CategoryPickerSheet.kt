@@ -35,9 +35,8 @@ import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 /**
  * "Choose category" bottom sheet: 3-column grid of the current flow's
  * categories. Tapping the selected one clears it, tapping another picks it
- * and closes the sheet. The header "+" (and the empty-state button, since
- * the app ships with zero categories) opens the New-category dialog so a
- * category can be created without leaving the entry in progress.
+ * and closes the sheet. It only *picks* — categories are created, renamed and
+ * deleted exclusively on the Categories page.
  */
 @Composable
 fun CategoryPickerSheet(
@@ -45,21 +44,14 @@ fun CategoryPickerSheet(
     categories: List<CategoryEntity>,
     selectedId: Long?,
     onPick: (CategoryEntity?) -> Unit,
-    onCreate: (name: String, iconKey: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var showCreate by remember { mutableStateOf(false) }
-
     DesignSheet(onDismiss = onDismiss) { close ->
-        SheetHeader(
-            title = "Choose category",
-            onClose = close,
-            actions = { SquareIconButton(SyncSpendIcons.Plus, { showCreate = true }, size = 30.dp, iconSize = 13.dp) },
-        )
+        SheetHeader(title = "Choose category", onClose = close)
 
         if (categories.isEmpty()) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(top = 26.dp, bottom = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 26.dp, bottom = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
@@ -68,20 +60,12 @@ fun CategoryPickerSheet(
                     color = SyncSpendTheme.colors.ink,
                 )
                 Text(
-                    "Create one to file this entry under.",
+                    "Add some on the Categories page, then pick one here.",
                     style = MaterialTheme.typography.bodySmall,
                     color = SyncSpendTheme.colors.sub,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
+                    modifier = Modifier.padding(top = 4.dp),
                     textAlign = TextAlign.Center,
                 )
-                Box(
-                    modifier = Modifier
-                        .background(SyncSpendTheme.colors.button, RoundedCornerShape(15.dp))
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { showCreate = true }
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                ) {
-                    Text("Add your first category", style = MaterialTheme.typography.labelLarge, color = SyncSpendTheme.colors.onButton)
-                }
             }
         } else {
             Column(
@@ -136,22 +120,5 @@ fun CategoryPickerSheet(
                 }
             }
         }
-    }
-
-    if (showCreate) {
-        val existing = categories.size
-        NameIconDialog(
-            title = "New category",
-            body = "Name it and pick an icon — it will be added to the ${if (flow == FlowType.INCOME) "income" else "expense"} list.",
-            cta = "Create",
-            initialName = "",
-            initialIconKey = null,
-            namePlaceholder = if (flow == FlowType.INCOME) "New Income ${existing + 1}" else "New Expense ${existing + 1}",
-            onConfirm = { name, icon ->
-                showCreate = false
-                onCreate(name, icon)
-            },
-            onDismiss = { showCreate = false },
-        )
     }
 }

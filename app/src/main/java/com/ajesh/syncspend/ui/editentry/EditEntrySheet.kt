@@ -41,7 +41,8 @@ import com.ajesh.syncspend.ui.components.DatePickerSheet
 import com.ajesh.syncspend.ui.components.DesignSheet
 import com.ajesh.syncspend.ui.components.DesignTextField
 import com.ajesh.syncspend.ui.components.FlowToggle
-import com.ajesh.syncspend.ui.components.NameIconDialog
+import com.ajesh.syncspend.ui.components.CategoryField
+import com.ajesh.syncspend.ui.components.CategoryPickerSheet
 import com.ajesh.syncspend.ui.components.PrimaryButton
 import com.ajesh.syncspend.ui.components.SheetDeleteButton
 import com.ajesh.syncspend.ui.components.SheetHeader
@@ -91,7 +92,7 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
     var categoryId by remember(loaded.id) { mutableStateOf<Long?>(loaded.categoryId) }
     var showDate by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
-    var showCreate by remember { mutableStateOf(false) }
+    var showPicker by remember { mutableStateOf(false) }
 
     val isIncome = type == FlowType.INCOME
     // Expense and income categories never overlap. An archived category still shows while it is
@@ -147,47 +148,11 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
             }
         }
 
-        FieldLabel("Category", top = 12.dp, bottom = 6.dp)
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            flowCategories.forEach { cat ->
-                val selected = cat.id == categoryId
-                Box(
-                    modifier = Modifier
-                        .background(
-                            if (selected) colors.selectedBrush else SolidColor(colors.pill),
-                            RoundedCornerShape(15.dp),
-                        )
-                        .border(1.dp, colors.line, RoundedCornerShape(15.dp))
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { categoryId = cat.id }
-                        .padding(horizontal = 13.dp, vertical = 7.dp),
-                ) {
-                    Text(
-                        cat.name,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (selected) colors.onSelected else colors.sub,
-                    )
-                }
-            }
-            Row(
-                modifier = Modifier
-                    .background(colors.tile, RoundedCornerShape(15.dp))
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { showCreate = true }
-                    .padding(horizontal = 12.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                Icon(SyncSpendIcons.Plus, null, tint = colors.ink, modifier = Modifier.size(12.dp))
-                Text(
-                    if (flowCategories.isEmpty()) "Add ${if (isIncome) "income" else "expense"} category" else "New",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = colors.ink,
-                )
-            }
-        }
+        CategoryField(
+            category = categories.find { it.id == categoryId },
+            onClick = { showPicker = true },
+            modifier = Modifier.padding(top = 12.dp),
+        )
         if (categoryId == null) {
             Text(
                 "Pick a category to save this entry.",
@@ -232,19 +197,13 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
                 onDismiss = { showDate = false },
             )
         }
-        if (showCreate) {
-            NameIconDialog(
-                title = "New category",
-                body = "It will be added to the ${if (isIncome) "income" else "expense"} list and used for this entry.",
-                cta = "Create",
-                initialName = "",
-                initialIconKey = null,
-                namePlaceholder = if (isIncome) "New Income category" else "New Expense category",
-                onConfirm = { name, icon ->
-                    showCreate = false
-                    scope.launch { categoryId = container.categoryRepository.createNext(name, icon, type).id }
-                },
-                onDismiss = { showCreate = false },
+        if (showPicker) {
+            CategoryPickerSheet(
+                flow = type,
+                categories = flowCategories,
+                selectedId = categoryId,
+                onPick = { categoryId = it?.id },
+                onDismiss = { showPicker = false },
             )
         }
         if (showDelete) {
