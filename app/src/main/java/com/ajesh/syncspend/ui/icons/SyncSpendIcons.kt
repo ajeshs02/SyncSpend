@@ -133,6 +133,7 @@ object SyncSpendIcons {
     val Close = build("close", "M6.5 6.5l11 11", "M17.5 6.5l-11 11")
     val Clock = build("clock", circle(12.0, 12.0, 8.0), "M12 7.5V12l3.2 2")
     val Download = build("download", "M12 4.5v10", "M7.5 10.5 12 15l4.5-4.5", "M4.5 19h15")
+    val Upload = build("upload", "M12 15.5v-10", "M7.5 9.5 12 5l4.5 4.5", "M4.5 19h15")
     val Spark = build("spark", "M12 3.5l1.9 5.3 5.3 1.9-5.3 1.9L12 18l-1.9-5.4-5.3-1.9 5.3-1.9z")
     val ArrowOut = build("arrowOut", "M8.5 15.5 15.5 8.5", "M9.6 8.5h5.9v5.9")
     val ArrowIn = build("arrowIn", "M15.5 8.5 8.5 15.5", "M14.4 15.5H8.5V9.6")
@@ -245,7 +246,7 @@ object SyncSpendIcons {
         "card" to Card, "heart" to Heart, "house" to House, "plane" to Plane, "bolt" to Bolt,
         "plus" to Plus, "back" to Back, "prev" to Prev, "next" to Next, "up" to Up, "down" to Down,
         "trash" to Trash, "pencil" to Pencil, "close" to Close, "clock" to Clock,
-        "download" to Download, "spark" to Spark, "arrowOut" to ArrowOut, "arrowIn" to ArrowIn,
+        "download" to Download, "upload" to Upload, "spark" to Spark, "arrowOut" to ArrowOut, "arrowIn" to ArrowIn,
         "backspace" to Backspace,
         "wallet" to Wallet, "gift" to Gift, "film" to Film, "music" to Music, "utensils" to Utensils,
         "phone" to Phone, "wifi" to Wifi, "pill" to Pill, "dumbbell" to Dumbbell, "bus" to Bus,

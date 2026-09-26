@@ -162,3 +162,20 @@ fun ConfirmDialog(
         DialogButtons(cta = cta, onCancel = onDismiss, onConfirm = onConfirm, destructive = destructive)
     }
 }
+
+/** A single-button information dialog (e.g. CSV import summary). */
+@Composable
+fun InfoDialog(title: String, body: String, onDismiss: () -> Unit, ok: String = "OK") {
+    DesignDialog(onDismiss) {
+        DialogHeader(SyncSpendIcons.Spark, SyncSpendTheme.colors.ink, title, body)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 18.dp)
+                .height(44.dp)
+                .background(SyncSpendTheme.colors.button, RoundedCornerShape(15.dp))
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
+            contentAlignment = Alignment.Center,
+        ) { Text(ok, style = MaterialTheme.typography.labelLarge, color = SyncSpendTheme.colors.onButton) }
+    }
+}

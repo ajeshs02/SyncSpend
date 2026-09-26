@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 class ReminderRepository(private val dao: ReminderDao) {
     fun getAll(): Flow<List<ReminderEntity>> = dao.getAll()
+    suspend fun getById(id: Long): ReminderEntity? = dao.getById(id)
     suspend fun getActiveOnce(): List<ReminderEntity> = dao.getActiveOnce()
     suspend fun insert(reminder: ReminderEntity): Long = dao.insert(reminder)
     suspend fun update(reminder: ReminderEntity) = dao.update(reminder)

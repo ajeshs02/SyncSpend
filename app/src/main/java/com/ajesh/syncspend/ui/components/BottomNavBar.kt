@@ -5,6 +5,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -53,10 +57,11 @@ fun BottomFadeAndNav(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
+        val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(SyncSpendChrome.bottomFadeHeight)
+                .height(SyncSpendChrome.bottomFadeHeight + navInset)
                 .align(Alignment.BottomCenter)
                 .background(
                     Brush.verticalGradient(
@@ -68,6 +73,7 @@ fun BottomFadeAndNav(
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
                 .padding(bottom = SyncSpendChrome.bottomBarBottomInset)
                 .shadow(elevation = 16.dp, shape = RoundedCornerShape(23.dp), clip = false)
                 .background(NavPillDark, RoundedCornerShape(23.dp))

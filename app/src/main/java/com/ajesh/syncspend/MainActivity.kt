@@ -1,24 +1,30 @@
 package com.ajesh.syncspend
 
+import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.ajesh.syncspend.data.datastore.UserPreferences
 import com.ajesh.syncspend.di.LocalAppContainer
+import com.ajesh.syncspend.domain.model.ThemeMode
 import com.ajesh.syncspend.navigation.Routes
 import com.ajesh.syncspend.navigation.SyncSpendNavHost
 import com.ajesh.syncspend.navigation.navigateToTab
 import com.ajesh.syncspend.ui.components.BottomFadeAndNav
-import com.ajesh.syncspend.ui.components.NavDestination
 import com.ajesh.syncspend.ui.editentry.EditEntryHost
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
@@ -26,10 +32,24 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val container = (application as SyncSpendApp).container
         setContent {
-            val container = (application as SyncSpendApp).container
+            val prefs by container.preferencesRepository.preferences.collectAsStateWithLifecycle(UserPreferences())
+            val dark = when (prefs.themeMode) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            // System-bar icon colors follow the in-app theme, not just the OS setting.
+            DisposableEffect(dark) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT) { dark },
+                    navigationBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT) { dark },
+                )
+                onDispose {}
+            }
             CompositionLocalProvider(LocalAppContainer provides container) {
-                SyncSpendTheme {
+                SyncSpendTheme(themeMode = prefs.themeMode) {
                     SyncSpendAppRoot()
                 }
             }
@@ -52,14 +72,10 @@ private fun SyncSpendAppRoot() {
         BottomFadeAndNav(
             currentRoute = currentRoute,
             onNavigate = { destination ->
-                if (currentRoute != destination.route) {
-                    navController.navigateToTab(destination.route)
-                }
+                if (currentRoute != destination.route) navController.navigateToTab(destination.route)
             },
             onAddClick = {
-                if (currentRoute != Routes.ADD_ENTRY) {
-                    navController.navigateToTab(Routes.ADD_ENTRY)
-                }
+                if (currentRoute != Routes.ADD_ENTRY) navController.navigateToTab(Routes.ADD_ENTRY)
             },
         )
         EditEntryHost()

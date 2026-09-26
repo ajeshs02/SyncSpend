@@ -3,6 +3,8 @@ package com.ajesh.syncspend.di
 import android.content.Context
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.room.Room
+import com.ajesh.syncspend.alarm.AlarmScheduler
+import com.ajesh.syncspend.alarm.AlarmSchedulerImpl
 import com.ajesh.syncspend.data.datastore.PreferencesRepository
 import com.ajesh.syncspend.data.db.AppDatabase
 import com.ajesh.syncspend.data.repository.CategoryRepository
@@ -25,6 +27,7 @@ interface AppContainer {
     val reminderRepository: ReminderRepository
     val preferencesRepository: PreferencesRepository
     val selectionState: SharedSelectionState
+    val alarmScheduler: AlarmScheduler
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -59,6 +62,10 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     }
 
     override val selectionState: SharedSelectionState by lazy { SharedSelectionState() }
+
+    override val alarmScheduler: AlarmScheduler by lazy {
+        AlarmSchedulerImpl(context, subscriptionRepository, reminderRepository, preferencesRepository)
+    }
 }
 
 /** Provided once at [com.ajesh.syncspend.MainActivity]'s root. */

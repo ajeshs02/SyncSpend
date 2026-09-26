@@ -1,19 +1,30 @@
 package com.ajesh.syncspend.ui.components
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
  * Shared spacing convention so every screen's scrollable content clears the
- * floating bottom nav (user requirement: never let content hide behind it —
- * always scrollable into view) and starts with a bit of top breathing room
- * for one-handed reachability (user requirement: screens don't need to start
- * flush at the very top).
+ * floating bottom nav (never hidden behind it — always scrollable into view)
+ * and starts with breathing room below the status bar for one-handed reach.
+ * Both values include the real system-bar insets, so they hold on gesture-nav
+ * and 3-button-nav devices alike.
  */
 object SyncSpendChrome {
-    /** Matches the design's own ~124px reserved bottom padding on scroll areas. */
-    val screenBottomContentPadding = 124.dp
-    val screenTopInset = 18.dp
-    val bottomBarHeight = 40.dp
-    val bottomBarBottomInset = 26.dp
+    /** Status bar + the design's 14dp + 8dp extra so content isn't jammed at the very top. */
+    val screenTopInset: Dp
+        @Composable get() = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 22.dp
+
+    /** Navigation bar + the pill's footprint + breathing room, so the last item scrolls clear of the nav. */
+    val screenBottomContentPadding: Dp
+        @Composable get() = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
+
+    /** Gap between the pill and the navigation bar. */
+    val bottomBarBottomInset = 14.dp
     val bottomFadeHeight = 120.dp
 }

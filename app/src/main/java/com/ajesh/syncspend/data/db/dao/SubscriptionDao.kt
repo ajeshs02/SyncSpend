@@ -22,6 +22,9 @@ interface SubscriptionDao {
     @Query("SELECT * FROM subscriptions ORDER BY nextDueDate ASC")
     fun getAll(): Flow<List<SubscriptionEntity>>
 
+    @Query("SELECT * FROM subscriptions WHERE id = :id")
+    suspend fun getById(id: Long): SubscriptionEntity?
+
     @Query("SELECT * FROM subscriptions WHERE active = 1 ORDER BY nextDueDate ASC")
     suspend fun getActiveOnce(): List<SubscriptionEntity>
 }
