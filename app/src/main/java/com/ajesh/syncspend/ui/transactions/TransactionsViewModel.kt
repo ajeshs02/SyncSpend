@@ -15,7 +15,7 @@ import com.ajesh.syncspend.domain.model.DateRange
 import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.BillingCycle
 import com.ajesh.syncspend.domain.model.FlowType
-import com.ajesh.syncspend.domain.model.ScopePeriod
+import com.ajesh.syncspend.domain.model.StatsRange
 import com.ajesh.syncspend.domain.state.SharedSelectionState
 import com.ajesh.syncspend.util.CurrencyFormatter
 import java.time.LocalDate
@@ -76,6 +76,7 @@ class TransactionsViewModel(
     private val tab = MutableStateFlow(TransactionsTab.ENTRIES)
     private val entryFilter = MutableStateFlow(EntryFilter.THIS_MONTH)
     private val customRange = MutableStateFlow<DateRange?>(null)
+    private val statsRange = MutableStateFlow(StatsRange.THIS_MONTH)
 
     private data class DataSources(
         val tx: List<TransactionEntity>,
@@ -88,6 +89,7 @@ class TransactionsViewModel(
         val tab: TransactionsTab,
         val entryFilter: EntryFilter,
         val customRange: DateRange?,
+        val statsRange: StatsRange,
     )
 
     private val dataSources = combine(
@@ -97,19 +99,18 @@ class TransactionsViewModel(
         subscriptionRepository.getAll(),
     ) { tx, categories, prefs, subs -> DataSources(tx, categories, prefs, subs) }
 
-    private val controls = combine(tab, entryFilter, customRange) { t, ef, cr -> Controls(t, ef, cr) }
+    private val controls = combine(tab, entryFilter, customRange, statsRange) { t, ef, cr, sr -> Controls(t, ef, cr, sr) }
 
     val uiState: StateFlow<TransactionsUiState> = combine(
         dataSources,
-        selection.scope,
         selection.flow,
         controls,
-    ) { data, scope, flowType, controls -> compute(data, scope, flowType, controls) }
+    ) { data, flowType, controls -> compute(data, flowType, controls) }
         // Grouping/sorting thousands of rows must not happen on the main thread.
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TransactionsUiState())
 
-    private fun compute(data: DataSources, scope: ScopePeriod, flowType: FlowType, controls: Controls): TransactionsUiState {
+    private fun compute(data: DataSources, flowType: FlowType, controls: Controls): TransactionsUiState {
         val cur = data.prefs.currencyCode.symbol
         val categoriesById = data.categories.associateBy { it.id }
         val flowTx = AnalyticsEngine.flowFilter(data.tx, flowType)
@@ -146,7 +147,12 @@ class TransactionsViewModel(
                         BillingCycle.YEARLY -> it.amount / 12.0
                     }
                 }
-                buildStatsUi(AnalyticsEngine.stats(data.tx, data.categories, scope, flowType), cur, monthly, active.size)
+                val today = LocalDate.now()
+                val range = controls.statsRange.resolve(today, data.tx.minOfOrNull { it.date })
+                val summary = AnalyticsEngine.stats(
+                    data.tx, data.categories, range, controls.statsRange.previous(range), flowType, today,
+                )
+                buildStatsUi(summary, controls.statsRange, cur, monthly, active.size)
             } else null,
         )
     }
@@ -175,6 +181,10 @@ class TransactionsViewModel(
     /** Any chip except Custom (Custom goes through the range picker, see [applyCustomRange]). */
     fun pickEntryFilter(filter: EntryFilter) {
         entryFilter.value = filter
+    }
+
+    fun selectStatsRange(range: StatsRange) {
+        statsRange.value = range
     }
 
     fun applyCustomRange(range: DateRange) {

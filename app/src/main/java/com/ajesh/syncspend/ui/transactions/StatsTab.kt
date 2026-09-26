@@ -1,12 +1,17 @@
 package com.ajesh.syncspend.ui.transactions
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -16,114 +21,298 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ajesh.syncspend.domain.model.StatsRange
+import com.ajesh.syncspend.domain.model.TipTone
+import com.ajesh.syncspend.ui.components.ChipsRow
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
-/** Stats tab: top-category card, 2x2 stat grid, findings, and the month-over-month card. */
+/**
+ * Stats tab: range chips, top-category card, 2x2 tiles, six-month bars, where
+ * the money goes, weekday pattern, tips & suggestions, findings and the
+ * period-over-period card.
+ */
 @Composable
-fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
+fun StatsTab(stats: StatsUi, onRangeSelect: (StatsRange) -> Unit, modifier: Modifier = Modifier) {
     val colors = SyncSpendTheme.colors
-    Column(
-        modifier = modifier
-            .verticalScroll(rememberScrollState())
-            .padding(top = 4.dp, bottom = SyncSpendChrome.screenBottomContentPadding),
-        verticalArrangement = Arrangement.spacedBy(11.dp),
-    ) {
+    Column(modifier = modifier) {
+        ChipsRow(
+            labels = StatsRange.entries.map { it.label },
+            selectedIndex = stats.range.ordinal,
+            onSelect = { onRangeSelect(StatsRange.entries[it]) },
+        )
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(colors.mintGradient, RoundedCornerShape(22.dp))
-                .padding(17.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(top = 12.dp, bottom = SyncSpendChrome.screenBottomContentPadding),
+            verticalArrangement = Arrangement.spacedBy(11.dp),
         ) {
-            Text(stats.kicker, fontSize = 11.sp, color = colors.msub)
-            Row(
-                modifier = Modifier.padding(top = 9.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(colors.mintGradient, RoundedCornerShape(22.dp))
+                    .padding(17.dp),
             ) {
-                Box(
-                    modifier = Modifier.size(36.dp).background(Color.White.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center,
-                ) { Icon(SyncSpendIcons.iconFor(stats.topIconKey), null, tint = colors.mink, modifier = Modifier.size(18.dp)) }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(stats.topName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colors.mink, maxLines = 1)
-                    Text(stats.topShareLine, fontSize = 11.sp, color = colors.msub, modifier = Modifier.padding(top = 2.dp))
+                Text(stats.kicker, fontSize = 11.sp, color = colors.msub)
+                Row(
+                    modifier = Modifier.padding(top = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Box(
+                        modifier = Modifier.size(36.dp).background(Color.White.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(SyncSpendIcons.iconFor(stats.topIconKey), null, tint = colors.mink, modifier = Modifier.size(18.dp)) }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(stats.topName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colors.mink, maxLines = 1)
+                        Text(stats.topShareLine, fontSize = 11.sp, color = colors.msub, modifier = Modifier.padding(top = 2.dp))
+                    }
+                    Text(stats.topTotal, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.19).sp, color = colors.mink)
                 }
-                Text(stats.topTotal, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.19).sp, color = colors.mink)
+            }
+
+            stats.tiles.chunked(2).forEach { pair ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    pair.forEach { tile ->
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .background(colors.card, RoundedCornerShape(18.dp))
+                                .border(1.dp, colors.line, RoundedCornerShape(18.dp))
+                                .padding(14.dp),
+                        ) {
+                            Text(tile.label, fontSize = 10.5.sp, lineHeight = 13.sp, color = colors.sub, maxLines = 2)
+                            Text(
+                                tile.value,
+                                fontSize = 19.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = (-0.19).sp,
+                                color = when (tile.tone) {
+                                    StatTone.NEUTRAL -> colors.ink
+                                    StatTone.POSITIVE -> colors.pos
+                                    StatTone.NEGATIVE -> colors.neg
+                                },
+                                modifier = Modifier.padding(top = 7.dp),
+                            )
+                            Text(tile.note, fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 3.dp))
+                        }
+                    }
+                }
+            }
+
+            StatsCard(title = "Last 6 months") {
+                BarChart(stats.monthlyBars, height = 112.dp, averageFraction = stats.monthlyAverageFraction)
+                Text(stats.monthlyCaption, fontSize = 10.5.sp, lineHeight = 15.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
+            }
+
+            if (stats.categoryBars.isNotEmpty()) {
+                StatsCard(title = "Where it goes") {
+                    Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+                        stats.categoryBars.forEach { CategoryBar(it) }
+                    }
+                }
+            }
+
+            if (stats.weekdayCaption.isNotEmpty()) {
+                StatsCard(title = "By weekday") {
+                    BarChart(stats.weekdayBars, height = 80.dp, averageFraction = null)
+                    Text(stats.weekdayCaption, fontSize = 10.5.sp, lineHeight = 15.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
+                }
+            }
+
+            StatsCard(title = "Tips & suggestions", gradient = true) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    stats.tips.forEach { TipRow(it) }
+                }
+            }
+
+            StatsCard(title = "Findings", gradient = true) {
+                Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                    stats.findings.forEach { line ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Box(Modifier.padding(top = 5.dp).size(6.dp).background(colors.acc, RoundedCornerShape(50)))
+                            Text(line, fontSize = 11.5.sp, lineHeight = 16.7.sp, color = colors.ink)
+                        }
+                    }
+                }
+            }
+
+            if (stats.showComparison) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.darkGradient, RoundedCornerShape(20.dp))
+                        .padding(16.dp),
+                ) {
+                    Text("Versus the previous period", fontSize = 11.sp, color = Color.White.copy(alpha = 0.65f))
+                    Row(modifier = Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.Bottom) {
+                        Column {
+                            Text(stats.currentLabel, fontSize = 10.5.sp, color = Color.White.copy(alpha = 0.6f))
+                            Text(stats.currentValue, fontSize = 21.sp, fontWeight = FontWeight.SemiBold, color = Color.White, modifier = Modifier.padding(top = 3.dp))
+                        }
+                        Column {
+                            Text(stats.previousLabel, fontSize = 10.5.sp, color = Color.White.copy(alpha = 0.6f))
+                            Text(stats.previousValue, fontSize = 21.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.55f), modifier = Modifier.padding(top = 3.dp))
+                        }
+                    }
+                }
             }
         }
+    }
+}
 
-        stats.tiles.chunked(2).forEach { pair ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                pair.forEach { tile ->
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(colors.card, RoundedCornerShape(18.dp))
-                            .border(1.dp, colors.line, RoundedCornerShape(18.dp))
-                            .padding(14.dp),
-                    ) {
-                        Text(tile.label, fontSize = 10.5.sp, lineHeight = 13.sp, color = colors.sub, maxLines = 2)
-                        Text(
-                            tile.value,
-                            fontSize = 19.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = (-0.19).sp,
-                            color = when (tile.tone) {
-                                StatTone.NEUTRAL -> colors.ink
-                                StatTone.POSITIVE -> colors.pos
-                                StatTone.NEGATIVE -> colors.neg
-                            },
-                            modifier = Modifier.padding(top = 7.dp),
+@Composable
+private fun StatsCard(title: String, gradient: Boolean = false, content: @Composable () -> Unit) {
+    val colors = SyncSpendTheme.colors
+    val shape = RoundedCornerShape(20.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (gradient) colors.cardGradient else androidx.compose.ui.graphics.SolidColor(colors.card), shape)
+            .border(1.dp, colors.line, shape)
+            .padding(16.dp),
+    ) {
+        Text(title, style = MaterialTheme.typography.titleSmall.copy(fontSize = 13.5.sp), color = colors.ink)
+        Column(modifier = Modifier.padding(top = 12.dp)) { content() }
+    }
+}
+
+/** Vertical bars that grow up from the baseline once when they first appear or their data changes. */
+@Composable
+private fun BarChart(bars: List<BarUi>, height: Dp, averageFraction: Float?) {
+    val colors = SyncSpendTheme.colors
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(bars) {
+        progress.snapTo(0f)
+        progress.animateTo(1f, tween(650, easing = FastOutSlowInEasing))
+    }
+    val lineColor = colors.sub.copy(alpha = 0.55f)
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(height)
+                .drawBehind {
+                    // Dashed average line, drawn behind the bars.
+                    if (averageFraction != null) {
+                        val y = size.height * (1f - averageFraction)
+                        drawLine(
+                            color = lineColor,
+                            start = Offset(0f, y),
+                            end = Offset(size.width, y),
+                            strokeWidth = 1.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 4.dp.toPx())),
                         )
-                        Text(tile.note, fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 3.dp))
                     }
+                },
+        ) {
+            bars.forEach { bar ->
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxHeight().padding(horizontal = 5.dp),
+                    contentAlignment = Alignment.BottomCenter,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(bar.fraction.coerceAtLeast(0.03f))
+                            .graphicsLayer {
+                                scaleY = progress.value
+                                transformOrigin = TransformOrigin(0.5f, 1f)
+                            }
+                            .background(
+                                if (bar.highlighted) colors.acc else colors.acc.copy(alpha = 0.26f),
+                                RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp, bottomStart = 2.dp, bottomEnd = 2.dp),
+                            ),
+                    )
                 }
             }
         }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(colors.cardGradient, RoundedCornerShape(20.dp))
-                .border(1.dp, colors.line, RoundedCornerShape(20.dp))
-                .padding(16.dp),
-        ) {
-            Text("Findings", style = MaterialTheme.typography.titleSmall.copy(fontSize = 13.5.sp), color = colors.ink)
-            Column(modifier = Modifier.padding(top = 11.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                stats.findings.forEach { line ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Box(Modifier.padding(top = 5.dp).size(6.dp).background(colors.acc, RoundedCornerShape(50)))
-                        Text(line, fontSize = 11.5.sp, lineHeight = 16.7.sp, color = colors.ink)
-                    }
-                }
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+            bars.forEach { bar ->
+                Text(
+                    bar.label,
+                    fontSize = 10.sp,
+                    color = if (bar.highlighted) colors.ink else colors.sub,
+                    fontWeight = if (bar.highlighted) FontWeight.SemiBold else FontWeight.Normal,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
+    }
+}
 
-        Column(
+@Composable
+private fun CategoryBar(bar: CategoryBarUi) {
+    val colors = SyncSpendTheme.colors
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(bar) {
+        progress.snapTo(0f)
+        progress.animateTo(1f, tween(650, easing = FastOutSlowInEasing))
+    }
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(
+                modifier = Modifier.size(28.dp).background(colors.tile, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) { Icon(SyncSpendIcons.iconFor(bar.iconKey), null, tint = colors.ink, modifier = Modifier.size(14.dp)) }
+            Text(bar.name, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1, modifier = Modifier.weight(1f))
+            Text(bar.totalFormatted, style = MaterialTheme.typography.bodyMedium, color = colors.ink)
+            Text("${bar.sharePercent}%", fontSize = 11.sp, color = colors.sub, modifier = Modifier.padding(start = 2.dp))
+        }
+        Box(
             modifier = Modifier
+                .padding(top = 7.dp)
                 .fillMaxWidth()
-                .background(colors.darkGradient, RoundedCornerShape(20.dp))
-                .padding(16.dp),
+                .height(6.dp)
+                .background(colors.tile, RoundedCornerShape(50)),
         ) {
-            Text("Month over month", fontSize = 11.sp, color = Color.White.copy(alpha = 0.65f))
-            Row(modifier = Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.Bottom) {
-                Column {
-                    Text(stats.currentLabel, fontSize = 10.5.sp, color = Color.White.copy(alpha = 0.6f))
-                    Text(stats.currentValue, fontSize = 21.sp, fontWeight = FontWeight.SemiBold, color = Color.White, modifier = Modifier.padding(top = 3.dp))
-                }
-                Column {
-                    Text(stats.previousLabel, fontSize = 10.5.sp, color = Color.White.copy(alpha = 0.6f))
-                    Text(stats.previousValue, fontSize = 21.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.55f), modifier = Modifier.padding(top = 3.dp))
-                }
-            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(bar.sharePercent.coerceIn(2, 100) / 100f)
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        scaleX = progress.value
+                        transformOrigin = TransformOrigin(0f, 0.5f)
+                    }
+                    .background(colors.acc, RoundedCornerShape(50)),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TipRow(tip: TipUi) {
+    val colors = SyncSpendTheme.colors
+    val (tint, icon) = when (tip.tone) {
+        TipTone.WATCH -> colors.neg to SyncSpendIcons.Bolt
+        TipTone.GOOD -> colors.pos to SyncSpendIcons.Trend
+        TipTone.INFO -> colors.sub to SyncSpendIcons.Spark
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+        Box(
+            modifier = Modifier.size(28.dp).background(tint.copy(alpha = 0.14f), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center,
+        ) { Icon(icon, null, tint = tint, modifier = Modifier.size(14.dp)) }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(tip.title, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = colors.ink)
+            Text(tip.body, fontSize = 11.5.sp, lineHeight = 16.sp, color = colors.sub, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }

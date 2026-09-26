@@ -159,7 +159,7 @@ fun TransactionsScreen() {
                 modifier = Modifier.fillMaxWidth(),
             )
             TransactionsTab.CATEGORIES -> CategoriesTab(rollups = state.categoryRollups, modifier = Modifier.fillMaxWidth())
-            TransactionsTab.ANALYTICS -> state.stats?.let { StatsTab(it, modifier = Modifier.fillMaxWidth()) }
+            TransactionsTab.ANALYTICS -> state.stats?.let { StatsTab(it, onRangeSelect = viewModel::selectStatsRange, modifier = Modifier.fillMaxWidth()) }
         }
     }
 

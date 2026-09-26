@@ -2,13 +2,18 @@ package com.ajesh.syncspend.domain.analytics
 
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
+import com.ajesh.syncspend.domain.model.CategoryMover
 import com.ajesh.syncspend.domain.model.CategoryRollup
 import com.ajesh.syncspend.domain.model.DateRange
 import com.ajesh.syncspend.domain.model.DayGroup
 import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.FlowType
+import com.ajesh.syncspend.domain.model.MonthProjection
+import com.ajesh.syncspend.domain.model.MonthTotal
 import com.ajesh.syncspend.domain.model.ScopePeriod
+import com.ajesh.syncspend.domain.model.SmallPurchases
 import com.ajesh.syncspend.domain.model.StatsSummary
+import com.ajesh.syncspend.domain.model.WeekdayStat
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -26,10 +31,13 @@ import kotlin.math.roundToInt
 object AnalyticsEngine {
 
     fun inScope(tx: TransactionEntity, scope: ScopePeriod): Boolean = when (scope) {
-        is ScopePeriod.Month -> YearMonth.from(tx.date) == scope.yearMonth
+        is ScopePeriod.Month -> inMonth(tx.date, scope.yearMonth)
         is ScopePeriod.Year -> tx.date.year == scope.year
         ScopePeriod.AllTime -> true
     }
+
+    /** Year/month compare without allocating a YearMonth per transaction (this runs over every row). */
+    private fun inMonth(date: LocalDate, month: YearMonth): Boolean = date.year == month.year && date.monthValue == month.monthValue
 
     fun scopeFilter(tx: List<TransactionEntity>, scope: ScopePeriod): List<TransactionEntity> =
         tx.filter { inScope(it, scope) }
@@ -76,8 +84,8 @@ object AnalyticsEngine {
         EntryFilter.TODAY -> tx.filter { it.date == today }
         EntryFilter.YESTERDAY -> tx.filter { it.date == today.minusDays(1) }
         EntryFilter.THIS_WEEK -> tx.filter { !it.date.isBefore(today.minusDays(6)) && !it.date.isAfter(today) }
-        EntryFilter.THIS_MONTH -> tx.filter { YearMonth.from(it.date) == YearMonth.from(today) }
-        EntryFilter.LAST_MONTH -> tx.filter { YearMonth.from(it.date) == YearMonth.from(today).minusMonths(1) }
+        EntryFilter.THIS_MONTH -> YearMonth.from(today).let { month -> tx.filter { inMonth(it.date, month) } }
+        EntryFilter.LAST_MONTH -> YearMonth.from(today).minusMonths(1).let { month -> tx.filter { inMonth(it.date, month) } }
         EntryFilter.CUSTOM -> if (custom == null) tx else tx.filter { it.date in custom }
     }
 
@@ -126,37 +134,127 @@ object AnalyticsEngine {
     fun biggestEntry(tx: List<TransactionEntity>): TransactionEntity? = tx.maxByOrNull { abs(it.amount) }
 
     /**
-     * Builds the Stats tab from the whole transaction list: flow + scope
-     * filtering, previous-period comparison, category rollup, daily average
-     * over distinct active days, largest single entry, and the opposite-flow
-     * total for the net figure. Pure — no Android or formatting concerns.
+     * Builds the Stats tab from the whole transaction list for one [range] (and
+     * the [previous] window to compare against): flow filtering, category rollup,
+     * daily average over distinct active days, largest single entry, the
+     * opposite-flow total for the net figure, plus the six-month series, weekday
+     * pattern, category movers, month projection and small-purchase share.
+     * Pure — no Android or formatting concerns.
      */
     fun stats(
         all: List<TransactionEntity>,
         categories: List<CategoryEntity>,
-        scope: ScopePeriod,
+        range: DateRange,
+        previous: DateRange?,
         flow: FlowType,
+        today: LocalDate = LocalDate.now(),
     ): StatsSummary {
         val flowTx = flowFilter(all, flow)
-        val scopeTx = scopeFilter(flowTx, scope)
-        val total = scopeTx.sumOf { abs(it.amount) }
-        val previousTotal = previousScope(scope)?.let { p -> scopeFilter(flowTx, p).sumOf { abs(it.amount) } } ?: 0.0
+        val inRange = flowTx.filter { it.date in range }
+        val previousTx = if (previous == null) emptyList() else flowTx.filter { it.date in previous }
+        val total = inRange.sumOf { abs(it.amount) }
+        val previousTotal = previousTx.sumOf { abs(it.amount) }
         val opposite = FlowType.values().first { it != flow }
-        val otherTotal = scopeFilter(flowFilter(all, opposite), scope).sumOf { abs(it.amount) }
-        val activeDays = scopeTx.map { it.date }.distinct().size
+        val otherTotal = flowFilter(all, opposite).filter { it.date in range }.sumOf { abs(it.amount) }
+        val income = if (flow == FlowType.INCOME) total else otherTotal
+        val expense = if (flow == FlowType.EXPENSE) total else otherTotal
+        val activeDates = inRange.mapTo(HashSet()) { it.date }
+        val rollups = groupByCategory(inRange, categories)
+        val average = if (inRange.isEmpty()) 0.0 else total / inRange.size
+
         return StatsSummary(
             flow = flow,
-            scope = scope,
+            range = range,
+            previousRange = previous,
             total = total,
             previousTotal = previousTotal,
-            entryCount = scopeTx.size,
-            averagePerEntry = if (scopeTx.isEmpty()) 0.0 else total / scopeTx.size,
-            activeDays = activeDays,
-            dailyAverage = dailyAverage(total, scopeTx),
+            entryCount = inRange.size,
+            averagePerEntry = average,
+            activeDays = activeDates.size,
+            dailyAverage = total / activeDates.size.coerceAtLeast(1),
             trendPercent = trendPercent(total, previousTotal),
             otherFlowTotal = otherTotal,
-            topCategory = groupByCategory(scopeTx, categories).firstOrNull(),
-            biggestEntry = biggestEntry(scopeTx),
+            savingsRatePercent = if (income > 0) (((income - expense) / income) * 100).roundToInt() else null,
+            topCategory = rollups.firstOrNull(),
+            categories = rollups,
+            biggestEntry = biggestEntry(inRange),
+            monthly = monthlySeries(flowTx, YearMonth.from(minOf(range.end, today))),
+            weekday = weekdayPattern(inRange, range, today),
+            movers = if (previous != null && previousTotal > 0) categoryMovers(rollups, groupByCategory(previousTx, categories)) else emptyList(),
+            projection = monthProjection(inRange, range, previousTotal, today),
+            noSpendDays = noSpendDays(activeDates, range, today),
+            smallPurchases = smallPurchases(inRange, total, average),
         )
     }
+
+    /** Totals for the [count] calendar months ending at [end], oldest first (empty months are zero). */
+    fun monthlySeries(flowTx: List<TransactionEntity>, end: YearMonth, count: Int = 6): List<MonthTotal> {
+        val first = end.minusMonths(count - 1L)
+        val from = first.atDay(1)
+        val to = end.atEndOfMonth()
+        val totals = HashMap<Int, Double>()
+        for (t in flowTx) {
+            if (t.date.isBefore(from) || t.date.isAfter(to)) continue
+            totals.merge(t.date.year * 12 + t.date.monthValue, abs(t.amount), Double::plus)
+        }
+        return List(count) { i ->
+            val m = first.plusMonths(i.toLong())
+            MonthTotal(m, totals[m.year * 12 + m.monthValue] ?: 0.0)
+        }
+    }
+
+    /**
+     * Spend per weekday (Monday first). The average divides by how many of that
+     * weekday fall in the range up to [today], so a range containing five
+     * Saturdays but four Sundays isn't skewed.
+     */
+    fun weekdayPattern(tx: List<TransactionEntity>, range: DateRange, today: LocalDate): List<WeekdayStat> {
+        val totals = DoubleArray(7)
+        for (t in tx) totals[t.date.dayOfWeek.ordinal] += abs(t.amount)
+        val end = minOf(range.end, today)
+        val days = if (end.isBefore(range.start)) 0L else java.time.temporal.ChronoUnit.DAYS.between(range.start, end) + 1
+        val startIndex = range.start.dayOfWeek.ordinal
+        return java.time.DayOfWeek.values().map { day ->
+            val i = day.ordinal
+            val occurrences = days / 7 + if (((i - startIndex + 7) % 7) < days % 7) 1 else 0
+            WeekdayStat(day, totals[i], if (occurrences > 0) totals[i] / occurrences else 0.0)
+        }
+    }
+
+    /** The biggest absolute changes per category against the previous period (up to [limit]). */
+    fun categoryMovers(current: List<CategoryRollup>, previous: List<CategoryRollup>, limit: Int = 3): List<CategoryMover> {
+        val now = current.associateBy { it.categoryId }
+        val before = previous.associateBy { it.categoryId }
+        return (now.keys + before.keys).map { id ->
+            val ref = now[id] ?: before.getValue(id)
+            CategoryMover(id, ref.name, ref.iconKey, now[id]?.totalAbs ?: 0.0, before[id]?.totalAbs ?: 0.0)
+        }.filter { it.delta != 0.0 }.sortedByDescending { abs(it.delta) }.take(limit)
+    }
+
+    /** Only for exactly the current calendar month, and only once there are enough days to extrapolate from. */
+    fun monthProjection(inRange: List<TransactionEntity>, range: DateRange, previousMonthTotal: Double, today: LocalDate): MonthProjection? {
+        val month = YearMonth.from(today)
+        if (range.start != month.atDay(1) || range.end != month.atEndOfMonth() || today.dayOfMonth < MIN_PROJECTION_DAY) return null
+        val soFar = inRange.filter { !it.date.isAfter(today) }.sumOf { abs(it.amount) }
+        return MonthProjection(soFar, soFar / today.dayOfMonth * month.lengthOfMonth(), today.dayOfMonth, month.lengthOfMonth(), previousMonthTotal)
+    }
+
+    fun noSpendDays(activeDates: Set<LocalDate>, range: DateRange, today: LocalDate): Int {
+        val end = minOf(range.end, today)
+        if (end.isBefore(range.start)) return 0
+        val days = java.time.temporal.ChronoUnit.DAYS.between(range.start, end) + 1
+        return (days - activeDates.count { !it.isAfter(end) }).toInt().coerceAtLeast(0)
+    }
+
+    /** Entries below 30% of the average entry, if there are enough of them to matter. */
+    fun smallPurchases(inRange: List<TransactionEntity>, total: Double, average: Double): SmallPurchases? {
+        if (inRange.size < 8 || total <= 0) return null
+        val threshold = average * 0.3
+        val small = inRange.filter { abs(it.amount) < threshold }
+        if (small.size < 5) return null
+        val sum = small.sumOf { abs(it.amount) }
+        return SmallPurchases(small.size, sum, ((sum / total) * 100).roundToInt(), threshold)
+    }
+
+    private const val MIN_PROJECTION_DAY = 5
 }
