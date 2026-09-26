@@ -7,6 +7,7 @@ import com.ajesh.syncspend.domain.model.DayGroup
 import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ScopePeriod
+import com.ajesh.syncspend.domain.model.StatsSummary
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -123,4 +124,39 @@ object AnalyticsEngine {
     }
 
     fun biggestEntry(tx: List<TransactionEntity>): TransactionEntity? = tx.maxByOrNull { abs(it.amount) }
+
+    /**
+     * Builds the Stats tab from the whole transaction list: flow + scope
+     * filtering, previous-period comparison, category rollup, daily average
+     * over distinct active days, largest single entry, and the opposite-flow
+     * total for the net figure. Pure — no Android or formatting concerns.
+     */
+    fun stats(
+        all: List<TransactionEntity>,
+        categories: List<CategoryEntity>,
+        scope: ScopePeriod,
+        flow: FlowType,
+    ): StatsSummary {
+        val flowTx = flowFilter(all, flow)
+        val scopeTx = scopeFilter(flowTx, scope)
+        val total = scopeTx.sumOf { abs(it.amount) }
+        val previousTotal = previousScope(scope)?.let { p -> scopeFilter(flowTx, p).sumOf { abs(it.amount) } } ?: 0.0
+        val opposite = FlowType.values().first { it != flow }
+        val otherTotal = scopeFilter(flowFilter(all, opposite), scope).sumOf { abs(it.amount) }
+        val activeDays = scopeTx.map { it.date }.distinct().size
+        return StatsSummary(
+            flow = flow,
+            scope = scope,
+            total = total,
+            previousTotal = previousTotal,
+            entryCount = scopeTx.size,
+            averagePerEntry = if (scopeTx.isEmpty()) 0.0 else total / scopeTx.size,
+            activeDays = activeDays,
+            dailyAverage = dailyAverage(total, scopeTx),
+            trendPercent = trendPercent(total, previousTotal),
+            otherFlowTotal = otherTotal,
+            topCategory = groupByCategory(scopeTx, categories).firstOrNull(),
+            biggestEntry = biggestEntry(scopeTx),
+        )
+    }
 }

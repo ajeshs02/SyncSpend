@@ -6,10 +6,13 @@ import com.ajesh.syncspend.data.datastore.PreferencesRepository
 import com.ajesh.syncspend.data.datastore.UserPreferences
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
+import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.data.repository.CategoryRepository
+import com.ajesh.syncspend.data.repository.SubscriptionRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
 import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
 import com.ajesh.syncspend.domain.model.EntryFilter
+import com.ajesh.syncspend.domain.model.BillingCycle
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.state.SharedSelectionState
@@ -58,12 +61,14 @@ data class TransactionsUiState(
     val periodPickerOpen: Boolean = false,
     val earliestTransactionDate: LocalDate? = null,
     val currentScope: ScopePeriod = ScopePeriod.Month(java.time.YearMonth.now()),
+    val stats: StatsUi? = null,
 )
 
 class TransactionsViewModel(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val subscriptionRepository: SubscriptionRepository,
     private val selection: SharedSelectionState,
 ) : ViewModel() {
 
@@ -76,6 +81,7 @@ class TransactionsViewModel(
         val tx: List<TransactionEntity>,
         val categories: List<CategoryEntity>,
         val prefs: UserPreferences,
+        val subscriptions: List<SubscriptionEntity>,
     )
 
     private data class UiFlags(
@@ -89,7 +95,8 @@ class TransactionsViewModel(
         transactionRepository.getAll(),
         categoryRepository.getAll(),
         preferencesRepository.preferences,
-    ) { tx, categories, prefs -> DataSources(tx, categories, prefs) }
+        subscriptionRepository.getAll(),
+    ) { tx, categories, prefs, subs -> DataSources(tx, categories, prefs, subs) }
 
     private val uiFlags = combine(tab, entryFilter, flowMenuOpen, periodPickerOpen) { t, ef, fm, pp ->
         UiFlags(t, ef, fm, pp)
@@ -133,6 +140,17 @@ class TransactionsViewModel(
             periodPickerOpen = flags.periodPickerOpen,
             earliestTransactionDate = data.tx.minOfOrNull { it.date },
             currentScope = scope,
+            stats = if (flags.tab == TransactionsTab.ANALYTICS) {
+                val active = data.subscriptions.filter { it.active }
+                val monthly = active.sumOf {
+                    when (it.billingCycle) {
+                        BillingCycle.WEEKLY -> it.amount * 52.0 / 12.0
+                        BillingCycle.MONTHLY -> it.amount
+                        BillingCycle.YEARLY -> it.amount / 12.0
+                    }
+                }
+                buildStatsUi(AnalyticsEngine.stats(data.tx, data.categories, scope, flowType), cur, monthly, active.size)
+            } else null,
         )
     }
 

@@ -45,6 +45,7 @@ fun TransactionsScreen() {
                     container.transactionRepository,
                     container.categoryRepository,
                     container.preferencesRepository,
+                    container.subscriptionRepository,
                     container.selectionState,
                 )
             }
@@ -132,9 +133,7 @@ fun TransactionsScreen() {
                 modifier = Modifier.fillMaxWidth(),
             )
             TransactionsTab.CATEGORIES -> CategoriesTab(rollups = state.categoryRollups, modifier = Modifier.fillMaxWidth())
-            TransactionsTab.ANALYTICS -> Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
-                Text("Stats — coming in Phase 9", style = MaterialTheme.typography.bodySmall, color = SyncSpendTheme.colors.sub)
-            }
+            TransactionsTab.ANALYTICS -> state.stats?.let { StatsTab(it, modifier = Modifier.fillMaxWidth()) }
         }
     }
 
