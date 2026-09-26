@@ -79,10 +79,11 @@ private fun PickerTile(icon: ImageVector, text: String, modifier: Modifier = Mod
     }
 }
 
-private val amountPattern = Regex("""\d*\.?\d{0,2}""")
+// Whole units only: the app has no paise/cents.
+private val amountPattern = Regex("""\d*""")
 
 private fun formatAmount(value: Double?): String =
-    value?.let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString() } ?: ""
+    value?.let { Math.round(it).toString() } ?: ""
 
 @Composable
 private fun SubscriptionFields(
@@ -98,8 +99,8 @@ private fun SubscriptionFields(
     DesignTextField(
         value = amountText,
         onValueChange = { v -> if (v.isEmpty() || v.matches(amountPattern)) onAmountChange(v) },
-        placeholder = "${currencySymbol}0.00",
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        placeholder = "${currencySymbol}0",
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
     )
     FieldLabel("Billing cycle")
     Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {

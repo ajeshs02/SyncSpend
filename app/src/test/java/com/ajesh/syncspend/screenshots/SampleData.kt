@@ -23,7 +23,7 @@ fun sampleContainer(): DefaultAppContainer {
             TransactionEntity(amount = amount, description = desc, categoryId = cat, date = today.minusDays(daysAgo), createdAt = order++),
         )
         add(-250.0, "Coffee & Snacks", food.id, 0)
-        add(-1240.5, "Big Basket", groceries.id, 0)
+        add(-1241.0, "Big Basket", groceries.id, 0)
         add(-2100.0, "Petrol", fuel.id, 1)
         add(-399.0, "Netflix", bills.id, 1)
         add(-180.0, "Lunch", food.id, 3)

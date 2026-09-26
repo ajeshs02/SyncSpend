@@ -29,12 +29,13 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 
 data class HomeUiState(
-    /** False only for the placeholder shown before Room answers — the hero count-up waits for real data. */
+    /** False only for the placeholder shown before the first real state is computed. */
     val loaded: Boolean = false,
     val flow: FlowType = FlowType.EXPENSE,
     val scopeLabel: String = "",
     val scopeSubLabel: String = "",
     val total: Double = 0.0,
+    val totalFormatted: String = "0",
     val currencySymbol: String = "₹",
     val hasEntriesInScope: Boolean = false,
     val hasTrend: Boolean = false,
@@ -103,6 +104,7 @@ class HomeViewModel(
             scopeLabel = AnalyticsEngine.scopeLabel(scope),
             scopeSubLabel = "${scopeTx.size} " + if (flowType == FlowType.INCOME) "income entries logged" else "expenses logged",
             total = total,
+            totalFormatted = CurrencyFormatter.amount(total),
             currencySymbol = sources.prefs.currencyCode.symbol,
             hasEntriesInScope = scopeTx.isNotEmpty(),
             hasTrend = trend != null,

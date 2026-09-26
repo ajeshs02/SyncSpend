@@ -31,8 +31,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.model.FlowType
@@ -69,7 +71,6 @@ fun EditEntryHost() {
 @Composable
 private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
     val container = LocalAppContainer.current
-    val colors = SyncSpendTheme.colors
     val scope = rememberCoroutineScope()
 
     val tx by produceState<TransactionEntity?>(null, transactionId) {
@@ -102,92 +103,44 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
     val canSave = parsedAmount != null && parsedAmount > 0 && categoryId != null
 
     DesignSheet(onDismiss = onDismiss) { close ->
-        SheetHeader("Edit Entry", onClose = close)
-
-        FlowToggle(
+        EditEntryBody(
             type = type,
-            onSelect = { newType ->
+            onTypeChange = { newType ->
                 if (newType != type) {
                     type = newType
                     // Categories don't carry across flows: start clean (returning to the original flow restores its category).
                     categoryId = if (newType == originalType) loaded.categoryId else null
                 }
             },
-            modifier = Modifier.padding(top = 14.dp),
-        )
-
-        FieldLabel("Description", top = 12.dp)
-        DesignTextField(value = description, onValueChange = { description = it }, placeholder = "Description")
-
-        Row(modifier = Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            Column(modifier = Modifier.weight(1f)) {
-                FieldLabel("Amount", top = 0.dp)
-                DesignTextField(
-                    value = amountText,
-                    onValueChange = { v -> if (v.isEmpty() || v.matches(Regex("""\d*\.?\d{0,2}"""))) amountText = v },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    textColor = if (isIncome) colors.pos else colors.neg,
-                    placeholder = prefs.currencyCode.symbol + "0",
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                FieldLabel("Date", top = 0.dp)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(colors.tile, RoundedCornerShape(14.dp))
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { showDate = true }
-                        .padding(horizontal = 13.dp, vertical = 12.dp),
-                ) {
-                    Text(
-                        "${DateUtils.shortDate(date)} ${date.year}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.ink,
-                    )
-                }
-            }
-        }
-
-        CategoryField(
+            description = description,
+            onDescriptionChange = { description = it },
+            amountText = amountText,
+            onAmountChange = { amountText = it },
+            currencySymbol = prefs.currencyCode.symbol,
+            dateLabel = "${DateUtils.shortDate(date)} ${date.year}",
+            onDateClick = { showDate = true },
             category = categories.find { it.id == categoryId },
-            onClick = { showPicker = true },
-            modifier = Modifier.padding(top = 12.dp),
+            onCategoryClick = { showPicker = true },
+            canSave = canSave,
+            onSave = {
+                val v = parsedAmount ?: return@EditEntryBody
+                val chosen = categoryId ?: return@EditEntryBody
+                val category = categories.find { it.id == chosen }
+                scope.launch {
+                    container.transactionRepository.update(
+                        loaded.copy(
+                            description = description.trim().ifEmpty { category?.name ?: loaded.description },
+                            amount = if (isIncome) v else -v,
+                            date = date,
+                            categoryId = chosen,
+                        ),
+                    )
+                    close()
+                }
+            },
+            onDelete = { showDelete = true },
+            onClose = close,
         )
-        if (categoryId == null) {
-            Text(
-                "Pick a category to save this entry.",
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.sub,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
-
-        Row(modifier = Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            SheetDeleteButton(onClick = { showDelete = true })
-            PrimaryButton(
-                text = "Save Changes",
-                enabled = canSave,
-                height = 48.dp,
-                radius = 16.dp,
-                modifier = Modifier.weight(1f),
-                onClick = {
-                    val v = parsedAmount ?: return@PrimaryButton
-                    val chosen = categoryId ?: return@PrimaryButton
-                    val category = categories.find { it.id == chosen }
-                    scope.launch {
-                        container.transactionRepository.update(
-                            loaded.copy(
-                                description = description.trim().ifEmpty { category?.name ?: loaded.description },
-                                amount = if (isIncome) v else -v,
-                                date = date,
-                                categoryId = chosen,
-                            ),
-                        )
-                        close()
-                    }
-                },
-            )
-        }
 
         if (showDate) {
             DatePickerSheet(
@@ -224,6 +177,93 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
     }
 }
 
+/** Whole units only: the app has no paise/cents. */
+private val amountPattern = Regex("""\d*""")
+
+/**
+ * Everything the Edit Entry sheet shows, with no repository or navigation access so it can be
+ * rendered on its own (see the screenshot/height tests). The category hint line is always
+ * present — its text changes but never its height — so switching Expense/Income (which clears the
+ * category) doesn't make the sheet jump.
+ */
+@Composable
+internal fun EditEntryBody(
+    type: FlowType,
+    onTypeChange: (FlowType) -> Unit,
+    description: String,
+    onDescriptionChange: (String) -> Unit,
+    amountText: String,
+    onAmountChange: (String) -> Unit,
+    currencySymbol: String,
+    dateLabel: String,
+    onDateClick: () -> Unit,
+    category: CategoryEntity?,
+    onCategoryClick: () -> Unit,
+    canSave: Boolean,
+    onSave: () -> Unit,
+    onDelete: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = SyncSpendTheme.colors
+    val isIncome = type == FlowType.INCOME
+    Column(modifier = modifier) {
+        SheetHeader("Edit Entry", onClose = onClose)
+
+        FlowToggle(type = type, onSelect = onTypeChange, modifier = Modifier.padding(top = 14.dp))
+
+        FieldLabel("Description", top = 12.dp)
+        DesignTextField(value = description, onValueChange = onDescriptionChange, placeholder = "Description")
+
+        Row(modifier = Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Column(modifier = Modifier.weight(1f)) {
+                FieldLabel("Amount", top = 0.dp)
+                DesignTextField(
+                    value = amountText,
+                    onValueChange = { v -> if (v.matches(amountPattern)) onAmountChange(v) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    textColor = if (isIncome) colors.pos else colors.neg,
+                    placeholder = currencySymbol + "0",
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                FieldLabel("Date", top = 0.dp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.tile, RoundedCornerShape(14.dp))
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDateClick)
+                        .padding(horizontal = 13.dp, vertical = 12.dp),
+                ) {
+                    Text(dateLabel, style = MaterialTheme.typography.bodyMedium, color = colors.ink)
+                }
+            }
+        }
+
+        CategoryField(category = category, onClick = onCategoryClick, modifier = Modifier.padding(top = 12.dp))
+        Text(
+            if (category == null) "Pick a category to save this entry." else "Tap to change this entry's category.",
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.sub,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+
+        Row(modifier = Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            SheetDeleteButton(onClick = onDelete)
+            PrimaryButton(
+                text = "Save Changes",
+                enabled = canSave,
+                height = 48.dp,
+                radius = 16.dp,
+                modifier = Modifier.weight(1f),
+                onClick = onSave,
+            )
+        }
+    }
+}
+
 @Composable
 private fun FieldLabel(text: String, top: androidx.compose.ui.unit.Dp, bottom: androidx.compose.ui.unit.Dp = 5.dp) {
     Text(
@@ -234,5 +274,4 @@ private fun FieldLabel(text: String, top: androidx.compose.ui.unit.Dp, bottom: a
     )
 }
 
-private fun trimAmount(v: Double): String =
-    if (v == v.toLong().toDouble()) v.toLong().toString() else String.format(java.util.Locale.US, "%.2f", v)
+private fun trimAmount(v: Double): String = Math.round(v).toString()

@@ -5,7 +5,6 @@ import android.net.Uri
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.data.db.entity.type
-import java.util.Locale
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -30,7 +29,7 @@ object CsvExporter {
                             t.type.name,
                             names[t.categoryId]?.name ?: "Uncategorized",
                             t.description,
-                            String.format(Locale.US, "%.2f", abs(t.amount)),
+                            Math.round(abs(t.amount)).toString(),
                         ),
                     ),
                 )

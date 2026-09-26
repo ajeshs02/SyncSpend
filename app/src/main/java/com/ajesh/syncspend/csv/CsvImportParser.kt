@@ -129,12 +129,15 @@ object CsvImportParser {
         return null
     }
 
-    /** "₹1,250.50" / " 450 " / "-320" -> positive amount; null for blank, zero or unparsable. */
+    /**
+     * "₹1,250.50" / " 450 " / "-320" -> positive whole-rupee amount (fractions round to the nearest
+     * rupee — the app has no paise); null for blank, zero or unparsable.
+     */
     private fun parseAmount(raw: String): Double? {
         val cleaned = raw.filter { it.isDigit() || it == '.' || it == '-' }
         val value = cleaned.toDoubleOrNull() ?: return null
-        val abs = abs((value * 100).roundToLong() / 100.0)
-        return abs.takeIf { it > 0 }
+        val whole = abs(value).roundToLong().toDouble()
+        return whole.takeIf { it > 0 }
     }
 }
 

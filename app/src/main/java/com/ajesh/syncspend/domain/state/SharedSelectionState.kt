@@ -30,7 +30,4 @@ class SharedSelectionState {
      * sets it to Stats). Transactions consumes and clears it, so the tab pill visibly slides.
      */
     val pendingTransactionsTab = MutableStateFlow<TransactionsTab?>(null)
-
-    /** The Home total counts up once per app launch; this flips to true as that animation starts. */
-    @Volatile var launchCountUpDone: Boolean = false
 }
