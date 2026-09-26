@@ -43,7 +43,7 @@ import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.ui.components.AnimatedSegmentedControl
-import com.ajesh.syncspend.ui.components.DateRangePickerSheet
+import com.ajesh.syncspend.ui.components.CustomRangeSheet
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
@@ -164,7 +164,7 @@ fun TransactionsScreen() {
     }
 
     if (rangePickerOpen) {
-        DateRangePickerSheet(
+        CustomRangeSheet(
             initial = state.customRange,
             earliestTransactionDate = state.earliestTransactionDate,
             onApply = viewModel::applyCustomRange,
