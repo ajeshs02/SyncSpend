@@ -22,9 +22,9 @@ object SyncSpendChrome {
 
     /** Navigation bar + the pill's footprint + breathing room, so the last item scrolls clear of the nav. */
     val screenBottomContentPadding: Dp
-        @Composable get() = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
+        @Composable get() = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 124.dp
 
     /** Gap between the pill and the navigation bar. */
     val bottomBarBottomInset = 14.dp
-    val bottomFadeHeight = 120.dp
+    val bottomFadeHeight = 132.dp
 }
