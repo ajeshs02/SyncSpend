@@ -30,6 +30,30 @@
             </intent-filter>
         </activity>
 
+        <!-- Quick-add panel opened from the widget. Its own task (empty
+             affinity) so dismissing it returns straight to the launcher, and
+             kept out of recents since it's a transient overlay. -->
+        <activity
+            android:name=".widget.QuickAddActivity"
+            android:exported="false"
+            android:theme="@style/Theme.SyncSpend.Transparent"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="stateAlwaysHidden" />
+
+        <receiver
+            android:name=".widget.SyncSpendWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/syncspend_widget_info" />
+        </receiver>
+
         <receiver
             android:name=".alarm.AlarmReceiver"
             android:exported="false" />

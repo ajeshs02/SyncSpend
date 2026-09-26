@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Money glyph in the app's 24x24 stroke style (the design's "coin" icon). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF8ECF63"
+        android:strokeWidth="1.7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M4,12a8,8 0 1,0 16,0a8,8 0 1,0 -16,0" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF8ECF63"
+        android:strokeWidth="1.7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M14.5,9.5a2.6,2.6 0 0,0 -2.5,-1.5c-1.4,0 -2.5,0.8 -2.5,1.8s1,1.5 2.5,1.8 2.5,0.8 2.5,1.8 -1.1,1.8 -2.5,1.8a2.6,2.6 0 0,1 -2.5,-1.5M12,6.8V8M12,15.6v1.2" />
+</vector>

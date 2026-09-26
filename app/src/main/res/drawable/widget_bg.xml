@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The design's dark hero gradient (135deg #0f1a12 -> #16331f -> #0c1b11). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient
+        android:angle="315"
+        android:centerColor="#FF16331F"
+        android:endColor="#FF0C1B11"
+        android:startColor="#FF0F1A12" />
+    <corners android:radius="26dp" />
+</shape>

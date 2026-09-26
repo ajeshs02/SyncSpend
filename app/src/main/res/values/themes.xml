@@ -26,4 +26,19 @@
         <item name="android:textColorPrimary">#EEF3EA</item>
         <item name="android:windowBackground">@drawable/picker_bg_dark</item>
     </style>
+
+    <!-- The widget's quick-add overlay. Translucent so the home screen stays
+         visible behind the panel; window animations are cleared because the
+         panel animates itself (a system transition on top reads as a stutter). -->
+    <style name="Theme.SyncSpend.Transparent" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
 </resources>
