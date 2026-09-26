@@ -25,7 +25,7 @@ class StatsScreenshotTest {
         container.selectionState.pendingTransactionsTab.value = TransactionsTab.ANALYTICS
         rule.snapshot(
             name, dark = dark, heightDp = height, container = container,
-            beforeCapture = { waitUntil(20_000) { onAllNodes(hasText("Findings")).fetchSemanticsNodes().isNotEmpty() } },
+            beforeCapture = { waitUntil(20_000) { onAllNodes(hasText("Month pace")).fetchSemanticsNodes().isNotEmpty() } },
         ) {
             Box(Modifier.fillMaxSize()) {
                 TransactionsScreen()

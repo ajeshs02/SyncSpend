@@ -28,10 +28,11 @@ import com.ajesh.syncspend.ui.transactions.TransactionsScreen
  */
 @Composable
 fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
-    // The design's `ssup` entry: 300ms fade with a small rise. Exits are a quick
-    // fade so the outgoing screen never fights the incoming one.
-    val enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 40 }
-    val exit = fadeOut(tween(120))
+    // The design's `ssup` entry — a fade with a small rise — kept short (220ms) because the new
+    // screen composes while it runs; exits are a very quick fade so the outgoing screen never
+    // fights the incoming one.
+    val enter = fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 40 }
+    val exit = fadeOut(tween(90))
     NavHost(
         navController = navController,
         startDestination = Routes.HOME,

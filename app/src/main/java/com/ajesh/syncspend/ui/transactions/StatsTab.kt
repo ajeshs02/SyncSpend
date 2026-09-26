@@ -8,16 +8,16 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -50,17 +50,20 @@ import com.ajesh.syncspend.ui.theme.SyncSpendTheme
  * Stats tab body: top-category card, 2x2 tiles, six-month bars, where the money goes, weekday
  * pattern, tips & suggestions, findings and the period-over-period card. The range chips above it
  * live in [TransactionsScreen] (so they are on screen before the numbers are computed).
+ *
+ * A lazy list: only the cards on screen are composed, so opening Stats (or arriving from Home's
+ * hero card while the tab pill is still sliding) builds a handful of cards, not all of them; a
+ * chart's grow-in starts as its card scrolls into view.
  */
 @Composable
 fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
     val colors = SyncSpendTheme.colors
-    Column(modifier = modifier) {
-        Column(
-            modifier = Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(top = 2.dp, bottom = SyncSpendChrome.screenBottomContentPadding),
-            verticalArrangement = Arrangement.spacedBy(11.dp),
-        ) {
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(top = 2.dp, bottom = SyncSpendChrome.screenBottomContentPadding),
+        verticalArrangement = Arrangement.spacedBy(11.dp),
+    ) {
+        item(key = "top", contentType = "top") {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -84,54 +87,60 @@ fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
                     Text(stats.topTotal, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.19).sp, color = colors.mink)
                 }
             }
+        }
 
-            stats.tiles.chunked(2).forEach { pair ->
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    pair.forEach { tile ->
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .background(colors.card, RoundedCornerShape(18.dp))
-                                .border(1.dp, colors.line, RoundedCornerShape(18.dp))
-                                .padding(14.dp),
-                        ) {
-                            Text(tile.label, fontSize = 10.5.sp, lineHeight = 13.sp, color = colors.sub, maxLines = 2)
-                            Text(
-                                tile.value,
-                                fontSize = 19.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = (-0.19).sp,
-                                color = when (tile.tone) {
-                                    StatTone.NEUTRAL -> colors.ink
-                                    StatTone.POSITIVE -> colors.pos
-                                    StatTone.NEGATIVE -> colors.neg
-                                },
-                                modifier = Modifier.padding(top = 7.dp),
-                            )
-                            Text(tile.note, fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 3.dp))
-                        }
+        itemsIndexed(stats.tiles.chunked(2), key = { index, _ -> "tiles-$index" }, contentType = { _, _ -> "tiles" }) { _, pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                pair.forEach { tile ->
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(colors.card, RoundedCornerShape(18.dp))
+                            .border(1.dp, colors.line, RoundedCornerShape(18.dp))
+                            .padding(14.dp),
+                    ) {
+                        Text(tile.label, fontSize = 10.5.sp, lineHeight = 13.sp, color = colors.sub, maxLines = 2)
+                        Text(
+                            tile.value,
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = (-0.19).sp,
+                            color = when (tile.tone) {
+                                StatTone.NEUTRAL -> colors.ink
+                                StatTone.POSITIVE -> colors.pos
+                                StatTone.NEGATIVE -> colors.neg
+                            },
+                            modifier = Modifier.padding(top = 7.dp),
+                        )
+                        Text(tile.note, fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 3.dp))
                     }
                 }
             }
+        }
 
-            stats.pace?.let { pace ->
-                StatsCard(title = "Month pace") { PaceBar(pace) }
-            }
+        stats.pace?.let { pace ->
+            item(key = "pace", contentType = "card") { StatsCard(title = "Month pace") { PaceBar(pace) } }
+        }
 
+        item(key = "monthly", contentType = "card") {
             StatsCard(title = "Last 6 months") {
                 BarChart(stats.monthlyBars, height = 112.dp, averageFraction = stats.monthlyAverageFraction)
                 Text(stats.monthlyCaption, fontSize = 10.5.sp, lineHeight = 15.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
             }
+        }
 
-            if (stats.categoryBars.isNotEmpty()) {
+        if (stats.categoryBars.isNotEmpty()) {
+            item(key = "where", contentType = "card") {
                 StatsCard(title = "Where it goes") {
                     Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
                         stats.categoryBars.forEach { CategoryBar(it) }
                     }
                 }
             }
+        }
 
-            if (stats.movers.isNotEmpty()) {
+        if (stats.movers.isNotEmpty()) {
+            item(key = "movers", contentType = "card") {
                 StatsCard(title = "Biggest changes") {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         stats.movers.forEach { MoverRow(it) }
@@ -139,28 +148,36 @@ fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
                     Text("Compared with the previous period.", fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
                 }
             }
+        }
 
-            if (stats.topEntries.isNotEmpty()) {
+        if (stats.topEntries.isNotEmpty()) {
+            item(key = "top-entries", contentType = "card") {
                 StatsCard(title = "Top entries") {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         stats.topEntries.forEachIndexed { index, entry -> TopEntryRow(index + 1, entry) }
                     }
                 }
             }
+        }
 
-            if (stats.weekdayCaption.isNotEmpty()) {
+        if (stats.weekdayCaption.isNotEmpty()) {
+            item(key = "weekday", contentType = "card") {
                 StatsCard(title = "By weekday") {
                     BarChart(stats.weekdayBars, height = 80.dp, averageFraction = null)
                     Text(stats.weekdayCaption, fontSize = 10.5.sp, lineHeight = 15.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
                 }
             }
+        }
 
+        item(key = "tips", contentType = "card") {
             StatsCard(title = "Tips & suggestions", gradient = true) {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     stats.tips.forEach { TipRow(it) }
                 }
             }
+        }
 
+        item(key = "findings", contentType = "card") {
             StatsCard(title = "Findings", gradient = true) {
                 Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
                     stats.findings.forEach { line ->
@@ -171,8 +188,10 @@ fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
                     }
                 }
             }
+        }
 
-            if (stats.showComparison) {
+        if (stats.showComparison) {
+            item(key = "versus", contentType = "versus") {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
