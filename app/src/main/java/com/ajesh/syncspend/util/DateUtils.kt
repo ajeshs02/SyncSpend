@@ -28,6 +28,9 @@ object DateUtils {
     /** "14 Sep 2026". */
     fun shortDateYear(d: LocalDate): String = "${shortDate(d)} ${d.year}"
 
+    /** [shortDate], with the year appended only once [d] falls outside [today]'s year. */
+    fun smartDate(d: LocalDate, today: LocalDate): String = if (d.year == today.year) shortDate(d) else shortDateYear(d)
+
     /**
      * Compact label for a custom range: "12 Aug - 3 Sep" within [today]'s year,
      * with years added when the range reaches into another year.

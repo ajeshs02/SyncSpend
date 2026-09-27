@@ -20,6 +20,7 @@ import com.ajesh.syncspend.ui.categories.CategoriesScreen
 import com.ajesh.syncspend.ui.home.HomeScreen
 import com.ajesh.syncspend.ui.settings.SettingsScreen
 import com.ajesh.syncspend.ui.subsreminders.SubsRemindersScreen
+import com.ajesh.syncspend.ui.transactions.StatsScreen
 import com.ajesh.syncspend.ui.transactions.TransactionsScreen
 
 /**
@@ -51,6 +52,7 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
                 onViewAllTransactions = { navController.navigateToTab(Routes.TRANSACTIONS) },
                 onOpenSubscriptions = { navController.navigate(Routes.subsReminders("subs")) },
                 onOpenReminders = { navController.navigate(Routes.subsReminders("alerts")) },
+                onOpenStats = { navController.navigateToTab(Routes.STATS) },
             )
         }
         composable(Routes.TRANSACTIONS) { TransactionsScreen() }
@@ -61,7 +63,8 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
             )
         }
         composable(Routes.CATEGORIES) { CategoriesScreen() }
-        composable(Routes.SETTINGS) { SettingsScreen() }
+        composable(Routes.STATS) { StatsScreen() }
+        composable(Routes.SETTINGS) { SettingsScreen(onOpenCategories = { navController.navigate(Routes.CATEGORIES) }) }
         composable(
             route = Routes.SUBS_REMINDERS,
             arguments = listOf(

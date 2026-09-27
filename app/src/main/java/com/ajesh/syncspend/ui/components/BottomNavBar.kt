@@ -58,7 +58,7 @@ import kotlinx.coroutines.launch
 enum class NavDestination(val route: String) {
     Home("home"),
     Transactions("transactions"),
-    Categories("categories"),
+    Stats("stats"),
     Settings("settings"),
 }
 
@@ -83,7 +83,7 @@ internal fun navSlotFor(route: String?): Int = when (route) {
     NavDestination.Home.route -> 0
     NavDestination.Transactions.route -> 1
     "add_entry" -> NAV_ADD_SLOT
-    NavDestination.Categories.route -> 3
+    NavDestination.Stats.route -> 3
     NavDestination.Settings.route -> 4
     else -> -1
 }
@@ -158,9 +158,9 @@ fun BottomFadeAndNav(
                     selected = NAV_ADD_SLOT
                     onAddClick()
                 }
-                NavIconButton(SyncSpendIcons.Layers, "Categories", selected == 3) {
+                NavIconButton(SyncSpendIcons.Trend, "Stats", selected == 3) {
                     selected = 3
-                    onNavigate(NavDestination.Categories)
+                    onNavigate(NavDestination.Stats)
                 }
                 NavIconButton(SyncSpendIcons.Cog, "Settings", selected == 4) {
                     selected = 4

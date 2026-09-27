@@ -15,7 +15,7 @@ class NavGeometryTest {
         assertEquals(0, navSlotFor("home"))
         assertEquals(1, navSlotFor("transactions"))
         assertEquals(NAV_ADD_SLOT, navSlotFor("add_entry"))
-        assertEquals(3, navSlotFor("categories"))
+        assertEquals(3, navSlotFor("stats"))
         assertEquals(4, navSlotFor("settings"))
         assertEquals(-1, navSlotFor("subs_reminders/{listMode}"))
         assertEquals(-1, navSlotFor(null))
@@ -27,7 +27,7 @@ class NavGeometryTest {
         assertEquals(0f, navSlotOffset(0).value, 0f)
         assertEquals(cell, navSlotOffset(1).value, 0f)
         assertEquals(2 * cell, navSlotOffset(2).value, 0f)
-        assertEquals(2 * cell + add, navSlotOffset(3).value, 0f) // Categories: after Home, Transactions AND Add
+        assertEquals(2 * cell + add, navSlotOffset(3).value, 0f) // Stats: after Home, Transactions AND Add
         assertEquals(3 * cell + add, navSlotOffset(4).value, 0f) // Settings
     }
 
