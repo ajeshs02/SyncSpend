@@ -45,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.ajesh.syncspend.domain.model.CalendarBounds
 import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.model.EntryNote
 import com.ajesh.syncspend.domain.model.FlowType
@@ -60,6 +61,7 @@ import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.DateUtils
+import java.time.YearMonth
 
 @Composable
 fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
@@ -196,7 +198,7 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
     if (showDatePicker) {
         DatePickerSheet(
             initial = state.date,
-            earliestTransactionDate = earliest,
+            minMonth = CalendarBounds.entryLowerMonth(YearMonth.now(), earliest),
             onApply = viewModel::setDate,
             onDismiss = { showDatePicker = false },
         )

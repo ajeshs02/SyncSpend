@@ -34,6 +34,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ajesh.syncspend.domain.model.CalendarBounds
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.di.LocalAppContainer
@@ -54,6 +55,7 @@ import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.CurrencyFormatter
 import com.ajesh.syncspend.util.DateUtils
 import java.time.LocalDate
+import java.time.YearMonth
 import kotlin.math.abs
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -148,7 +150,7 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
         if (showDate) {
             DatePickerSheet(
                 initial = date,
-                earliestTransactionDate = earliest,
+                minMonth = CalendarBounds.entryLowerMonth(YearMonth.now(), earliest),
                 onApply = { date = it },
                 onDismiss = { showDate = false },
             )

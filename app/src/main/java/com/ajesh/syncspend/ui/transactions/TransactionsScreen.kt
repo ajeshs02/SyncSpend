@@ -42,6 +42,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
+import com.ajesh.syncspend.domain.model.DateRange
 import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.StatsRange
@@ -53,6 +54,7 @@ import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.DateUtils
+import java.time.LocalDate
 import kotlinx.coroutines.delay
 
 @Composable
@@ -78,8 +80,10 @@ fun TransactionsScreen() {
     val storedFilter by viewModel.entryFilter.collectAsStateWithLifecycle()
     val customRange by viewModel.customRange.collectAsStateWithLifecycle()
     val statsRange by viewModel.statsRange.collectAsStateWithLifecycle()
-    val filter = AnalyticsEngine.effectiveEntryFilter(storedFilter, flow)
-    val filterOptions = remember(flow) { AnalyticsEngine.entryFilterOptions(flow) }
+    val filter = storedFilter
+    val filterOptions = remember { AnalyticsEngine.entryFilterOptions() }
+    // The dates the current chip covers (shown next to "Showing ..."); the Stats tab has its own range chips.
+    val rangeLabel = remember(tab, filter, customRange, statsRange) { headerRangeLabel(tab, filter, customRange, statsRange, LocalDate.now()) }
     // Pure UI state lives here, not in the ViewModel: toggling a menu must not re-run the data pipeline.
     var flowMenuOpen by remember { mutableStateOf(false) }
     var rangePickerOpen by remember { mutableStateOf(false) }
@@ -145,16 +149,22 @@ fun TransactionsScreen() {
         }
 
         androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 10.dp))
-        Text(
-            buildAnnotatedString {
-                append("Showing ")
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = flowColor)) {
-                    append(if (flow == FlowType.INCOME) "income" else "expenses")
-                }
-            },
-            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-            color = colors.sub,
-        )
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                buildAnnotatedString {
+                    append("Showing ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = flowColor)) {
+                        append(if (flow == FlowType.INCOME) "income" else "expenses")
+                    }
+                },
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                color = colors.sub,
+            )
+            Box(modifier = Modifier.weight(1f))
+            rangeLabel?.let {
+                Text(it, style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp), color = colors.sub, maxLines = 1)
+            }
+        }
 
         androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 14.dp))
         AnimatedSegmentedControl(
@@ -216,6 +226,16 @@ fun TransactionsScreen() {
             onApply = viewModel::applyCustomRange,
             onDismiss = { rangePickerOpen = false },
         )
+    }
+}
+
+/** "21 Sep - 27 Sep", "All time", or null before a custom range has been picked. */
+internal fun headerRangeLabel(tab: TransactionsTab, filter: EntryFilter, customRange: DateRange?, statsRange: StatsRange, today: LocalDate): String? {
+    fun label(range: DateRange) = DateUtils.rangeLabel(range.start, range.end, today)
+    return when {
+        tab != TransactionsTab.ANALYTICS -> AnalyticsEngine.entryFilterRange(filter, customRange, today)?.let(::label)
+        statsRange == StatsRange.ALL_TIME -> "All time"
+        else -> statsRange.resolve(today, null).let { label(DateRange(it.start, minOf(it.end, today))) }
     }
 }
 

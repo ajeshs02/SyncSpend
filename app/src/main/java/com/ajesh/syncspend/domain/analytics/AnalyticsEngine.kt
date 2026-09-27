@@ -16,9 +16,11 @@ import com.ajesh.syncspend.domain.model.SmallPurchases
 import com.ajesh.syncspend.domain.model.StatsSummary
 import com.ajesh.syncspend.domain.model.WeekdayStat
 import com.ajesh.syncspend.util.DateUtils
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
+import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -86,32 +88,34 @@ object AnalyticsEngine {
         ScopePeriod.AllTime -> "All time"
     }
 
-    fun entryFilterOptions(flow: FlowType): List<EntryFilter> = if (flow == FlowType.INCOME) {
-        listOf(EntryFilter.ALL)
-    } else {
-        listOf(
-            EntryFilter.TODAY, EntryFilter.YESTERDAY, EntryFilter.THIS_WEEK,
-            EntryFilter.THIS_MONTH, EntryFilter.LAST_MONTH, EntryFilter.CUSTOM,
-        )
+    /** The chips offered on the Entries and Categories tabs, for both flows. */
+    fun entryFilterOptions(): List<EntryFilter> = EntryFilter.entries
+
+    /**
+     * The dates a filter's header label shows: this week is Monday to today, this month is the 1st to today,
+     * last month is its whole span, custom is the range the user picked (null until one is).
+     */
+    fun entryFilterRange(filter: EntryFilter, custom: DateRange?, today: LocalDate = LocalDate.now()): DateRange? = when (filter) {
+        EntryFilter.THIS_WEEK -> DateRange(weekStart(today), today)
+        EntryFilter.THIS_MONTH -> DateRange(today.withDayOfMonth(1), today)
+        EntryFilter.LAST_MONTH -> YearMonth.from(today).minusMonths(1).let { DateRange(it.atDay(1), it.atEndOfMonth()) }
+        EntryFilter.CUSTOM -> custom
     }
 
-    /** Falls back to THIS_MONTH (or ALL for income) if the stored filter isn't valid for [flow] — mirrors the design's `effFilter`. */
-    fun effectiveEntryFilter(stored: EntryFilter, flow: FlowType): EntryFilter {
-        val options = entryFilterOptions(flow)
-        if (stored in options) return stored
-        return if (flow == FlowType.INCOME) EntryFilter.ALL else EntryFilter.THIS_MONTH
-    }
+    /** The Monday of [date]'s week. */
+    fun weekStart(date: LocalDate): LocalDate = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
+    /**
+     * The entries a filter keeps. The label above shows the span up to today, but the filter covers the
+     * whole period, so an entry dated later this week or month is never hidden.
+     */
     fun applyEntryFilter(
         tx: List<TransactionEntity>,
         filter: EntryFilter,
         custom: DateRange?,
         today: LocalDate = LocalDate.now(),
     ): List<TransactionEntity> = when (filter) {
-        EntryFilter.ALL -> tx
-        EntryFilter.TODAY -> tx.filter { it.date == today }
-        EntryFilter.YESTERDAY -> tx.filter { it.date == today.minusDays(1) }
-        EntryFilter.THIS_WEEK -> tx.filter { !it.date.isBefore(today.minusDays(6)) && !it.date.isAfter(today) }
+        EntryFilter.THIS_WEEK -> weekStart(today).let { start -> tx.filter { !it.date.isBefore(start) && !it.date.isAfter(start.plusDays(6)) } }
         EntryFilter.THIS_MONTH -> YearMonth.from(today).let { month -> tx.filter { inMonth(it.date, month) } }
         EntryFilter.LAST_MONTH -> YearMonth.from(today).minusMonths(1).let { month -> tx.filter { inMonth(it.date, month) } }
         EntryFilter.CUSTOM -> if (custom == null) tx else tx.filter { it.date in custom }

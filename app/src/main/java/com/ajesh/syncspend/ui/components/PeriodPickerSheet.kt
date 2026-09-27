@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ajesh.syncspend.domain.model.CalendarBounds
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
@@ -38,10 +39,9 @@ import java.util.Locale
 /**
  * The design's month/year scope picker, plus rolling "Last 3 / 6 months"
  * windows. [showAllTime] adds the "All Time" option — Home leaves it out, the
- * CSV export picker needs it. Rather than letting the year nav page back
- * indefinitely, the browsable range defaults to the last 2 months through the
- * current month, extended further back only if an existing transaction is
- * older than that.
+ * CSV export picker needs it. The browsable range runs from the oldest entry's
+ * month to this month (no buffer), so months and windows the entries don't
+ * reach yet are greyed out.
  */
 @Composable
 fun PeriodPickerSheet(
@@ -53,11 +53,7 @@ fun PeriodPickerSheet(
 ) {
     val today = remember { LocalDate.now() }
     val upperBound = remember { YearMonth.from(today) }
-    val lowerBound = remember(earliestTransactionDate) {
-        val defaultLower = upperBound.minusMonths(2)
-        val earliestMonth = earliestTransactionDate?.let { YearMonth.from(it) }
-        if (earliestMonth != null && earliestMonth.isBefore(defaultLower)) earliestMonth else defaultLower
-    }
+    val lowerBound = remember(earliestTransactionDate) { CalendarBounds.dataLowerMonth(upperBound, earliestTransactionDate) }
 
     var draft by remember { mutableStateOf(currentScope) }
     var pickerYear by remember {
@@ -131,6 +127,7 @@ internal fun PeriodPickerBody(
                     PickerChip(
                         label = "Last $n months",
                         selected = (draft as? ScopePeriod.LastMonths)?.months == n,
+                        enabled = CalendarBounds.windowEnabled(n, upperBound, lowerBound),
                         modifier = Modifier.weight(1f),
                         vertical = 10.dp,
                         radius = 12.dp,
@@ -194,6 +191,8 @@ fun PickerChip(
     radius: androidx.compose.ui.unit.Dp = 12.dp,
     /** Keep the label on one line (rolling-window chips, where three share a row). */
     singleLine: Boolean = false,
+    /** Space between the label and the chip's left/right edge (chips in a scrolling row, where width is free). */
+    horizontal: androidx.compose.ui.unit.Dp = 0.dp,
     onClick: () -> Unit,
 ) {
     Box(
@@ -209,7 +208,7 @@ fun PickerChip(
                 enabled = enabled,
                 onClick = onClick,
             )
-            .padding(vertical = vertical),
+            .padding(horizontal = horizontal, vertical = vertical),
         contentAlignment = Alignment.Center,
     ) {
         Text(

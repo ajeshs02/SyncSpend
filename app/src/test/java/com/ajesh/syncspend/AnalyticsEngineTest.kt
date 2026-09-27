@@ -43,20 +43,39 @@ class AnalyticsEngineTest {
         assertEquals(4, AnalyticsEngine.scopeFilter(expenses, ScopePeriod.AllTime).size)
     }
 
-    @Test fun entryFiltersUseRollingWeeks() {
+    @Test fun thisWeekIsTheCalendarWeekStartingMonday() {
         val e = AnalyticsEngine.flowFilter(data, FlowType.EXPENSE)
-        assertEquals(1, AnalyticsEngine.applyEntryFilter(e, EntryFilter.TODAY, null, today).size)
-        assertEquals(1, AnalyticsEngine.applyEntryFilter(e, EntryFilter.YESTERDAY, null, today).size)
-        // 8 Sep is exactly 6 days back -> inside "this week"
-        assertEquals(3, AnalyticsEngine.applyEntryFilter(e, EntryFilter.THIS_WEEK, null, today).size)
+        // today = Monday 14 Sep: the week is 14-20 Sep. Sunday 13 Sep belongs to the previous week.
+        assertEquals(1, AnalyticsEngine.applyEntryFilter(e, EntryFilter.THIS_WEEK, null, today).size)
+        assertEquals(3, AnalyticsEngine.applyEntryFilter(e, EntryFilter.THIS_MONTH, null, today).size)
         assertEquals(1, AnalyticsEngine.applyEntryFilter(e, EntryFilter.LAST_MONTH, null, today).size)
+        // On the following Sunday (20 Sep) the same week still runs from Monday 14 Sep.
+        assertEquals(1, AnalyticsEngine.applyEntryFilter(e, EntryFilter.THIS_WEEK, null, LocalDate.of(2026, 9, 20)).size)
+        // ...and on Monday 21 Sep it starts over.
+        assertEquals(0, AnalyticsEngine.applyEntryFilter(e, EntryFilter.THIS_WEEK, null, LocalDate.of(2026, 9, 21)).size)
     }
 
-    @Test fun lastWeekFilterIsGone() {
-        assertEquals(
-            listOf("TODAY", "YESTERDAY", "THIS_WEEK", "THIS_MONTH", "LAST_MONTH", "CUSTOM"),
-            AnalyticsEngine.entryFilterOptions(FlowType.EXPENSE).map { it.name },
-        )
+    @Test fun theFilterCoversTheWholePeriodSoALaterEntryIsNeverHidden() {
+        val thursday = LocalDate.of(2026, 9, 17)
+        val later = listOf(tx(-10.0, LocalDate.of(2026, 9, 20)), tx(-10.0, LocalDate.of(2026, 9, 29)))
+        assertEquals(1, AnalyticsEngine.applyEntryFilter(later, EntryFilter.THIS_WEEK, null, thursday).size)
+        assertEquals(2, AnalyticsEngine.applyEntryFilter(later, EntryFilter.THIS_MONTH, null, thursday).size)
+    }
+
+    @Test fun onlyFourDateChipsAreOfferedForBothFlows() {
+        assertEquals(listOf("THIS_WEEK", "THIS_MONTH", "LAST_MONTH", "CUSTOM"), AnalyticsEngine.entryFilterOptions().map { it.name })
+    }
+
+    @Test fun headerRangesFollowEachChip() {
+        val thursday = LocalDate.of(2026, 9, 17)
+        assertEquals(DateRange(LocalDate.of(2026, 9, 14), thursday), AnalyticsEngine.entryFilterRange(EntryFilter.THIS_WEEK, null, thursday))
+        assertEquals(DateRange(LocalDate.of(2026, 9, 21), LocalDate.of(2026, 9, 27)), AnalyticsEngine.entryFilterRange(EntryFilter.THIS_WEEK, null, LocalDate.of(2026, 9, 27)))
+        assertEquals(DateRange(LocalDate.of(2026, 9, 1), thursday), AnalyticsEngine.entryFilterRange(EntryFilter.THIS_MONTH, null, thursday))
+        assertEquals(DateRange(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31)), AnalyticsEngine.entryFilterRange(EntryFilter.LAST_MONTH, null, thursday))
+        assertEquals(DateRange(LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28)), AnalyticsEngine.entryFilterRange(EntryFilter.LAST_MONTH, null, LocalDate.of(2026, 3, 3)))
+        val custom = DateRange(LocalDate.of(2026, 6, 2), LocalDate.of(2026, 6, 9))
+        assertEquals(custom, AnalyticsEngine.entryFilterRange(EntryFilter.CUSTOM, custom, thursday))
+        assertNull(AnalyticsEngine.entryFilterRange(EntryFilter.CUSTOM, null, thursday))
     }
 
     @Test fun customRangeIsInclusiveOnBothEnds() {
@@ -65,12 +84,6 @@ class AnalyticsEngineTest {
         val picked = AnalyticsEngine.applyEntryFilter(e, EntryFilter.CUSTOM, range, today)
         assertEquals(2, picked.size) // 28 Aug and 8 Sep, both edges included
         assertEquals(e.size, AnalyticsEngine.applyEntryFilter(e, EntryFilter.CUSTOM, null, today).size)
-    }
-
-    @Test fun incomeOnlyOffersAll() {
-        assertEquals(listOf(EntryFilter.ALL), AnalyticsEngine.entryFilterOptions(FlowType.INCOME))
-        assertEquals(EntryFilter.ALL, AnalyticsEngine.effectiveEntryFilter(EntryFilter.TODAY, FlowType.INCOME))
-        assertEquals(EntryFilter.THIS_MONTH, AnalyticsEngine.effectiveEntryFilter(EntryFilter.ALL, FlowType.EXPENSE))
     }
 
     @Test fun dayGroupingLabelsAndTotals() {

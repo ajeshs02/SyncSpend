@@ -15,7 +15,9 @@ import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.model.ThemeMode
+import com.ajesh.syncspend.ui.components.CustomRangeBody
 import com.ajesh.syncspend.ui.components.PeriodPickerBody
+import com.ajesh.syncspend.ui.components.rangePresets
 import com.ajesh.syncspend.ui.editentry.EditEntryBody
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import java.time.YearMonth
@@ -78,6 +80,18 @@ class SheetBodiesScreenshotTest {
 class PeriodPickerBodyScreenshotTest {
     @get:Rule val rule = createComposeRule()
 
+    @Test fun aFewMonthsOfHistoryGreysOutWhatIsNotReachedYet() = rule.snapshot("sheet_period_short_history", widthDp = 360, heightDp = 560) {
+        val now = YearMonth.now()
+        Box(Modifier.padding(22.dp)) {
+            PeriodPickerBody(
+                draft = ScopePeriod.Month(now), onDraftChange = {},
+                pickerYear = now.year, onYearChange = {},
+                lowerBound = now.minusMonths(3), upperBound = now, // first entry three months back: Last 3 ok, Last 6 not
+                showAllTime = false, onCancel = {}, onApply = {},
+            )
+        }
+    }
+
     @Test fun narrowPhoneStillFitsThreeChips() = rule.snapshot("sheet_period_320", widthDp = 320, heightDp = 560) {
         val now = YearMonth.now()
         Box(Modifier.padding(22.dp)) {
@@ -86,6 +100,24 @@ class PeriodPickerBodyScreenshotTest {
                 pickerYear = now.year, onYearChange = {},
                 lowerBound = now.minusMonths(2), upperBound = now,
                 showAllTime = false, onCancel = {}, onApply = {},
+            )
+        }
+    }
+}
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34], qualifiers = "w320dp-h700dp-xxhdpi")
+class CustomRangeBodyScreenshotTest {
+    @get:Rule val rule = createComposeRule()
+
+    private val today = java.time.LocalDate.of(2026, 9, 27)
+
+    @Test fun presetsHaveRoomAroundTheirLabelsAndGreyOutUntilReached() = rule.snapshot("sheet_custom_range", widthDp = 320, heightDp = 420) {
+        Box(Modifier.padding(22.dp)) {
+            CustomRangeBody(
+                from = java.time.LocalDate.of(2026, 8, 1), to = today,
+                presets = rangePresets(today, YearMonth.of(2026, 7)), // first entry in July: Last 2 and 3 months ok, 6 not
+                onPickFrom = {}, onPickTo = {}, onPreset = {}, onCancel = {}, onApply = {},
             )
         }
     }

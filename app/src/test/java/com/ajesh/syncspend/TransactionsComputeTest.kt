@@ -45,7 +45,7 @@ class TransactionsComputeTest {
     }
 
     @Test fun amountsAreWholeUnits() {
-        val out = TransactionsCompute.entries(ledger, FlowType.INCOME, EntryFilter.ALL, null, today)
+        val out = TransactionsCompute.entries(ledger, FlowType.INCOME, EntryFilter.THIS_MONTH, null, today)
         assertEquals("₹85,000", out.groups.single().items.single().amountFormatted)
         assertTrue(out.groups.single().totalFormatted, !out.groups.single().totalFormatted.contains('.'))
     }
@@ -58,10 +58,10 @@ class TransactionsComputeTest {
         assertEquals("₹1,671", row.totalFormatted)
     }
 
-    @Test fun anInvalidStoredFilterFallsBackForTheFlow() {
-        // TODAY isn't offered for income, so the income view shows everything.
-        val out = TransactionsCompute.entries(ledger, FlowType.INCOME, EntryFilter.TODAY, null, today)
-        assertEquals(1, out.groups.sumOf { it.items.size })
+    @Test fun incomeUsesTheSameDateChipsAsExpenses() {
+        // Sunday 27 Sep: this week is 21-27 Sep, and the salary was on the 24th.
+        assertEquals(1, TransactionsCompute.entries(ledger, FlowType.INCOME, EntryFilter.THIS_WEEK, null, today).groups.sumOf { it.items.size })
+        assertEquals(0, TransactionsCompute.entries(ledger, FlowType.INCOME, EntryFilter.LAST_MONTH, null, today).groups.sumOf { it.items.size })
     }
 
     @Test fun statsBuildForEveryRange() {

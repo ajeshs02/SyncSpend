@@ -27,17 +27,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ajesh.syncspend.domain.model.CalendarBounds
 import com.ajesh.syncspend.domain.model.DateRange
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.DateUtils
 import java.time.LocalDate
+import java.time.YearMonth
 
 /**
- * The Transactions "Custom" filter: just a From and a To date. Tapping either
- * tile opens the same calendar the subscription/reminder dates use (bounded to
- * the last couple of months — or back to the earliest entry — and never past
- * today), and three presets cover the usual look-backs. Picking a From after
+ * The Transactions "Custom" filter: just a From and a To date. Tapping either tile opens the same
+ * calendar the other date picks use, bounded to the days the entries actually cover (oldest entry to
+ * today, no buffer), and three presets cover the usual look-backs: the first of the month N-1 months
+ * back up to today. A preset is greyed out until the entries reach back that far. Picking a From after
  * To drags To along, and the other way round, so the range is never inverted.
  */
 @Composable
@@ -47,62 +49,40 @@ fun CustomRangeSheet(
     onApply: (DateRange) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val colors = SyncSpendTheme.colors
     val today = remember { LocalDate.now() }
-    var from by remember { mutableStateOf(initial?.start ?: today.withDayOfMonth(1)) }
+    val now = remember { YearMonth.from(today) }
+    val lowerMonth = remember(earliestTransactionDate) { CalendarBounds.dataLowerMonth(now, earliestTransactionDate) }
+    // A fresh range starts this month, but never before the oldest entry.
+    var from by remember { mutableStateOf(initial?.start ?: today.withDayOfMonth(1).let { start -> earliestTransactionDate?.takeIf { it.isAfter(start) && !it.isAfter(today) } ?: start }) }
     var to by remember { mutableStateOf(initial?.end ?: today) }
     var pickingFrom by remember { mutableStateOf(false) }
     var pickingTo by remember { mutableStateOf(false) }
-    val presets = remember(today) { rangePresets(today) }
-    val days = java.time.temporal.ChronoUnit.DAYS.between(from, to) + 1
+    val presets = remember(today, lowerMonth) { rangePresets(today, lowerMonth) }
 
     DesignSheet(onDismiss = onDismiss) { close ->
-        SheetHeader("Custom range", onClose = close)
-
-        Row(
-            modifier = Modifier.padding(top = 14.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(9.dp),
-        ) {
-            DateTile("From", from, Modifier.weight(1f)) { pickingFrom = true }
-            DateTile("To", to, Modifier.weight(1f)) { pickingTo = true }
-        }
-        Text(
-            "$days ${if (days == 1L) "day" else "days"} selected",
-            fontSize = 10.5.sp,
-            color = colors.sub,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-
-        Row(
-            modifier = Modifier.padding(top = 12.dp).fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            presets.forEach { (label, range) ->
-                PickerChip(
-                    label = label,
-                    selected = from == range.start && to == range.end,
-                    vertical = 8.dp,
-                    radius = 12.dp,
-                ) {
-                    from = range.start
-                    to = range.end
-                }
-            }
-        }
-
-        Row(modifier = Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            SheetButton("Cancel", primary = false, modifier = Modifier.weight(1f), onClick = close)
-            SheetButton("Apply", primary = true, modifier = Modifier.weight(1f)) {
+        CustomRangeBody(
+            from = from,
+            to = to,
+            presets = presets,
+            onPickFrom = { pickingFrom = true },
+            onPickTo = { pickingTo = true },
+            onPreset = { range ->
+                from = range.start
+                to = range.end
+            },
+            onCancel = close,
+            onApply = {
                 onApply(DateRange(from, to))
                 close()
-            }
-        }
+            },
+        )
 
         if (pickingFrom) {
             DatePickerSheet(
                 initial = from,
                 title = "FROM",
-                earliestTransactionDate = earliestTransactionDate,
+                minMonth = lowerMonth,
+                minDate = earliestTransactionDate,
                 maxDate = today,
                 onApply = { picked ->
                     from = picked
@@ -115,7 +95,8 @@ fun CustomRangeSheet(
             DatePickerSheet(
                 initial = to,
                 title = "TO",
-                earliestTransactionDate = earliestTransactionDate,
+                minMonth = lowerMonth,
+                minDate = earliestTransactionDate,
                 maxDate = today,
                 onApply = { picked ->
                     to = picked
@@ -127,12 +108,78 @@ fun CustomRangeSheet(
     }
 }
 
-/** The look-backs offered as one-tap presets, ending today. */
-internal fun rangePresets(today: LocalDate): List<Pair<String, DateRange>> = listOf(
-    "Last 60 days" to DateRange(today.minusDays(59), today),
-    "Last 90 days" to DateRange(today.minusDays(89), today),
-    "Last 6 months" to DateRange(today.minusMonths(6).plusDays(1), today),
-)
+/** The sheet's content, state-hoisted so it can be rendered on its own (screenshot tests). */
+@Composable
+internal fun CustomRangeBody(
+    from: LocalDate,
+    to: LocalDate,
+    presets: List<RangePreset>,
+    onPickFrom: () -> Unit,
+    onPickTo: () -> Unit,
+    onPreset: (DateRange) -> Unit,
+    onCancel: () -> Unit,
+    onApply: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = SyncSpendTheme.colors
+    val days = java.time.temporal.ChronoUnit.DAYS.between(from, to) + 1
+    Column(modifier = modifier) {
+        SheetHeader("Custom range", onClose = onCancel)
+
+        Row(
+            modifier = Modifier.padding(top = 14.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
+            DateTile("From", from, Modifier.weight(1f), onPickFrom)
+            DateTile("To", to, Modifier.weight(1f), onPickTo)
+        }
+        Text(
+            "$days ${if (days == 1L) "day" else "days"} selected",
+            fontSize = 10.5.sp,
+            color = colors.sub,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+
+        Row(
+            modifier = Modifier.padding(top = 12.dp).fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            presets.forEach { preset ->
+                PickerChip(
+                    label = preset.label,
+                    selected = from == preset.range.start && to == preset.range.end,
+                    enabled = preset.enabled,
+                    vertical = 8.dp,
+                    horizontal = 14.dp,
+                    radius = 12.dp,
+                ) { onPreset(preset.range) }
+            }
+        }
+
+        Row(modifier = Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            SheetButton("Cancel", primary = false, modifier = Modifier.weight(1f), onClick = onCancel)
+            SheetButton("Apply", primary = true, modifier = Modifier.weight(1f), onClick = onApply)
+        }
+    }
+}
+
+/** A one-tap look-back; [enabled] is false while the entries don't reach back that far. */
+internal data class RangePreset(val label: String, val range: DateRange, val enabled: Boolean)
+
+/**
+ * "Last 2 / 3 / 6 months": from the first of the month N-1 back through today (Sep 27: Last 3 months = Jul 1
+ * to Sep 27). [lowerBound] is the oldest month worth browsing (see [CalendarBounds.dataLowerMonth]).
+ */
+internal fun rangePresets(today: LocalDate, lowerBound: YearMonth): List<RangePreset> {
+    val now = YearMonth.from(today)
+    return listOf(2, 3, 6).map { months ->
+        RangePreset(
+            label = "Last $months months",
+            range = DateRange(now.minusMonths(months - 1L).atDay(1), today),
+            enabled = CalendarBounds.windowEnabled(months, now, lowerBound),
+        )
+    }
+}
 
 @Composable
 private fun DateTile(label: String, date: LocalDate, modifier: Modifier, onClick: () -> Unit) {

@@ -44,33 +44,31 @@ import java.util.Locale
 
 /**
  * The design's custom calendar sheet, used for every date pick in the app
- * (Add Entry, Edit Entry, subscription / reminder dates).
+ * (Add Entry, Edit Entry, custom ranges, subscription / reminder dates).
  *
- * Browsable months default to the last 2 months through the current month —
- * extended further back only if an existing entry is older — so there is no
- * endless scrollback through empty years. Callers picking future dates (a
- * subscription's next due date) pass [minMonth]/[maxMonth]; the month of
- * [initial] is always reachable. The grid is always six rows tall so the sheet
- * never changes height as you page between months.
+ * The caller decides how far back the months go with [minMonth] (see
+ * [com.ajesh.syncspend.domain.model.CalendarBounds]; the month of [initial] is always reachable) and, in
+ * the other direction, [maxMonth] for future dates such as a subscription's next due date. [minDate] and
+ * [maxDate] grey out the days outside them inside the browsable months. The grid is always six rows tall
+ * so the sheet never changes height as you page between months.
  */
 @Composable
 fun DatePickerSheet(
     initial: LocalDate,
     onApply: (LocalDate) -> Unit,
     onDismiss: () -> Unit,
-    earliestTransactionDate: LocalDate? = null,
     title: String = "ENTRY DATE",
+    /** Earliest month that can be browsed; null = this month. */
     minMonth: YearMonth? = null,
     maxMonth: YearMonth? = null,
+    /** Days before this are shown but can't be picked (e.g. the oldest entry, for a from/to range). */
+    minDate: LocalDate? = null,
     /** Days after this are shown but can't be picked (e.g. today, for a from/to range). */
     maxDate: LocalDate? = null,
 ) {
     val initialMonth = remember { YearMonth.from(initial) }
     val now = remember { YearMonth.now() }
-    val lower = remember(earliestTransactionDate, minMonth) {
-        val base = minMonth ?: minOf(now.minusMonths(2), earliestTransactionDate?.let { YearMonth.from(it) } ?: now)
-        minOf(base, initialMonth)
-    }
+    val lower = remember(minMonth) { minOf(minMonth ?: now, initialMonth) }
     val upper = remember(maxMonth) { maxOf(maxMonth ?: now, initialMonth) }
 
     var selected by remember { mutableStateOf(initial) }
@@ -138,7 +136,7 @@ fun DatePickerSheet(
             modifier = Modifier.padding(top = 4.dp),
             label = "calendar-month",
         ) { month ->
-            MonthGrid(month = month, selected = selected, today = today, maxDate = maxDate, onPick = { selected = it })
+            MonthGrid(month = month, selected = selected, today = today, minDate = minDate, maxDate = maxDate, onPick = { selected = it })
         }
 
         Row(modifier = Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -153,7 +151,7 @@ fun DatePickerSheet(
 
 /** Always 6 week-rows (42 cells) so every month occupies the same height. */
 @Composable
-private fun MonthGrid(month: YearMonth, selected: LocalDate, today: LocalDate, maxDate: LocalDate?, onPick: (LocalDate) -> Unit) {
+private fun MonthGrid(month: YearMonth, selected: LocalDate, today: LocalDate, minDate: LocalDate?, maxDate: LocalDate?, onPick: (LocalDate) -> Unit) {
     val firstOffset = month.atDay(1).dayOfWeek.value % 7 // Sunday-first, like the design
     val length = month.lengthOfMonth()
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -167,7 +165,7 @@ private fun MonthGrid(month: YearMonth, selected: LocalDate, today: LocalDate, m
                             day = day,
                             selected = date == selected,
                             isToday = date == today,
-                            enabled = maxDate == null || !date.isAfter(maxDate),
+                            enabled = (minDate == null || !date.isBefore(minDate)) && (maxDate == null || !date.isAfter(maxDate)),
                             modifier = Modifier.weight(1f),
                             onClick = { onPick(date) },
                         )

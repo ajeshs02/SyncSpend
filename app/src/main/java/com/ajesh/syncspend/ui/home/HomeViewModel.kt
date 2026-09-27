@@ -13,6 +13,7 @@ import com.ajesh.syncspend.data.repository.ReminderRepository
 import com.ajesh.syncspend.data.repository.SubscriptionRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
 import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
+import com.ajesh.syncspend.domain.model.CalendarBounds
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.state.SharedSelectionState
@@ -94,7 +95,7 @@ class HomeViewModel(
         val trend = AnalyticsEngine.trendPercent(total, prevTotal)
         val cur = sources.prefs.currencyCode.symbol
         val now = java.time.YearMonth.now()
-        val lower = lowerBrowseMonth(sources.tx.minOfOrNull { it.date }, now)
+        val lower = CalendarBounds.dataLowerMonth(now, sources.tx.minOfOrNull { it.date })
         val recent = scopeTx.sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt }).take(10)
         val categoriesById = sources.categories.associateBy { it.id }
 
@@ -134,20 +135,16 @@ class HomeViewModel(
         selection.scope.value = newScope
     }
 
-    /** ‹ › step the current selection by one month / year / window, never past the present or before the earliest month worth browsing. */
+    /** ‹ › step the current selection by one month / year / window, never past the present or before the oldest entry's month. */
     fun prevPeriod() = step(-1)
 
     fun nextPeriod() = step(1)
 
     private fun step(delta: Int) {
         val now = java.time.YearMonth.now()
-        val lower = lowerBrowseMonth(uiState.value.earliestTransactionDate, now)
+        val lower = CalendarBounds.dataLowerMonth(now, uiState.value.earliestTransactionDate)
         AnalyticsEngine.stepScope(selection.scope.value, delta, now, lower)?.let { selection.scope.value = it }
     }
-
-    /** Same lower bound the calendars use: two months back, or the earliest entry if that is older. */
-    private fun lowerBrowseMonth(earliest: java.time.LocalDate?, now: java.time.YearMonth): java.time.YearMonth =
-        minOf(now.minusMonths(2), earliest?.let { java.time.YearMonth.from(it) } ?: now)
 
     fun setFlow(type: FlowType) {
         selection.flow.value = type

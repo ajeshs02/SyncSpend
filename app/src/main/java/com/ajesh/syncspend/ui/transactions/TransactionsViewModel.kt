@@ -127,8 +127,7 @@ internal object TransactionsCompute {
     }
 
     private fun filtered(ledger: Ledger, flow: FlowType, entryFilter: EntryFilter, customRange: DateRange?, today: LocalDate): List<TransactionEntity> {
-        val effective = AnalyticsEngine.effectiveEntryFilter(entryFilter, flow)
-        return AnalyticsEngine.applyEntryFilter(AnalyticsEngine.flowFilter(ledger.tx, flow), effective, customRange, today)
+        return AnalyticsEngine.applyEntryFilter(AnalyticsEngine.flowFilter(ledger.tx, flow), entryFilter, customRange, today)
     }
 }
 

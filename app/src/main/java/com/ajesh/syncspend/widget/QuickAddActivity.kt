@@ -63,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.ajesh.syncspend.domain.model.CalendarBounds
 import com.ajesh.syncspend.MainActivity
 import com.ajesh.syncspend.SyncSpendApp
 import com.ajesh.syncspend.data.datastore.UserPreferences
@@ -82,6 +83,7 @@ import com.ajesh.syncspend.ui.theme.SyncSpendCorners
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.DateUtils
 import kotlin.coroutines.cancellation.CancellationException
+import java.time.YearMonth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -317,7 +319,7 @@ private fun QuickAddPanel(container: AppContainer, onFinished: () -> Unit, onOpe
     if (showDatePicker) {
         DatePickerSheet(
             initial = state.date,
-            earliestTransactionDate = earliest,
+            minMonth = CalendarBounds.entryLowerMonth(YearMonth.now(), earliest),
             onApply = viewModel::setDate,
             onDismiss = { showDatePicker = false },
         )
