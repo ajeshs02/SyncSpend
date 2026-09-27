@@ -19,6 +19,7 @@
         android:textSize="15sp" />
 
     <FrameLayout
+        android:id="@+id/widget_fab"
         android:layout_width="18dp"
         android:layout_height="18dp"
         android:layout_gravity="bottom|end"
@@ -27,6 +28,7 @@
         android:background="@drawable/widget_fab_bg">
 
         <ImageView
+            android:id="@+id/widget_fab_icon"
             android:layout_width="12dp"
             android:layout_height="12dp"
             android:layout_gravity="center"

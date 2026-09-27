@@ -131,4 +131,103 @@ object SyncSpendPalette {
     val DarkOnSelected = Color(0xFF101710)
     val DarkButton = Color(0xFFF2F6EE)
     val DarkOnButton = Color(0xFF101710)
+
+    // ---- Theme lab: alternate accent families (temporary — Settings lets the user audition these
+    // against the approved Forest palette above; unlike Forest these are not locked to a design file
+    // and are expected to be tuned from feedback before one is finalized). Only the accent-bearing
+    // tokens differ per family — ink/sub/card/line/tile/sheet/screenGradient etc. stay identical
+    // (monochrome) across every palette; see [ui.theme.accentsFor]. ----
+
+    // Neo Mint: a brighter, more fluorescent spring-green/mint than Forest.
+    val NeoMintLightAcc = Color(0xFF12B76A)
+    val NeoMintLightAcc2 = Color(0xFF3DDC97)
+    val NeoMintLightBrand = Color(0xFF6EE7B7)
+    val NeoMintLightOnAcc = Color(0xFFFFFFFF)
+    val NeoMintLightDarkGradient = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF0B1F16), 0.52f to Color(0xFF12472F), 1f to Color(0xFF081911)),
+    )
+    val NeoMintLightMintGradient = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFFD3F5E6), 0.45f to Color(0xFFB9EFD7), 1f to Color(0xFF9FE6C7)),
+    )
+    val NeoMintLightChartFillDim = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFFE7F9EF), 0.45f to Color(0xFFDAF5E6), 1f to Color(0xFFC9EFDB)),
+    )
+    val NeoMintDarkAcc = Color(0xFF34E39C)
+    val NeoMintDarkAcc2 = Color(0xFF6EE7B7)
+    val NeoMintDarkBrand = Color(0xFF6EE7B7)
+    val NeoMintDarkOnAcc = Color(0xFF04140D)
+    val NeoMintDarkDarkGradient = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF071A11), 0.52f to Color(0xFF0F3D28), 1f to Color(0xFF05130C)),
+    )
+    val NeoMintDarkMintGradient = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF163A28), 0.45f to Color(0xFF123020), 1f to Color(0xFF0D2418)),
+    )
+    val NeoMintDarkChartFill = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF38C98C), 0.45f to Color(0xFF2FB87C), 1f to Color(0xFF26A76C)),
+    )
+    val NeoMintDarkChartFillDim = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF245C3E), 0.45f to Color(0xFF1F5036), 1f to Color(0xFF19442D)),
+    )
+
+    // Ocean: a blue accent family.
+    val OceanLightAcc = Color(0xFF2563EB)
+    val OceanLightAcc2 = Color(0xFF60A5FA)
+    val OceanLightBrand = Color(0xFF60A5FA)
+    val OceanLightOnAcc = Color(0xFFFFFFFF)
+    val OceanLightDarkGradient = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF0B1526), 0.52f to Color(0xFF163C6B), 1f to Color(0xFF081020)),
+    )
+    val OceanLightMintGradient = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFFD3E4FB), 0.45f to Color(0xFFBBD6F8), 1f to Color(0xFFA3C7F4)),
+    )
+    val OceanLightChartFillDim = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFFE7F0FD), 0.45f to Color(0xFFDAE9FB), 1f to Color(0xFFCBDFF8)),
+    )
+    val OceanDarkAcc = Color(0xFF5B9DFF)
+    val OceanDarkAcc2 = Color(0xFF93C5FD)
+    val OceanDarkBrand = Color(0xFF93C5FD)
+    val OceanDarkOnAcc = Color(0xFF071226)
+    val OceanDarkDarkGradient = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF0A1526), 0.52f to Color(0xFF1B4A85), 1f to Color(0xFF071020)),
+    )
+    val OceanDarkMintGradient = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF163050), 0.45f to Color(0xFF122841), 1f to Color(0xFF0D1F33)),
+    )
+    val OceanDarkChartFill = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF4E92E8), 0.45f to Color(0xFF4482D4), 1f to Color(0xFF3A72BF)),
+    )
+    val OceanDarkChartFillDim = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF274460), 0.45f to Color(0xFF213A53), 1f to Color(0xFF1A3046)),
+    )
+
+    // Violet: a purple accent family.
+    val VioletLightAcc = Color(0xFF7C3AED)
+    val VioletLightAcc2 = Color(0xFFA78BFA)
+    val VioletLightBrand = Color(0xFFA78BFA)
+    val VioletLightOnAcc = Color(0xFFFFFFFF)
+    val VioletLightDarkGradient = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF180F2A), 0.52f to Color(0xFF3C216B), 1f to Color(0xFF120A20)),
+    )
+    val VioletLightMintGradient = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFFE5DBFB), 0.45f to Color(0xFFD6C5F8), 1f to Color(0xFFC7AFF4)),
+    )
+    val VioletLightChartFillDim = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFFF0E9FD), 0.45f to Color(0xFFE7DCFB), 1f to Color(0xFFDCCEF8)),
+    )
+    val VioletDarkAcc = Color(0xFFB79CFF)
+    val VioletDarkAcc2 = Color(0xFFD8C7FF)
+    val VioletDarkBrand = Color(0xFFD8C7FF)
+    val VioletDarkOnAcc = Color(0xFF140B2E)
+    val VioletDarkDarkGradient = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF170F26), 0.52f to Color(0xFF402585), 1f to Color(0xFF110A1E)),
+    )
+    val VioletDarkMintGradient = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF2E2050), 0.45f to Color(0xFF251A41), 1f to Color(0xFF1C1433)),
+    )
+    val VioletDarkChartFill = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF8B6FE8), 0.45f to Color(0xFF7C5FD4), 1f to Color(0xFF6D50BF)),
+    )
+    val VioletDarkChartFillDim = Brush.linearGradient(
+        colorStops = arrayOf(0f to Color(0xFF402F5C), 0.45f to Color(0xFF37294F), 1f to Color(0xFF2C2140)),
+    )
 }

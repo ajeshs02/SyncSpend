@@ -8,7 +8,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.ajesh.syncspend.domain.model.ColorPalette
 import com.ajesh.syncspend.domain.model.CurrencyCode
+import com.ajesh.syncspend.domain.model.FontChoice
 import com.ajesh.syncspend.domain.model.ThemeMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharedFlow
@@ -33,6 +35,8 @@ class PreferencesRepository(private val store: DataStore<Preferences>, scope: Co
         val DAILY_REMINDER_MINUTE_OF_DAY = intPreferencesKey("daily_reminder_minute_of_day")
         val NOTIF_PERMISSION_REQUESTED = booleanPreferencesKey("notif_permission_requested")
         val DEFAULT_CATEGORIES_SEEDED = booleanPreferencesKey("default_categories_seeded")
+        val COLOR_PALETTE = stringPreferencesKey("color_palette")
+        val FONT_CHOICE = stringPreferencesKey("font_choice")
     }
 
     /**
@@ -49,6 +53,10 @@ class PreferencesRepository(private val store: DataStore<Preferences>, scope: Co
             dailyReminderMinuteOfDay = prefs[Keys.DAILY_REMINDER_MINUTE_OF_DAY] ?: (20 * 60),
             notifPermissionRequested = prefs[Keys.NOTIF_PERMISSION_REQUESTED] ?: false,
             defaultCategoriesSeeded = prefs[Keys.DEFAULT_CATEGORIES_SEEDED] ?: false,
+            colorPalette = prefs[Keys.COLOR_PALETTE]?.let { runCatching { ColorPalette.valueOf(it) }.getOrNull() }
+                ?: ColorPalette.FOREST,
+            fontChoice = prefs[Keys.FONT_CHOICE]?.let { runCatching { FontChoice.valueOf(it) }.getOrNull() }
+                ?: FontChoice.ARCHIVO,
         )
     }.shareIn(scope, SharingStarted.Eagerly, replay = 1)
 
@@ -76,5 +84,13 @@ class PreferencesRepository(private val store: DataStore<Preferences>, scope: Co
 
     suspend fun setNotifPermissionRequested() {
         store.edit { it[Keys.NOTIF_PERMISSION_REQUESTED] = true }
+    }
+
+    suspend fun setColorPalette(palette: ColorPalette) {
+        store.edit { it[Keys.COLOR_PALETTE] = palette.name }
+    }
+
+    suspend fun setFontChoice(choice: FontChoice) {
+        store.edit { it[Keys.FONT_CHOICE] = choice.name }
     }
 }

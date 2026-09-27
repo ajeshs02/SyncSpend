@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,8 +48,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
+import com.ajesh.syncspend.ui.theme.SyncSpendCorners
 import com.ajesh.syncspend.ui.theme.SyncSpendPalette
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
+import dev.chrisbanes.haze.ExperimentalHazeApi
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.glass.GlassStyle
+import dev.chrisbanes.haze.glass.hazeGlass
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -62,11 +68,20 @@ enum class NavDestination(val route: String) {
     Settings("settings"),
 }
 
-private val NavPillDark = Color(0xFF050806)
 private val NavActiveTint = SyncSpendPalette.BrandGreen
 private val NavIndicatorFill = Color.White.copy(alpha = 0.10f) // neutral: the vibrant green is only ever the glyph
 private val NavInactiveTint = Color(0x7AFFFFFF) // rgba(255,255,255,.48)
 private val NavAddInactiveTint = Color(0x99FFFFFF) // rgba(255,255,255,.6)
+
+/**
+ * The pill's "liquid glass" material: Haze's iOS-calibrated Regular response, darkened with a
+ * black tint so the existing white-based icon tints above stay legible over any content behind it.
+ */
+@OptIn(ExperimentalHazeApi::class)
+private val NavGlassStyle = GlassStyle.regular.then {
+    tint(Color.Black.copy(alpha = 0.32f))
+    shape(SyncSpendCorners.pill)
+}
 
 // Pill geometry. Five cells, the centre Add cell wider and with a bigger plus so it reads as the
 // key button: 4 x 56 + 72 + 2 x 10 padding = 316dp.
@@ -105,12 +120,17 @@ internal fun navSlotOffset(slot: Int): Dp = (0 until slot).fold(0.dp) { acc, i -
  * still being built. Every animation here (pill slide, icon cross-fade, press scale) is read
  * in the draw/graphics-layer phase, so none of them recompose anything per frame.
  */
+@OptIn(ExperimentalHazeApi::class)
 @Composable
 fun BottomFadeAndNav(
     currentRoute: String?,
     onNavigate: (NavDestination) -> Unit,
     onAddClick: () -> Unit,
     modifier: Modifier = Modifier,
+    // Defaults to a state of its own (no source registered) so every existing call site — including
+    // the screenshot tests — keeps compiling; MainActivity passes the app-wide state explicitly so
+    // the glass actually blurs the NavHost content behind it.
+    hazeState: HazeState = rememberHazeState(),
 ) {
     val routeSlot = navSlotFor(currentRoute)
     var selected by remember { mutableIntStateOf(routeSlot) }
@@ -140,8 +160,8 @@ fun BottomFadeAndNav(
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
                 .padding(bottom = SyncSpendChrome.bottomBarBottomInset)
-                .shadow(elevation = 16.dp, shape = RoundedCornerShape(PillRadius), clip = false)
-                .background(NavPillDark, RoundedCornerShape(PillRadius))
+                .shadow(elevation = 16.dp, shape = SyncSpendCorners.pill, clip = false)
+                .hazeGlass(input = HazeInput.Sources(hazeState), style = NavGlassStyle)
                 .padding(horizontal = PillPadding, vertical = PillVerticalPadding),
         ) {
             ActiveIndicator(selected)

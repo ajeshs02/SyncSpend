@@ -44,6 +44,7 @@ import com.ajesh.syncspend.ui.components.SquareIconButton
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.IconKind
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
+import com.ajesh.syncspend.ui.theme.ScreenTitleStyle
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
 @Composable
@@ -70,7 +71,7 @@ fun CategoriesScreen() {
         ) {
             Text(
                 "Categories",
-                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 21.sp),
+                style = ScreenTitleStyle,
                 color = colors.ink,
                 modifier = Modifier.padding(vertical = 3.dp),
             )
