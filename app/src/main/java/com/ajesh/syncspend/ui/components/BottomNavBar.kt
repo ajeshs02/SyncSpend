@@ -63,7 +63,7 @@ enum class NavDestination(val route: String) {
 }
 
 private val NavPillDark = Color(0xFF050806)
-private val NavActiveTint = SyncSpendPalette.BrandBlue
+private val NavActiveTint = SyncSpendPalette.BrandGreen
 private val NavIndicatorFill = Color.White.copy(alpha = 0.10f) // neutral: the vibrant green is only ever the glyph
 private val NavInactiveTint = Color(0x7AFFFFFF) // rgba(255,255,255,.48)
 private val NavAddInactiveTint = Color(0x99FFFFFF) // rgba(255,255,255,.6)
