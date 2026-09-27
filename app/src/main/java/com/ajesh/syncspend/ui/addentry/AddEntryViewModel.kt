@@ -37,9 +37,11 @@ class AddEntryViewModel(
     private val selection: SharedSelectionState,
 ) : ViewModel() {
 
-    // Seeded from the shared selection (Home's toggle) rather than a hardcoded default, so Add
-    // Entry opens on whichever flow is currently selected elsewhere.
-    private val type = MutableStateFlow(selection.flow.value)
+    // Reads the shared selection (Home's toggle) live rather than snapshotting it once — this
+    // screen's own ViewModel survives across bottom-nav tab switches (NavHost keeps its
+    // ViewModelStore via saveState/restoreState), so a one-time snapshot at construction would go
+    // stale the moment the toggle changes elsewhere without this screen being reopened.
+    private val type = selection.flow
     private val amountText = MutableStateFlow("0")
     private val date = MutableStateFlow(LocalDate.now())
     private val selectedCategory = MutableStateFlow<CategoryEntity?>(null)
@@ -83,7 +85,6 @@ class AddEntryViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AddEntryUiState())
 
     fun setType(newType: FlowType) {
-        type.value = newType
         selection.flow.value = newType
         selectedCategory.value = null
     }

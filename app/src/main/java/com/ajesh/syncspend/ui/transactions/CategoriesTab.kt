@@ -41,7 +41,7 @@ fun CategoriesTab(rollups: List<CategoryRollupUi>, modifier: Modifier = Modifier
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 9.dp)
-                    .background(SyncSpendTheme.colors.cardGradient, RoundedCornerShape(18.dp))
+                    .background(SyncSpendTheme.colors.card, RoundedCornerShape(18.dp))
                     .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(18.dp))
                     .padding(horizontal = 14.dp, vertical = 13.dp),
             ) {
@@ -52,23 +52,22 @@ fun CategoriesTab(rollups: List<CategoryRollupUi>, modifier: Modifier = Modifier
                             .background(SyncSpendTheme.colors.tile, RoundedCornerShape(11.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(SyncSpendIcons.iconFor(rollup.iconKey), null, tint = SyncSpendTheme.colors.mink, modifier = Modifier.size(16.dp))
+                        Icon(SyncSpendIcons.iconFor(rollup.iconKey), null, tint = SyncSpendTheme.colors.ink, modifier = Modifier.size(16.dp))
                     }
                     androidx.compose.foundation.layout.Spacer(Modifier.padding(start = 5.dp))
                     Column(modifier = Modifier.weight(1f).padding(start = 11.dp)) {
-                        Text(rollup.name, style = MaterialTheme.typography.bodyMedium, color = SyncSpendTheme.colors.mink)
+                        Text(rollup.name, style = MaterialTheme.typography.bodyMedium, color = SyncSpendTheme.colors.ink)
                         Text(
                             "${rollup.count} entries · ${rollup.sharePercent}% of spend",
                             style = MaterialTheme.typography.labelSmall,
-                            color = SyncSpendTheme.colors.msub,
+                            color = SyncSpendTheme.colors.sub,
                         )
                     }
-                    Text(rollup.totalFormatted, style = MaterialTheme.typography.bodyMedium, color = SyncSpendTheme.colors.mink)
+                    Text(rollup.totalFormatted, style = MaterialTheme.typography.bodyMedium, color = SyncSpendTheme.colors.ink)
                 }
                 androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 6.dp))
-                // Track is an opaque neutral (colors.tile), not the translucent colors.dim: on top of
-                // this row's own colors.cardGradient fill, a dim overlay lands almost on colors.chartFill
-                // itself — matching StatsTab's CategoryBar, which already gets this right.
+                // Card is a plain neutral surface (colors.card), like EntriesTab's rows — only the
+                // bar itself carries the accent (colors.chartFill), on an opaque neutral track.
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
