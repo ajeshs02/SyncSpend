@@ -37,9 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +60,7 @@ import com.ajesh.syncspend.ui.components.PeriodPickerSheet
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendCorners
+import com.ajesh.syncspend.ui.theme.SyncSpendPalette
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.ui.transactions.TxRow
 import kotlin.random.Random
@@ -215,41 +214,57 @@ fun HomeScreen(
     }
 }
 
+/**
+ * Styled like an actual debit-card face — flat colour, a contactless-style glyph and brand mark up
+ * top, the balance where a card's number would sit, and a period/brand row at the bottom in place
+ * of a cardholder name and expiry. Green is reserved for this one card; everywhere else in the app
+ * uses the blue accent.
+ */
 @Composable
 private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val onGreen = SyncSpendPalette.HeroOnGreen
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(SyncSpendCorners.hero)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .background(SyncSpendTheme.colors.darkGradient)
-            .drawWithCache {
-                // A soft gold glow tucked into the top-right corner (brush built once per size, not per draw).
-                val r = 100.dp.toPx()
-                val center = Offset(size.width - 50.dp.toPx(), 30.dp.toPx())
-                val glow = Brush.radialGradient(
-                    colorStops = arrayOf(0f to Color(0x61FFCC00), 0.7f to Color.Transparent),
-                    center = center,
-                    radius = r,
-                )
-                onDrawBehind { drawCircle(brush = glow, radius = r, center = center) }
-            }
+            .background(SyncSpendPalette.HeroGreen)
             .padding(24.dp),
     ) {
         Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    SyncSpendIcons.Wifi,
+                    contentDescription = null,
+                    tint = SyncSpendPalette.HeroGreenAccent,
+                    modifier = Modifier.size(20.dp).rotate(90f),
+                )
+                Text(
+                    "SyncSpend",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.4.sp,
+                    color = onGreen.copy(alpha = 0.75f),
+                )
+            }
             Text(
                 if (state.flow == FlowType.INCOME) "Total Income" else "Total Spending",
                 fontSize = 12.5.sp,
-                color = Color.White.copy(alpha = 0.66f),
+                color = onGreen.copy(alpha = 0.66f),
+                modifier = Modifier.padding(top = 18.dp),
             )
             Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(state.currencySymbol, fontSize = 23.sp, fontWeight = FontWeight.Normal, color = Color.White)
+                Text(state.currencySymbol, fontSize = 23.sp, fontWeight = FontWeight.Normal, color = onGreen)
                 Text(
                     state.totalFormatted,
                     fontSize = 34.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = (-0.68).sp,
-                    color = Color.White,
+                    color = onGreen,
                 )
             }
             Row(modifier = Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -257,7 +272,7 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
                     val good = if (state.flow == FlowType.INCOME) state.trendIsUp else !state.trendIsUp
                     Row(
                         modifier = Modifier
-                            .background(if (good) Color(0x33FFCC00) else Color(0x38F08579), RoundedCornerShape(13.dp))
+                            .background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(13.dp))
                             .padding(horizontal = 10.dp, vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -265,28 +280,42 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
                         Icon(
                             if (state.trendIsUp) SyncSpendIcons.Up else SyncSpendIcons.Down,
                             null,
-                            tint = if (good) Color(0xFFF5D485) else Color(0xFFFFB3A8),
+                            tint = if (good) SyncSpendPalette.HeroGreenAccent else Color(0xFFFFB3A8),
                             modifier = Modifier.size(11.dp),
                         )
-                        Text("${state.trendPercent}%", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (good) Color(0xFFF5D485) else Color(0xFFFFB3A8))
+                        Text("${state.trendPercent}%", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (good) SyncSpendPalette.HeroGreenAccent else Color(0xFFFFB3A8))
                     }
                     Text(
                         "vs ${state.prevScopeLabel} (${state.currencySymbol}${state.prevTotalFormatted})",
                         fontSize = 11.5.sp,
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = onGreen.copy(alpha = 0.6f),
                     )
                 } else {
                     Text(
                         state.entryCountLabel,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.White.copy(alpha = 0.82f),
+                        color = onGreen.copy(alpha = 0.82f),
                         modifier = Modifier
                             .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(13.dp))
                             .padding(horizontal = 10.dp, vertical = 5.dp),
                     )
                     RotatingInsight(state.insights, modifier = Modifier.weight(1f))
                 }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    state.scopeLabel,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 0.3.sp,
+                    color = onGreen.copy(alpha = 0.7f),
+                )
+                AppLogo(size = 18.dp, radius = 6.dp)
             }
         }
     }

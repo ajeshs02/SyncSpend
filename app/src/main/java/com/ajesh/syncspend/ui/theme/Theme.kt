@@ -27,7 +27,7 @@ data class SyncSpendColors(
     val dark: Color,
     val darkGradient: Brush,
     val mintGradient: Brush,
-    /** Gold fill for bars, share bars, dots and chips: the mint gradient (lifted in dark mode). */
+    /** Flat blue fill for bars, share bars, dots and chips. */
     val chartFill: Brush,
     /** A paler [chartFill] for de-emphasised bars and projections. */
     val chartFillDim: Brush,
@@ -37,7 +37,6 @@ data class SyncSpendColors(
     val neg: Color,
     val pill: Color,
     val tile: Color,
-    val navGradient: Brush,
     val mink: Color,
     val msub: Color,
     val dim: Color,
@@ -51,7 +50,7 @@ data class SyncSpendColors(
     val onButton: Color,
     /** Expense arrow tint when sitting on the selected (inverted) indicator. */
     val expenseOnSelected: Color,
-    /** [SyncSpendPalette.BrandGold]: for the nav's selected icon and Income arrow icons only, never a fill. */
+    /** [SyncSpendPalette.BrandBlue]: for the nav's selected icon and Income arrow icons only, never a fill. */
     val brand: Color,
     val isDark: Boolean,
 )
@@ -73,7 +72,6 @@ private val LightColors = SyncSpendColors(
     neg = SyncSpendPalette.LightNeg,
     pill = SyncSpendPalette.LightPill,
     tile = SyncSpendPalette.LightTile,
-    navGradient = SyncSpendPalette.LightNavGradient,
     mink = SyncSpendPalette.LightMink,
     msub = SyncSpendPalette.LightMsub,
     dim = SyncSpendPalette.LightDim,
@@ -89,7 +87,7 @@ private val LightColors = SyncSpendColors(
     // both themes too (previously this flipped between a lighter/darker red to match a near-black
     // vs near-white selected background — that inversion no longer applies).
     expenseOnSelected = Color(0xFFC0392B),
-    brand = SyncSpendPalette.BrandGold,
+    brand = SyncSpendPalette.BrandBlue,
     isDark = false,
 )
 
@@ -110,7 +108,6 @@ private val DarkColors = SyncSpendColors(
     neg = SyncSpendPalette.DarkNeg,
     pill = SyncSpendPalette.DarkPill,
     tile = SyncSpendPalette.DarkTile,
-    navGradient = SyncSpendPalette.DarkNavGradient,
     mink = SyncSpendPalette.DarkMink,
     msub = SyncSpendPalette.DarkMsub,
     dim = SyncSpendPalette.DarkDim,
@@ -123,7 +120,7 @@ private val DarkColors = SyncSpendColors(
     button = SyncSpendPalette.DarkButton,
     onButton = SyncSpendPalette.DarkOnButton,
     expenseOnSelected = Color(0xFFC0392B),
-    brand = SyncSpendPalette.BrandGold,
+    brand = SyncSpendPalette.BrandBlue,
     isDark = true,
 )
 

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  A minimal wallet: a cream rounded-rect body over a mint card sliver (the
+  A minimal wallet: a cream rounded-rect body over a blue card sliver (the
   card's top peeks out above the body before the wallet fill covers the
-  rest of it), with a small mint clasp nub on the right edge — the standard
+  rest of it), with a small blue clasp nub on the right edge — the standard
   wallet-glyph closure, kept as a simple geometric shape rather than any
   literal buckle detail.
 
@@ -18,7 +18,7 @@
 
     <!-- Card, tucked mostly behind the wallet body; only its top edge shows. -->
     <path
-        android:fillColor="#8ECF63"
+        android:fillColor="#3B8EFF"
         android:pathData="M45,28 L65,28 A5,5 0 0,1 70,33 L70,41 A5,5 0 0,1 65,46 L45,46 A5,5 0 0,1 40,41 L40,33 A5,5 0 0,1 45,28 Z" />
 
     <!-- Wallet body -->
@@ -28,6 +28,6 @@
 
     <!-- Clasp nub on the right edge -->
     <path
-        android:fillColor="#8ECF63"
+        android:fillColor="#3B8EFF"
         android:pathData="M77,51 L79,51 A3,3 0 0,1 82,54 L82,58 A3,3 0 0,1 79,61 L77,61 A3,3 0 0,1 74,58 L74,54 A3,3 0 0,1 77,51 Z" />
 </vector>
