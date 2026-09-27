@@ -1,6 +1,8 @@
 package com.ajesh.syncspend.data.datastore
 
+import com.ajesh.syncspend.domain.model.ColorPalette
 import com.ajesh.syncspend.domain.model.CurrencyCode
+import com.ajesh.syncspend.domain.model.FontChoice
 import com.ajesh.syncspend.domain.model.ThemeMode
 
 data class UserPreferences(
@@ -11,4 +13,7 @@ data class UserPreferences(
     val notifPermissionRequested: Boolean = false,
     /** True once the starter categories have been added (they are added exactly once). */
     val defaultCategoriesSeeded: Boolean = false,
+    /** Temporary "theme lab" picks — see Settings. */
+    val colorPalette: ColorPalette = ColorPalette.FOREST,
+    val fontChoice: FontChoice = FontChoice.ARCHIVO,
 )

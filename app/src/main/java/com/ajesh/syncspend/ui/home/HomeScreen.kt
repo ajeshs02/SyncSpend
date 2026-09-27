@@ -96,16 +96,19 @@ fun HomeScreen(
     val flow by container.selectionState.flow.collectAsStateWithLifecycle()
     val colors = SyncSpendTheme.colors
 
-    // The title, flow toggle and period selector stay put; only what is below them scrolls, so
-    // content can never slide under the status bar.
+    // The header, flow toggle, hero card and shortcuts stay put; only Recent Transactions scrolls,
+    // so content can never slide under the status bar and the key numbers never move as you browse.
     Column(modifier = Modifier.fillMaxSize().padding(top = SyncSpendChrome.screenTopInset)) {
         Row(
-            modifier = Modifier.padding(horizontal = 22.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(9.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            AppLogo(size = 26.dp, radius = 9.dp)
-            Text("SyncSpend", style = MaterialTheme.typography.headlineSmall.copy(letterSpacing = (-0.18).sp), color = colors.ink)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                AppLogo(size = 26.dp, radius = 9.dp)
+                Text("SyncSpend", style = MaterialTheme.typography.headlineSmall.copy(letterSpacing = (-0.18).sp), color = colors.ink)
+            }
+            PeriodChip(label = state.scopeLabel, onClick = { periodPickerOpen = true })
         }
 
         FlowToggle(
@@ -114,93 +117,67 @@ fun HomeScreen(
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
         )
 
-        Row(
-            modifier = Modifier
-                .padding(start = 22.dp, end = 22.dp, top = 18.dp)
-                .fillMaxWidth()
-                .background(colors.pill, RoundedCornerShape(18.dp))
-                .border(1.dp, colors.line, RoundedCornerShape(18.dp))
-                .padding(horizontal = 8.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            NavArrow(SyncSpendIcons.Prev, "Previous period", state.canGoPrev, viewModel::prevPeriod)
+        // Nothing below the header until the first real state exists, so the first frame never flashes
+        // a 0 total or the "No transactions yet" text before the rows arrive.
+        if (state.loaded) {
+            HeroCard(
+                state,
+                onClick = onOpenStats,
+                modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 18.dp),
+            )
+
+            Row(
+                modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Repeat, "Subscriptions & EMIs", "${state.subsCount} active", onOpenSubscriptions)
+                ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Bell, "Reminders", "${state.remindersCount} set", onOpenReminders)
+            }
+
+            Box(Modifier.padding(top = 16.dp).fillMaxWidth().height(1.dp).background(colors.line))
+
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { periodPickerOpen = true },
-                horizontalAlignment = Alignment.CenterHorizontally,
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = SyncSpendChrome.screenBottomContentPadding),
             ) {
-                AnimatedContent(
-                    targetState = state.scopeLabel,
-                    transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(120)) },
-                    label = "scope-label",
-                ) { label ->
-                    Text(label, style = MaterialTheme.typography.titleMedium.copy(letterSpacing = (-0.15).sp), color = colors.ink)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, top = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Recent Transactions", style = MaterialTheme.typography.titleSmall, color = colors.ink)
+                    Text(
+                        "View All",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.acc,
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onViewAllTransactions,
+                        ),
+                    )
                 }
-                Text(state.scopeSubLabel, fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 1.dp))
-            }
-            NavArrow(SyncSpendIcons.Next, "Next period", state.canGoNext, viewModel::nextPeriod)
-        }
 
-        // Nothing below the header until the first real state exists, so the first frame never flashes
-        // a 0 total or the "No transactions yet" text before the rows arrive.
-        if (state.loaded) Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = SyncSpendChrome.screenBottomContentPadding),
-        ) {
-        HeroCard(
-            state,
-            onClick = onOpenStats,
-            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
-        )
-
-        Row(
-            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Repeat, "Subscriptions & EMIs", "${state.subsCount} active", onOpenSubscriptions)
-            ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Bell, "Reminders", "${state.remindersCount} set", onOpenReminders)
-        }
-
-        Box(Modifier.padding(top = 16.dp).fillMaxWidth().height(1.dp).background(colors.line))
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, top = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Recent Transactions", style = MaterialTheme.typography.titleSmall, color = colors.ink)
-            Text(
-                "View All",
-                style = MaterialTheme.typography.labelMedium,
-                color = colors.acc,
-                modifier = Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onViewAllTransactions,
-                ),
-            )
-        }
-
-        if (state.recentGroups.isEmpty()) {
-            Text(
-                "No transactions yet. Tap the + button to add your first one.",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.sub,
-                modifier = Modifier.padding(horizontal = 22.dp, vertical = 18.dp),
-            )
-        } else {
-            Column(modifier = Modifier.padding(horizontal = 22.dp).padding(top = 2.dp)) {
-                state.recentGroups.forEach { group ->
-                    DateSeparator(label = group.label)
-                    group.items.forEach { row ->
-                        RecentRow(row) { container.selectionState.editingTransactionId.value = row.id }
+                if (state.recentGroups.isEmpty()) {
+                    Text(
+                        "No transactions yet. Tap the + button to add your first one.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.sub,
+                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 18.dp),
+                    )
+                } else {
+                    Column(modifier = Modifier.padding(horizontal = 22.dp).padding(top = 2.dp)) {
+                        state.recentGroups.forEach { group ->
+                            DateSeparator(label = group.label)
+                            group.items.forEach { row ->
+                                RecentRow(row) { container.selectionState.editingTransactionId.value = row.id }
+                            }
+                        }
                     }
                 }
             }
-        }
         }
     }
 
@@ -317,17 +294,28 @@ internal fun RotatingInsight(lines: List<String>, modifier: Modifier = Modifier)
     }
 }
 
+/** The header's compact period control: a small calendar glyph + the current scope, opening [PeriodPickerSheet]. */
 @Composable
-private fun NavArrow(icon: ImageVector, description: String, enabled: Boolean, onClick: () -> Unit) {
-    Box(
+private fun PeriodChip(label: String, onClick: () -> Unit) {
+    val colors = SyncSpendTheme.colors
+    Row(
         modifier = Modifier
-            .size(32.dp)
-            .background(SyncSpendTheme.colors.card, RoundedCornerShape(11.dp))
-            .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(11.dp))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
+            .background(colors.pill, RoundedCornerShape(14.dp))
+            .border(1.dp, colors.line, RoundedCornerShape(14.dp))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Icon(icon, description, tint = SyncSpendTheme.colors.ink.copy(alpha = if (enabled) 1f else 0.3f), modifier = Modifier.size(17.dp))
+        Icon(SyncSpendIcons.Cal, null, tint = colors.ink, modifier = Modifier.size(13.dp))
+        AnimatedContent(
+            targetState = label,
+            transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(120)) },
+            label = "period-chip-label",
+        ) { text ->
+            Text(text, style = MaterialTheme.typography.labelMedium, color = colors.ink)
+        }
+        Icon(SyncSpendIcons.Down, null, tint = colors.sub, modifier = Modifier.size(11.dp))
     }
 }
 

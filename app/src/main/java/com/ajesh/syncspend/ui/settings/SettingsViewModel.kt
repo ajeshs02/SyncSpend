@@ -7,7 +7,9 @@ import com.ajesh.syncspend.data.datastore.PreferencesRepository
 import com.ajesh.syncspend.data.datastore.UserPreferences
 import com.ajesh.syncspend.data.repository.TransactionRepository
 import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
+import com.ajesh.syncspend.domain.model.ColorPalette
 import com.ajesh.syncspend.domain.model.CurrencyCode
+import com.ajesh.syncspend.domain.model.FontChoice
 import com.ajesh.syncspend.domain.model.ThemeMode
 import com.ajesh.syncspend.domain.state.SharedSelectionState
 import kotlinx.coroutines.Dispatchers
@@ -54,5 +56,13 @@ class SettingsViewModel(
 
     fun setReminderTime(minuteOfDay: Int) {
         viewModelScope.launch { dailyReminder.setTime(minuteOfDay) }
+    }
+
+    fun setColorPalette(palette: ColorPalette) {
+        viewModelScope.launch { preferencesRepository.setColorPalette(palette) }
+    }
+
+    fun setFontChoice(choice: FontChoice) {
+        viewModelScope.launch { preferencesRepository.setFontChoice(choice) }
     }
 }

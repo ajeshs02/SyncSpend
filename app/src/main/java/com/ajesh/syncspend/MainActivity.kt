@@ -34,6 +34,8 @@ import com.ajesh.syncspend.navigation.openSubsReminders
 import com.ajesh.syncspend.ui.components.BottomFadeAndNav
 import com.ajesh.syncspend.ui.editentry.EditEntryHost
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 
 private const val SPLASH_MAX_MILLIS = 1_500L
 
@@ -68,7 +70,7 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
             CompositionLocalProvider(LocalAppContainer provides container) {
-                SyncSpendTheme(themeMode = prefs.themeMode) {
+                SyncSpendTheme(themeMode = prefs.themeMode, colorPalette = prefs.colorPalette, fontChoice = prefs.fontChoice) {
                     SyncSpendAppRoot()
                 }
             }
@@ -118,14 +120,21 @@ private fun SyncSpendAppRoot() {
         container.selectionState.pendingLink.value = null
     }
 
+    // The bottom nav's glass material blurs whatever's drawn behind it — the NavHost content is
+    // the one and only Haze source, registered once here for the whole app.
+    val hazeState = rememberHazeState()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(SyncSpendTheme.colors.screenGradient),
+            // Flat, not the old multi-stop gradient: the monochrome redesign keeps gradients to
+            // cards/charts only (see SyncSpendTheme.colors.darkGradient/mintGradient/chartFill).
+            .background(SyncSpendTheme.colors.scrEnd),
     ) {
-        SyncSpendNavHost(navController = navController, modifier = Modifier.fillMaxSize())
+        SyncSpendNavHost(navController = navController, modifier = Modifier.fillMaxSize().hazeSource(hazeState))
         BottomFadeAndNav(
             currentRoute = currentRoute,
+            hazeState = hazeState,
             onNavigate = { destination ->
                 if (currentRoute != destination.route) navController.navigateToTab(destination.route)
             },
