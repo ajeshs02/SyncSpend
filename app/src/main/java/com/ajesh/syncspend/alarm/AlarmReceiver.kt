@@ -8,7 +8,6 @@ import com.ajesh.syncspend.domain.model.AppLink
 import com.ajesh.syncspend.domain.model.ReminderSchedule
 import com.ajesh.syncspend.util.CurrencyFormatter
 import com.ajesh.syncspend.util.DateUtils
-import com.ajesh.syncspend.widget.WidgetRefresher
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,7 +35,6 @@ class AlarmReceiver : BroadcastReceiver() {
                     TYPE_DAILY -> fireDaily(app)
                     TYPE_SUBSCRIPTION -> fireSubscription(app, id, daysBefore, dueDay)
                     TYPE_REMINDER -> fireReminder(app, id)
-                    TYPE_WIDGET_MIDNIGHT -> fireWidgetMidnight(app)
                 }
             } finally {
                 pending.finish()
@@ -103,12 +101,6 @@ class AlarmReceiver : BroadcastReceiver() {
         c.alarmScheduler.scheduleReminder(next)
     }
 
-    /** A refresh IS the reset: [WidgetRefresher] always recomputes "today" fresh from the current date. */
-    private suspend fun fireWidgetMidnight(app: SyncSpendApp) {
-        WidgetRefresher.refreshNow(app)
-        app.container.alarmScheduler.scheduleMidnightWidgetRefresh()
-    }
-
     companion object {
         /** The daily log reminder's buttons: "Add" opens Add Entry (and clears it), "Done" just clears it. */
         internal fun dailyActions(context: Context): List<NotificationHelper.Action> = listOf(
@@ -127,7 +119,6 @@ class AlarmReceiver : BroadcastReceiver() {
         const val TYPE_DAILY = "daily"
         const val TYPE_SUBSCRIPTION = "subscription"
         const val TYPE_REMINDER = "reminder"
-        const val TYPE_WIDGET_MIDNIGHT = "widget_midnight"
         private const val NOTIF_SUBSCRIPTION_BASE = 200_000
         private const val NOTIF_REMINDER_BASE = 300_000
     }

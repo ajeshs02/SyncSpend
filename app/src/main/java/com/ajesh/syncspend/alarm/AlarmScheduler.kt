@@ -12,9 +12,6 @@ interface AlarmScheduler {
     fun scheduleReminder(reminder: ReminderEntity)
     fun cancelReminder(id: Long)
 
-    /** Always on, no user toggle: keeps the home-screen widget's "today" total from going stale overnight. */
-    fun scheduleMidnightWidgetRefresh()
-
     /** Re-arms everything from the database + preferences (boot, app update, cold start). */
     suspend fun rescheduleAll()
 }

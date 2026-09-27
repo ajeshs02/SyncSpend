@@ -12,9 +12,6 @@ object AlarmTimes {
     /** Subscriptions notify at 9:00 AM on the due date. */
     const val SUBSCRIPTION_MINUTE_OF_DAY = 9 * 60
 
-    /** Small buffer past the exact midnight instant so the date has unambiguously rolled over by the time this fires. */
-    private const val MIDNIGHT_BUFFER_MILLIS = 5_000L
-
     fun toMillis(date: LocalDate, minuteOfDay: Int): Long =
         LocalDateTime.of(date, LocalTime.of(minuteOfDay / 60, minuteOfDay % 60))
             .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -39,17 +36,6 @@ object AlarmTimes {
         if (millis <= now) {
             date = date.plusDays(1)
             millis = toMillis(date, minuteOfDay)
-        }
-        return millis
-    }
-
-    /** Next widget-refresh instant strictly after [now]: a few seconds past midnight, every day. */
-    fun nextMidnightRefresh(now: Long = System.currentTimeMillis()): Long {
-        var date = LocalDate.now()
-        var millis = toMillis(date, 0) + MIDNIGHT_BUFFER_MILLIS
-        if (millis <= now) {
-            date = date.plusDays(1)
-            millis = toMillis(date, 0) + MIDNIGHT_BUFFER_MILLIS
         }
         return millis
     }

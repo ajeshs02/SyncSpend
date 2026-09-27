@@ -113,10 +113,6 @@ dependencies {
     // DataStore: theme/currency/reminder preferences.
     implementation("androidx.datastore:datastore-preferences:1.2.1")
 
-    // Haze: real-time backdrop blur for the bottom nav's "liquid glass" material.
-    implementation("dev.chrisbanes.haze:haze:2.0.0")
-    implementation("dev.chrisbanes.haze:haze-glass:2.0.0")
-
     testImplementation("junit:junit:4.13.2")
     // JVM screenshot tests: render composables to PNG with no device (see src/test/.../screenshots).
     testImplementation("org.robolectric:robolectric:4.17")
