@@ -32,7 +32,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -242,15 +241,12 @@ fun SettingsScreen(onOpenCategories: () -> Unit) {
                 onClick = { exportPickerOpen = true },
             )
 
-            Text(
-                "Clear all data",
-                style = MaterialTheme.typography.labelLarge,
-                color = colors.neg,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { confirmClearAll = true }
-                    .padding(vertical = 10.dp),
+            ActionCard(
+                icon = SyncSpendIcons.Trash,
+                title = "Clear all data",
+                note = "Permanently delete transactions, categories, subscriptions and reminders",
+                danger = true,
+                onClick = { confirmClearAll = true },
             )
 
             SettingsCard {
@@ -323,16 +319,17 @@ private fun SettingsCard(gradient: Boolean = false, content: @Composable () -> U
 }
 
 @Composable
-private fun IconTile(icon: ImageVector) {
+private fun IconTile(icon: ImageVector, tint: androidx.compose.ui.graphics.Color = SyncSpendTheme.colors.ink) {
     Box(
         modifier = Modifier.size(32.dp).background(SyncSpendTheme.colors.tile, RoundedCornerShape(11.dp)),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, null, tint = SyncSpendTheme.colors.ink, modifier = Modifier.size(16.dp)) }
+    ) { Icon(icon, null, tint = tint, modifier = Modifier.size(16.dp)) }
 }
 
 @Composable
-private fun ActionCard(icon: ImageVector, title: String, note: String, onClick: () -> Unit) {
+private fun ActionCard(icon: ImageVector, title: String, note: String, danger: Boolean = false, onClick: () -> Unit) {
     val colors = SyncSpendTheme.colors
+    val accent = if (danger) colors.neg else colors.ink
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -343,9 +340,9 @@ private fun ActionCard(icon: ImageVector, title: String, note: String, onClick: 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(11.dp),
     ) {
-        IconTile(icon)
+        IconTile(icon, tint = accent)
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.labelLarge, color = colors.ink)
+            Text(title, style = MaterialTheme.typography.labelLarge, color = accent)
             Text(note, fontSize = 10.5.sp, color = colors.sub, modifier = Modifier.padding(top = 2.dp))
         }
         Icon(SyncSpendIcons.Next, null, tint = colors.sub, modifier = Modifier.size(17.dp))
