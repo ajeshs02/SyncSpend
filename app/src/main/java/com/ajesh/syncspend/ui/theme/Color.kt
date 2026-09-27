@@ -6,9 +6,10 @@ import androidx.compose.ui.graphics.SolidColor
 
 /**
  * A monochrome base (no hue tint anywhere in ink/sub/card/line/tile/sheet/background) with one
- * green accent used purposefully — cards, charts, selections and icons. The accent (`#D1ECCF`, a
- * pale sage/mint) and the dark-mode tinted container (`#16291C`) are colors the user extracted
- * directly from their own reference image, not a guess.
+ * green accent used purposefully — cards, charts, selections and icons. [Accent] (`#D1ECCF`, a
+ * pale sage/mint the user extracted directly from their own reference image) is flat: the exact
+ * same value in light and dark theme, everywhere it's used — the Expense/Income toggle proved this
+ * reads better than the dark-tinted-container variant an earlier round tried for cards.
  *
  * Every token that used to carry a real multi-stop [Brush.linearGradient] (card/chart/selection
  * fills) is a flat [SolidColor] — this app renders no stylistic color gradients anywhere. The two
@@ -16,19 +17,22 @@ import androidx.compose.ui.graphics.SolidColor
  * are functional edge-fades (a scroll mask, a fading divider line), not color gradients, and are
  * left alone.
  *
- * Contrast note: `#D1ECCF` is too pale to use directly as small inline text on a white card.
- * [LightPos] is therefore a darkened, still-clearly-green tone tuned for text; [DarkPos] can
- * safely be the accent itself since it's used on the dark tinted container, not on a bright fill.
- * See [LightPos]/[DarkPos] below.
+ * Contrast note: [Accent] is too pale to use directly as small inline text on a white card.
+ * [LightPos] is therefore a darkened, still-clearly-green tone tuned for text; [DarkPos] stays
+ * legible because it's only ever used on the app's plain dark card/sheet surfaces, never on the
+ * (also pale) accent fill itself — content sitting on the accent fill uses [LightMink]/[DarkMink]
+ * instead. See [LightPos]/[DarkPos] and [LightMink]/[DarkMink] below.
  */
 object SyncSpendPalette {
 
+    /** The single accent color, identical in both themes — cards, charts, selections, icons. */
+    val Accent = Color(0xFFD1ECCF)
+
     /**
-     * A deep forest green used only as a glyph/icon tint (the nav's active icon, the Income arrow
-     * icon) — never a background or fill. One fixed value in both themes: light enough to read on
-     * the bottom nav's near-black pill, and visibly deeper than the pale [LightAcc]/[DarkAcc] fill
-     * it also sits on top of (a selected chip, the segmented control), so the icon never blends
-     * into its own background.
+     * A deep forest green used only as a glyph/icon tint (the Income arrow icon) — never a
+     * background or fill. One fixed value in both themes: visibly deeper than the pale
+     * [LightAcc]/[DarkAcc] fill it also sits on top of (a selected chip, the segmented control),
+     * so the icon never blends into its own background.
      */
     val BrandGreen = Color(0xFF2E7D4F)
 
@@ -38,7 +42,7 @@ object SyncSpendPalette {
     val LightCard = Color(0xFFFFFFFF)
     val LightLine = Color(0x14141416) // rgba(20,20,22,.08)
     val LightDark = Color(0xFF17181A)
-    val LightAcc = Color(0xFFD1ECCF)
+    val LightAcc = Accent
     val LightAcc2 = Color(0xFFB8DEB3)
     /** Darkened forest green, not the pale accent: readable as small text (income amounts) on a white card. */
     val LightPos = Color(0xFF2E7D4F)
@@ -64,8 +68,8 @@ object SyncSpendPalette {
     val LightOnSelected = Color(0xFF1A1A1A)
     val LightButton = LightAcc
     val LightOnButton = Color(0xFF1A1A1A)
-    /** Flat: the Stats "vs previous period" comparison card is always a dark tinted panel, regardless of theme. */
-    val LightDarkGradient: Brush = SolidColor(Color(0xFF16291C))
+    /** Flat: the Stats "vs previous period" comparison card is always a neutral dark panel, regardless of theme. */
+    val LightDarkGradient: Brush = SolidColor(LightDark)
     val LightMintGradient: Brush = SolidColor(LightAcc)
     // Chart/bar fills: the green accent itself, and a paler flat tint for de-emphasised bars.
     val LightChartFill: Brush = SolidColor(LightAcc)
@@ -77,9 +81,9 @@ object SyncSpendPalette {
     val DarkCard = Color(0xFF1E1F21)
     val DarkLine = Color(0x24FFFFFF) // rgba(255,255,255,.14)
     val DarkDark = Color(0xFF0C0C0D)
-    val DarkAcc = Color(0xFFD1ECCF)
+    val DarkAcc = Accent
     val DarkAcc2 = Color(0xFFB8DEB3)
-    /** Light text on a dark tinted container has no contrast problem, so the accent itself works here. */
+    /** Light text on the app's plain dark card/sheet surfaces has no contrast problem. */
     val DarkPos = Color(0xFFD1ECCF)
     val DarkNeg = Color(0xFFF08579)
     val DarkPill = Color(0x1AFFFFFF) // rgba(255,255,255,.10)
@@ -95,10 +99,11 @@ object SyncSpendPalette {
 
     val DarkScreenGradient: Brush = SolidColor(DarkScrEnd)
 
-    /** The user's own dark-mode container: `#D1ECCF` blended down over a dark base. */
-    val DarkCardGradient: Brush = SolidColor(Color(0xFF16291C))
-    val DarkDarkGradient: Brush = SolidColor(Color(0xFF16291C))
-    val DarkMintGradient: Brush = SolidColor(Color(0xFF16291C))
+    /** Flat: the same accent as light theme, not a darkened container — matches the toggle's fill. */
+    val DarkCardGradient: Brush = SolidColor(DarkAcc)
+    /** Flat: the Stats "vs previous period" comparison card is always a neutral dark panel, regardless of theme. */
+    val DarkDarkGradient: Brush = SolidColor(DarkDark)
+    val DarkMintGradient: Brush = SolidColor(DarkAcc)
     val DarkChartFill: Brush = SolidColor(DarkAcc)
     val DarkChartFillDim: Brush = SolidColor(Color(0xFF23392A))
 

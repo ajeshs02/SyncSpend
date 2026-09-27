@@ -20,7 +20,7 @@
     <color name="widget_ink">#FF141416</color>
     <color name="widget_sub">#FF6C7075</color>
     <color name="widget_neg">#FFC0392B</color>
-    <color name="widget_fab">#FF2E7D4F</color>
+    <color name="widget_fab">#FFD1ECCF</color>
     <color name="widget_on_fab">#FF1A1A1A</color>
     <color name="widget_ripple">#1F141416</color>
 </resources>

@@ -208,7 +208,7 @@ fun SubscriptionDialog(
     val amount = amountText.toDoubleOrNull()
 
     NameIconDialog(
-        title = "New subscription",
+        title = "New subscription / EMIs",
         body = "Add the service, amount and billing cycle. You'll get a notification on the due date.",
         cta = "Add",
         initialName = "",

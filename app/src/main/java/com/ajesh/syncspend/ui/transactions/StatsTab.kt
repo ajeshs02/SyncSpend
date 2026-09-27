@@ -70,11 +70,10 @@ fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
                     .background(colors.mintGradient, RoundedCornerShape(22.dp))
                     .padding(17.dp),
             ) {
-                // This card's own background is colors.mintGradient, which — unlike chartFill — is a
-                // pale tint in light mode but a genuinely dark tinted panel in dark mode, so its text
-                // uses colors.pos (dark-safe deep green in light, the pale accent itself in dark)
-                // rather than colors.mink (tuned for the bright chartFill fill elsewhere on this screen).
-                Text(stats.kicker, fontSize = 11.sp, color = colors.pos.copy(alpha = 0.7f))
+                // This card's background is colors.mintGradient, the flat accent (same as chartFill,
+                // same as everywhere else it's used) — colors.mink is the established "text on the
+                // accent fill" token, not colors.pos (tuned for plain card/sheet backgrounds).
+                Text(stats.kicker, fontSize = 11.sp, color = colors.mink.copy(alpha = 0.7f))
                 Row(
                     modifier = Modifier.padding(top = 9.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -83,12 +82,12 @@ fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
                     Box(
                         modifier = Modifier.size(36.dp).background(Color.White.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center,
-                    ) { Icon(SyncSpendIcons.iconFor(stats.topIconKey), null, tint = colors.pos, modifier = Modifier.size(18.dp)) }
+                    ) { Icon(SyncSpendIcons.iconFor(stats.topIconKey), null, tint = colors.mink, modifier = Modifier.size(18.dp)) }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(stats.topName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colors.pos, maxLines = 1)
-                        Text(stats.topShareLine, fontSize = 11.sp, color = colors.pos.copy(alpha = 0.7f), modifier = Modifier.padding(top = 2.dp))
+                        Text(stats.topName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colors.mink, maxLines = 1)
+                        Text(stats.topShareLine, fontSize = 11.sp, color = colors.mink.copy(alpha = 0.7f), modifier = Modifier.padding(top = 2.dp))
                     }
-                    Text(stats.topTotal, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.19).sp, color = colors.pos)
+                    Text(stats.topTotal, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.19).sp, color = colors.mink)
                 }
             }
         }
@@ -192,7 +191,7 @@ fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
                     stats.findings.forEach { line ->
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Box(Modifier.padding(top = 5.dp).size(6.dp).background(colors.chartFill, RoundedCornerShape(50)))
-                            Text(line, fontSize = 11.5.sp, lineHeight = 16.7.sp, color = colors.ink)
+                            Text(line, fontSize = 11.5.sp, lineHeight = 16.7.sp, color = colors.mink)
                         }
                     }
                 }
@@ -235,7 +234,11 @@ private fun StatsCard(title: String, gradient: Boolean = false, content: @Compos
             .border(1.dp, colors.line, shape)
             .padding(16.dp),
     ) {
-        Text(title, style = MaterialTheme.typography.titleSmall.copy(fontSize = 13.5.sp), color = colors.ink)
+        Text(
+            title,
+            style = MaterialTheme.typography.titleSmall.copy(fontSize = 13.5.sp),
+            color = if (gradient) colors.mink else colors.ink,
+        )
         Column(modifier = Modifier.padding(top = 12.dp)) { content() }
     }
 }
@@ -360,8 +363,8 @@ private fun TipRow(tip: TipUi) {
             contentAlignment = Alignment.Center,
         ) { Icon(icon, null, tint = tint, modifier = Modifier.size(14.dp)) }
         Column(modifier = Modifier.weight(1f)) {
-            Text(tip.title, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = colors.ink)
-            Text(tip.body, fontSize = 11.5.sp, lineHeight = 16.sp, color = colors.sub, modifier = Modifier.padding(top = 2.dp))
+            Text(tip.title, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = colors.mink)
+            Text(tip.body, fontSize = 11.5.sp, lineHeight = 16.sp, color = colors.msub, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }
