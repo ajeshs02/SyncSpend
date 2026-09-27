@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Matches ui/icons/SyncSpendIcons.kt's ArrowOut (the same glyph used in the Expense/Income
+     toggle), redrawn as a static resource since RemoteViews can't use a Compose ImageVector. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M8.5,15.5L15.5,8.5"
+        android:strokeColor="@color/widget_neg"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.7" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M9.6,8.5H15.5V14.4"
+        android:strokeColor="@color/widget_neg"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.7" />
+</vector>

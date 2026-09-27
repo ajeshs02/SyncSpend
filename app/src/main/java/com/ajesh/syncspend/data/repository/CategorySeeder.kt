@@ -22,9 +22,16 @@ class CategorySeeder(
 
     suspend fun seedIfNeeded() = lock.withLock {
         if (preferences.preferences.first().defaultCategoriesSeeded) return@withLock
+        insertMissing()
+        preferences.markDefaultCategoriesSeeded()
+    }
+
+    /** Re-adds the starter categories after all data is cleared, ignoring the one-time flag (already set). */
+    suspend fun reseed() = lock.withLock { insertMissing() }
+
+    private suspend fun insertMissing() {
         DefaultCategories.missingFrom(categories.getAllOnce()).forEach {
             categories.createNext(it.name, it.iconKey, it.type)
         }
-        preferences.markDefaultCategoriesSeeded()
     }
 }
