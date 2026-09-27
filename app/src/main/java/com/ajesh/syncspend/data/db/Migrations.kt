@@ -19,6 +19,13 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
     override fun migrate(db: SupportSQLiteDatabase) = migrate3To4(db, ZoneId.systemDefault())
 }
 
+/** v4 -> v5: `subscriptions.remindMinuteOfDay`, a per-subscription reminder time (9:00 AM by default, matching the old hardcoded time). */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `subscriptions` ADD COLUMN `remindMinuteOfDay` INTEGER NOT NULL DEFAULT 540")
+    }
+}
+
 internal fun migrate3To4(db: SupportSQLiteDatabase, zone: ZoneId) {
     db.execSQL("ALTER TABLE `transactions` ADD COLUMN `timeMinuteOfDay` INTEGER")
     db.execSQL("ALTER TABLE `subscriptions` ADD COLUMN `remindDaysBefore` TEXT NOT NULL DEFAULT '1,3'")

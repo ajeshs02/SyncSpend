@@ -34,6 +34,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -83,8 +84,9 @@ fun TransactionsScreen() {
     val statsRange by viewModel.statsRange.collectAsStateWithLifecycle()
     val filter = storedFilter
     val filterOptions = remember { AnalyticsEngine.entryFilterOptions() }
-    // The dates the current chip covers (shown next to "Showing ..."); the Stats tab has its own range chips.
-    val rangeLabel = remember(tab, filter, customRange, statsRange) { headerRangeLabel(tab, filter, customRange, statsRange, LocalDate.now()) }
+    // The dates the current chip covers, folded into the "Showing ..." sentence; the Stats tab has its own range chips.
+    val dateClause = remember(tab, filter, customRange, statsRange) { headerDateClause(tab, filter, customRange, statsRange, LocalDate.now()) }
+    val isAllTime = tab == TransactionsTab.ANALYTICS && statsRange == StatsRange.ALL_TIME
     // Pure UI state lives here, not in the ViewModel: toggling a menu must not re-run the data pipeline.
     var flowMenuOpen by remember { mutableStateOf(false) }
     var rangePickerOpen by remember { mutableStateOf(false) }
@@ -108,7 +110,12 @@ fun TransactionsScreen() {
             .padding(horizontal = 22.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Transactions", style = MaterialTheme.typography.headlineSmall, color = SyncSpendTheme.colors.ink)
+            Text(
+                "Transactions",
+                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 21.sp),
+                color = SyncSpendTheme.colors.ink,
+                modifier = Modifier.padding(vertical = 3.dp),
+            )
             Box(modifier = Modifier.weight(1f))
             Box {
                 Row(
@@ -150,24 +157,27 @@ fun TransactionsScreen() {
         }
 
         androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 10.dp))
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                buildAnnotatedString {
-                    append("Showing ")
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = flowColor)) {
-                        append(if (flow == FlowType.INCOME) "income" else "expenses")
-                    }
-                },
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
-                color = colors.sub,
-            )
-            Box(modifier = Modifier.weight(1f))
-            rangeLabel?.let {
-                Text(it, style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp), color = colors.sub, maxLines = 1)
-            }
-        }
+        Text(
+            buildAnnotatedString {
+                append("Showing ")
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = flowColor)) {
+                    append(if (flow == FlowType.INCOME) "income" else "expenses")
+                }
+                append(
+                    when {
+                        dateClause != null -> " $dateClause"
+                        isAllTime -> " of all time"
+                        else -> ""
+                    },
+                )
+            },
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+            color = colors.sub,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
 
-        androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 14.dp))
+        androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 20.dp))
         val tabIcons = remember(colors) {
             listOf(SyncSpendIcons.Receipt, SyncSpendIcons.Layers, SyncSpendIcons.Trend)
                 .map { SegmentIcon(it, colors.onSelected, colors.sub) }
@@ -236,13 +246,16 @@ fun TransactionsScreen() {
     }
 }
 
-/** "21 Sep - 27 Sep", "All time", or null before a custom range has been picked. */
-internal fun headerRangeLabel(tab: TransactionsTab, filter: EntryFilter, customRange: DateRange?, statsRange: StatsRange, today: LocalDate): String? {
-    fun label(range: DateRange) = DateUtils.rangeLabel(range.start, range.end, today)
+/** "on 21 Sep", "from 21 Sep to 27 Sep", or null for all-time / before a custom range has been picked. */
+internal fun headerDateClause(tab: TransactionsTab, filter: EntryFilter, customRange: DateRange?, statsRange: StatsRange, today: LocalDate): String? {
+    fun clause(range: DateRange): String {
+        fun label(d: LocalDate) = if (d.year == today.year) DateUtils.shortDate(d) else DateUtils.shortDateYear(d)
+        return if (range.start == range.end) "on ${label(range.start)}" else "from ${label(range.start)} to ${label(range.end)}"
+    }
     return when {
-        tab != TransactionsTab.ANALYTICS -> AnalyticsEngine.entryFilterRange(filter, customRange, today)?.let(::label)
-        statsRange == StatsRange.ALL_TIME -> "All time"
-        else -> statsRange.resolve(today, null).let { label(DateRange(it.start, minOf(it.end, today))) }
+        tab != TransactionsTab.ANALYTICS -> AnalyticsEngine.entryFilterRange(filter, customRange, today)?.let(::clause)
+        statsRange == StatsRange.ALL_TIME -> null
+        else -> statsRange.resolve(today, null).let { clause(DateRange(it.start, minOf(it.end, today))) }
     }
 }
 

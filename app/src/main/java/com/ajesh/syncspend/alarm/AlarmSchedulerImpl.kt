@@ -67,6 +67,7 @@ class AlarmSchedulerImpl(
         // One pending alarm per subscription: the next of its "N days before" alerts or the due day.
         val alert = AlarmTimes.nextSubscriptionAlert(
             subscription.nextDueDate, subscription.billingCycle, RemindOffsets.parse(subscription.remindDaysBefore),
+            subscription.remindMinuteOfDay,
         )
         arm(
             alert.atMillis,

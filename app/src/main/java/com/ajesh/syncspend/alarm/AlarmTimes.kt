@@ -47,13 +47,14 @@ object AlarmTimes {
     data class SubscriptionAlert(val atMillis: Long, val daysBefore: Int, val dueDate: LocalDate)
 
     /**
-     * The next alert strictly after [now]: on the due day at 9:00, and on each of [offsets] days before
-     * it. Due days already fully in the past are rolled forward by the billing cycle.
+     * The next alert strictly after [now]: on the due day at [minuteOfDay], and on each of [offsets] days
+     * before it, at that same time. Due days already fully in the past are rolled forward by the billing cycle.
      */
     fun nextSubscriptionAlert(
         due: LocalDate,
         cycle: BillingCycle,
         offsets: Collection<Int>,
+        minuteOfDay: Int = SUBSCRIPTION_MINUTE_OF_DAY,
         now: Long = System.currentTimeMillis(),
     ): SubscriptionAlert {
         val daysBefore = (offsets.filter { it > 0 } + 0).distinct().sortedDescending() // earliest alert of a due day first
@@ -61,12 +62,12 @@ object AlarmTimes {
         var guard = 0
         while (guard++ < 2000) {
             for (d in daysBefore) {
-                val at = toMillis(date.minusDays(d.toLong()), SUBSCRIPTION_MINUTE_OF_DAY)
+                val at = toMillis(date.minusDays(d.toLong()), minuteOfDay)
                 if (at > now) return SubscriptionAlert(at, d, date)
             }
             date = advance(date, cycle)
         }
-        return SubscriptionAlert(toMillis(date, SUBSCRIPTION_MINUTE_OF_DAY), 0, date)
+        return SubscriptionAlert(toMillis(date, minuteOfDay), 0, date)
     }
 
     /** First recurrence of a reminder strictly after [now]; null for a ONCE reminder already in the past. */
@@ -88,10 +89,15 @@ object AlarmTimes {
     }
 
     /** The due date to show once a paused subscription is switched back on: the first one after [now]. */
-    fun nextSubscriptionDate(due: LocalDate, cycle: BillingCycle, now: Long = System.currentTimeMillis()): LocalDate {
+    fun nextSubscriptionDate(
+        due: LocalDate,
+        cycle: BillingCycle,
+        minuteOfDay: Int = SUBSCRIPTION_MINUTE_OF_DAY,
+        now: Long = System.currentTimeMillis(),
+    ): LocalDate {
         var date = due
         var guard = 0
-        while (toMillis(date, SUBSCRIPTION_MINUTE_OF_DAY) <= now && guard++ < 2000) date = advance(date, cycle)
+        while (toMillis(date, minuteOfDay) <= now && guard++ < 2000) date = advance(date, cycle)
         return date
     }
 

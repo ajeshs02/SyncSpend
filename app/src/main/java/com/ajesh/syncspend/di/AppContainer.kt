@@ -9,6 +9,7 @@ import com.ajesh.syncspend.alarm.DailyReminderManager
 import com.ajesh.syncspend.data.datastore.PreferencesRepository
 import com.ajesh.syncspend.data.db.AppDatabase
 import com.ajesh.syncspend.data.db.MIGRATION_3_4
+import com.ajesh.syncspend.data.db.MIGRATION_4_5
 import com.ajesh.syncspend.data.repository.CategoryRepository
 import com.ajesh.syncspend.data.repository.CategorySeeder
 import com.ajesh.syncspend.data.repository.ReminderRepository
@@ -70,7 +71,7 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         // Any future schema change needs an explicit Migration (a missing one
         // fails loudly instead of silently wiping the user's entries).
         Room.databaseBuilder(context, AppDatabase::class.java, "syncspend.db")
-            .addMigrations(MIGRATION_3_4)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
             .build()
     }
 

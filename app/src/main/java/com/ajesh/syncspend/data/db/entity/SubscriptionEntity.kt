@@ -27,4 +27,6 @@ data class SubscriptionEntity(
     val categoryId: Long?,
     val active: Boolean,
     @ColumnInfo(defaultValue = RemindOffsets.DEFAULT_TEXT) val remindDaysBefore: String = RemindOffsets.DEFAULT_TEXT,
+    /** Minute-of-day used for the due-date alert and every "N days before" alert alike. */
+    @ColumnInfo(defaultValue = "540") val remindMinuteOfDay: Int = 540,
 )

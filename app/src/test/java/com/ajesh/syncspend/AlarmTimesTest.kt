@@ -22,7 +22,7 @@ class AlarmTimesTest {
     }
 
     private val nineAm = AlarmTimes.SUBSCRIPTION_MINUTE_OF_DAY
-    private fun alert(due: LocalDate, offsets: List<Int>, at: Long = now) = AlarmTimes.nextSubscriptionAlert(due, BillingCycle.MONTHLY, offsets, at)
+    private fun alert(due: LocalDate, offsets: List<Int>, at: Long = now) = AlarmTimes.nextSubscriptionAlert(due, BillingCycle.MONTHLY, offsets, now = at)
 
     @Test fun subscriptionRollsForwardPastDueDates() {
         val alert = alert(LocalDate.of(2026, 6, 22), emptyList())
@@ -85,12 +85,12 @@ class AlarmTimesTest {
     @Test fun resumedSubscriptionShowsItsNextFutureDueDate() {
         assertEquals(
             LocalDate.of(2026, 9, 22),
-            AlarmTimes.nextSubscriptionDate(LocalDate.of(2026, 6, 22), BillingCycle.MONTHLY, now),
+            AlarmTimes.nextSubscriptionDate(LocalDate.of(2026, 6, 22), BillingCycle.MONTHLY, now = now),
         )
         // Already in the future: unchanged.
         assertEquals(
             LocalDate.of(2026, 10, 1),
-            AlarmTimes.nextSubscriptionDate(LocalDate.of(2026, 10, 1), BillingCycle.MONTHLY, now),
+            AlarmTimes.nextSubscriptionDate(LocalDate.of(2026, 10, 1), BillingCycle.MONTHLY, now = now),
         )
     }
 
