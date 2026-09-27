@@ -139,12 +139,21 @@ object AnalyticsEngine {
 
     fun groupByDay(tx: List<TransactionEntity>, today: LocalDate = LocalDate.now()): List<DayGroup> {
         val sorted = tx.sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt })
-        val order = LinkedHashMap<String, MutableList<TransactionEntity>>()
-        for (t in sorted) {
-            val label = dayLabel(t.date, today)
-            order.getOrPut(label) { mutableListOf() }.add(t)
+        // Sorted by date, so a day's entries are one run: label each day once, not every entry.
+        val groups = ArrayList<DayGroup>()
+        var start = 0
+        while (start < sorted.size) {
+            val date = sorted[start].date
+            var end = start
+            var total = 0.0
+            while (end < sorted.size && sorted[end].date == date) {
+                total += abs(sorted[end].amount)
+                end++
+            }
+            groups += DayGroup(dayLabel(date, today), sorted.subList(start, end), total)
+            start = end
         }
-        return order.map { (label, items) -> DayGroup(label, items, items.sumOf { abs(it.amount) }) }
+        return groups
     }
 
     private fun dayLabel(date: LocalDate, today: LocalDate): String = when (date) {

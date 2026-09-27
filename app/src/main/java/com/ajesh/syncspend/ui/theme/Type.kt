@@ -9,7 +9,6 @@ import androidx.compose.ui.unit.sp
 import com.ajesh.syncspend.R
 
 val ArchivoFontFamily = FontFamily(
-    Font(R.font.archivo_light, FontWeight.Light),
     Font(R.font.archivo_regular, FontWeight.Normal),
     Font(R.font.archivo_medium, FontWeight.Medium),
     Font(R.font.archivo_semibold, FontWeight.SemiBold),

@@ -28,4 +28,19 @@ class CurrencyFormatterTest {
             assertFalse(CurrencyFormatter.amount(it), CurrencyFormatter.amount(it).contains('.'))
         }
     }
+
+    @Test fun matchesTheFormatterItReplaced() {
+        val random = java.util.Random(11)
+        val samples = List(20_000) { i ->
+            when (i % 4) {
+                0 -> random.nextInt(1_000_000).toDouble()
+                1 -> random.nextInt(1_000_000) + 0.5 // the halves: they round up
+                2 -> random.nextDouble() * 10_000_000
+                else -> -random.nextDouble() * 1_000
+            }
+        } + listOf(0.0, 0.49, 0.5, 0.51, 999.5, 1000.0, 999_999.5, 12_345_678.9)
+        samples.forEach {
+            assertEquals("$it", java.lang.String.format(java.util.Locale.US, "%,.0f", kotlin.math.abs(it)), CurrencyFormatter.amount(it))
+        }
+    }
 }
