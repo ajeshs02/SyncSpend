@@ -5,6 +5,6 @@
     <color name="widget_ink">@android:color/system_neutral1_50</color>
     <color name="widget_sub">@android:color/system_neutral1_400</color>
     <color name="widget_neg">#FFF08579</color>
-    <color name="widget_fab">#FF4CAF7D</color>
+    <color name="widget_fab">#FFD1ECCF</color>
     <color name="widget_on_fab">#FF1A1A1A</color>
 </resources>

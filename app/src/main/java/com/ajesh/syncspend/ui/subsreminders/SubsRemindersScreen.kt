@@ -102,16 +102,15 @@ fun SubsRemindersScreen(listMode: String, highlightId: Long?, onBack: () -> Unit
                 .background(colors.mintGradient, RoundedCornerShape(20.dp))
                 .padding(16.dp),
         ) {
-            // This card's background is colors.mintGradient, a pale tint in light mode but a dark
-            // tinted panel in dark mode — colors.pos (not colors.mink, tuned for the bright chartFill
-            // fill elsewhere) tracks that correctly in both themes.
-            Text(if (isSubs) "Monthly recurring" else "Active reminders", fontSize = 11.sp, color = colors.pos.copy(alpha = 0.7f))
+            // This card's background is colors.mintGradient, the flat accent — colors.mink is the
+            // established "text on the accent fill" token, matching every other consumer of it.
+            Text(if (isSubs) "Monthly recurring" else "Active reminders", fontSize = 11.sp, color = colors.mink.copy(alpha = 0.7f))
             Text(
                 if (isSubs) state.monthlyRecurring else state.activeReminders,
                 fontSize = 24.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                 letterSpacing = (-0.24).sp,
-                color = colors.pos,
+                color = colors.mink,
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
