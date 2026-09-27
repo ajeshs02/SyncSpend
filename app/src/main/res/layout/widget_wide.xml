@@ -27,7 +27,8 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/archivo_medium"
+                android:fontFamily="@font/cabin_variable"
+                android:fontVariationSettings="'wght' 500"
                 android:text="@string/widget_today_expense_label"
                 android:textColor="@color/widget_sub"
                 android:textSize="11sp" />
@@ -45,7 +46,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:fontFamily="@font/archivo_semibold"
+            android:fontFamily="@font/cabin_variable"
+            android:fontVariationSettings="'wght' 600"
             android:maxLines="1"
             android:textColor="@color/widget_ink"
             android:textSize="22sp" />

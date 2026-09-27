@@ -4,32 +4,37 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.ajesh.syncspend.R
 
-val ArchivoFontFamily = FontFamily(
-    Font(R.font.archivo_regular, FontWeight.Normal),
-    Font(R.font.archivo_medium, FontWeight.Medium),
-    Font(R.font.archivo_semibold, FontWeight.SemiBold),
-    Font(R.font.archivo_bold, FontWeight.Bold),
+/**
+ * Cabin's `wght` axis covers 400–700, the full Normal/Medium/SemiBold/Bold range needed — each
+ * [Font] entry below points at the same variable-font resource with a different weight instance.
+ */
+val CabinFontFamily = FontFamily(
+    Font(R.font.cabin_variable, FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+    Font(R.font.cabin_variable, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+    Font(R.font.cabin_variable, FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+    Font(R.font.cabin_variable, FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
 )
 
 /**
- * Sizes mirror the design's literal px values (SyncSpendPhone.dc.html renders
- * at a 372px-wide phone canvas, so its px map ~1:1 onto dp/sp here).
+ * Sizes mirror the design's original literal px values, bumped up a step (~+1 to +2sp per role,
+ * proportions kept) for a larger, more confident, modern-minimal feel.
  */
 val SyncSpendTypography = Typography(
-    displayMedium = TextStyle(fontFamily = ArchivoFontFamily, fontWeight = FontWeight.Medium, fontSize = 44.sp, letterSpacing = (-0.03).sp),
-    headlineLarge = TextStyle(fontFamily = ArchivoFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 34.sp, letterSpacing = (-0.02).sp),
-    headlineSmall = TextStyle(fontFamily = ArchivoFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 18.sp),
-    titleLarge = TextStyle(fontFamily = ArchivoFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp),
-    titleMedium = TextStyle(fontFamily = ArchivoFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.5.sp),
-    titleSmall = TextStyle(fontFamily = ArchivoFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp),
-    bodyLarge = TextStyle(fontFamily = ArchivoFontFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp),
-    bodyMedium = TextStyle(fontFamily = ArchivoFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
-    bodySmall = TextStyle(fontFamily = ArchivoFontFamily, fontWeight = FontWeight.Normal, fontSize = 11.5.sp),
-    labelLarge = TextStyle(fontFamily = ArchivoFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
-    labelMedium = TextStyle(fontFamily = ArchivoFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 11.sp),
-    labelSmall = TextStyle(fontFamily = ArchivoFontFamily, fontWeight = FontWeight.Medium, fontSize = 10.5.sp),
+    displayMedium = TextStyle(fontFamily = CabinFontFamily, fontWeight = FontWeight.Medium, fontSize = 46.sp, letterSpacing = (-0.03).sp),
+    headlineLarge = TextStyle(fontFamily = CabinFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 35.5.sp, letterSpacing = (-0.02).sp),
+    headlineSmall = TextStyle(fontFamily = CabinFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 19.5.sp),
+    titleLarge = TextStyle(fontFamily = CabinFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 18.5.sp),
+    titleMedium = TextStyle(fontFamily = CabinFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp),
+    titleSmall = TextStyle(fontFamily = CabinFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
+    bodyLarge = TextStyle(fontFamily = CabinFontFamily, fontWeight = FontWeight.Normal, fontSize = 15.5.sp),
+    bodyMedium = TextStyle(fontFamily = CabinFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp),
+    bodySmall = TextStyle(fontFamily = CabinFontFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp),
+    labelLarge = TextStyle(fontFamily = CabinFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
+    labelMedium = TextStyle(fontFamily = CabinFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp),
+    labelSmall = TextStyle(fontFamily = CabinFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp),
 )

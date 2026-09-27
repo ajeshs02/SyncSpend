@@ -56,6 +56,7 @@ import com.ajesh.syncspend.ui.components.SquareIconButton
 import com.ajesh.syncspend.ui.components.TimePickerSheet
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
+import com.ajesh.syncspend.ui.theme.SyncSpendCorners
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.DateUtils
 import java.time.LocalDate
@@ -130,7 +131,7 @@ fun SettingsScreen(onOpenCategories: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(top = SyncSpendChrome.screenTopInset)) {
         Text(
             "Settings",
-            style = MaterialTheme.typography.headlineSmall.copy(fontSize = 21.sp),
+            style = MaterialTheme.typography.headlineSmall.copy(fontSize = 23.sp),
             color = colors.ink,
             modifier = Modifier.padding(horizontal = 22.dp, vertical = 3.dp),
         )
@@ -312,9 +313,9 @@ private fun SettingsCard(gradient: Boolean = false, content: @Composable () -> U
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (gradient) colors.cardGradient else androidx.compose.ui.graphics.SolidColor(colors.card), RoundedCornerShape(18.dp))
-            .border(1.dp, colors.line, RoundedCornerShape(18.dp))
-            .padding(15.dp),
+            .background(if (gradient) colors.cardGradient else androidx.compose.ui.graphics.SolidColor(colors.card), SyncSpendCorners.card)
+            .border(1.dp, colors.line, SyncSpendCorners.card)
+            .padding(18.dp),
     ) { content() }
 }
 
@@ -333,10 +334,10 @@ private fun ActionCard(icon: ImageVector, title: String, note: String, danger: B
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.card, RoundedCornerShape(18.dp))
-            .border(1.dp, colors.line, RoundedCornerShape(18.dp))
+            .background(colors.card, SyncSpendCorners.card)
+            .border(1.dp, colors.line, SyncSpendCorners.card)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(15.dp),
+            .padding(18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(11.dp),
     ) {

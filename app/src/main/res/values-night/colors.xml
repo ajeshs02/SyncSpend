@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Dark-mode starting-window background. See values/colors.xml. -->
 <resources>
-    <color name="window_background">#FF0D0F0E</color>
+    <color name="window_background">#FF121212</color>
 
-    <color name="widget_surface">#FF1D221E</color>
-    <color name="widget_ink">#FFEFF2EC</color>
-    <color name="widget_sub">#FF8A9187</color>
+    <color name="widget_surface">#FF1C1D1F</color>
+    <color name="widget_ink">#FFF1F1F2</color>
+    <color name="widget_sub">#FF93989E</color>
     <color name="widget_neg">#FFF08579</color>
-    <color name="widget_fab">#FF7FD39A</color>
-    <color name="widget_on_fab">#FF07120B</color>
+    <color name="widget_fab">#FFFFD60A</color>
+    <color name="widget_on_fab">#FF1A1A1A</color>
     <color name="widget_ripple">#33FFFFFF</color>
 </resources>

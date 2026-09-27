@@ -27,7 +27,7 @@ data class SyncSpendColors(
     val dark: Color,
     val darkGradient: Brush,
     val mintGradient: Brush,
-    /** Green fill for bars, share bars, dots and chips: the mint gradient (lifted in dark mode). */
+    /** Gold fill for bars, share bars, dots and chips: the mint gradient (lifted in dark mode). */
     val chartFill: Brush,
     /** A paler [chartFill] for de-emphasised bars and projections. */
     val chartFillDim: Brush,
@@ -51,7 +51,7 @@ data class SyncSpendColors(
     val onButton: Color,
     /** Expense arrow tint when sitting on the selected (inverted) indicator. */
     val expenseOnSelected: Color,
-    /** [SyncSpendPalette.BrandGreen]: the vibrant green — for the nav's selected icon and Income arrow icons only, never a fill. */
+    /** [SyncSpendPalette.BrandGold]: for the nav's selected icon and Income arrow icons only, never a fill. */
     val brand: Color,
     val isDark: Boolean,
 )
@@ -85,8 +85,11 @@ private val LightColors = SyncSpendColors(
     onSelected = SyncSpendPalette.LightOnSelected,
     button = SyncSpendPalette.LightButton,
     onButton = SyncSpendPalette.LightOnButton,
-    expenseOnSelected = Color(0xFFF08579),
-    brand = SyncSpendPalette.BrandGreen,
+    // Both themes' selectedBrush is now light gold, so the red that reads on it is the same in
+    // both themes too (previously this flipped between a lighter/darker red to match a near-black
+    // vs near-white selected background — that inversion no longer applies).
+    expenseOnSelected = Color(0xFFC0392B),
+    brand = SyncSpendPalette.BrandGold,
     isDark = false,
 )
 
@@ -120,7 +123,7 @@ private val DarkColors = SyncSpendColors(
     button = SyncSpendPalette.DarkButton,
     onButton = SyncSpendPalette.DarkOnButton,
     expenseOnSelected = Color(0xFFC0392B),
-    brand = SyncSpendPalette.BrandGreen,
+    brand = SyncSpendPalette.BrandGold,
     isDark = true,
 )
 

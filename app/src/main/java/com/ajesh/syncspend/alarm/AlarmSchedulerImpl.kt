@@ -88,10 +88,14 @@ class AlarmSchedulerImpl(
 
     override fun cancelReminder(id: Long) = cancel(AlarmReceiver.TYPE_REMINDER, id)
 
+    override fun scheduleMidnightWidgetRefresh() =
+        arm(AlarmTimes.nextMidnightRefresh(), pendingIntent(AlarmReceiver.TYPE_WIDGET_MIDNIGHT, 0))
+
     override suspend fun rescheduleAll() {
         val p = prefs.preferences.first()
         if (p.dailyReminderEnabled) scheduleDailyReminder(p.dailyReminderMinuteOfDay) else cancelDailyReminder()
         subscriptions.getActiveOnce().forEach(::scheduleSubscription)
         reminders.getActiveOnce().forEach(::scheduleReminder)
+        scheduleMidnightWidgetRefresh()
     }
 }
