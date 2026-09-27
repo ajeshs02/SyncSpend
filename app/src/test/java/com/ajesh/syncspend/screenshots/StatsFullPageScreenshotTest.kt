@@ -5,8 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
-import com.ajesh.syncspend.domain.model.TransactionsTab
-import com.ajesh.syncspend.ui.transactions.TransactionsScreen
+import com.ajesh.syncspend.ui.transactions.StatsScreen
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -21,10 +20,9 @@ class StatsFullPageScreenshotTest {
 
     @Test fun light() {
         val container = sampleContainer()
-        container.selectionState.pendingTransactionsTab.value = TransactionsTab.ANALYTICS
         rule.snapshot(
             "stats_full_light", heightDp = 2300, container = container,
             beforeCapture = { waitUntil(20_000) { onAllNodes(hasText("Findings")).fetchSemanticsNodes().isNotEmpty() } },
-        ) { Box(Modifier.fillMaxSize()) { TransactionsScreen() } }
+        ) { Box(Modifier.fillMaxSize()) { StatsScreen() } }
     }
 }

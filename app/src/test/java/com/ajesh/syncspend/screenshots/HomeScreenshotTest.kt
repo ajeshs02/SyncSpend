@@ -24,7 +24,7 @@ class HomeScreenshotTest {
             beforeCapture = { waitUntil(15_000) { onAllNodes(hasText("Coffee and snacks with Rohan")).fetchSemanticsNodes().isNotEmpty() } },
         ) {
             Box(androidx.compose.ui.Modifier.fillMaxSize()) {
-                HomeScreen(onViewAllTransactions = {}, onOpenSubscriptions = {}, onOpenReminders = {})
+                HomeScreen(onViewAllTransactions = {}, onOpenSubscriptions = {}, onOpenReminders = {}, onOpenStats = {})
                 BottomFadeAndNav(currentRoute = "home", onNavigate = {}, onAddClick = {})
             }
         }

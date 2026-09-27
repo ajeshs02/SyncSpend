@@ -1,4 +1,4 @@
 package com.ajesh.syncspend.domain.model
 
-/** The three tabs of the Transactions page. */
-enum class TransactionsTab { ENTRIES, CATEGORIES, ANALYTICS }
+/** The two tabs of the Transactions page. Stats is its own top-level screen, not a tab here. */
+enum class TransactionsTab { ENTRIES, CATEGORIES }

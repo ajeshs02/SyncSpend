@@ -63,7 +63,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(onOpenCategories: () -> Unit) {
     val container = LocalAppContainer.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -175,6 +175,13 @@ fun SettingsScreen() {
                     }
                 }
             }
+
+            ActionCard(
+                icon = SyncSpendIcons.Layers,
+                title = "Categories",
+                note = "Manage your spending categories",
+                onClick = onOpenCategories,
+            )
 
             SettingsCard(gradient = true) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {

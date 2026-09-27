@@ -54,7 +54,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.model.FlowType
-import com.ajesh.syncspend.domain.model.TransactionsTab
+import com.ajesh.syncspend.ui.components.AppLogo
 import com.ajesh.syncspend.ui.components.DateSeparator
 import com.ajesh.syncspend.ui.components.FlowToggle
 import com.ajesh.syncspend.ui.components.PeriodPickerSheet
@@ -71,6 +71,7 @@ fun HomeScreen(
     onViewAllTransactions: () -> Unit,
     onOpenSubscriptions: () -> Unit,
     onOpenReminders: () -> Unit,
+    onOpenStats: () -> Unit,
 ) {
     val container = LocalAppContainer.current
     var periodPickerOpen by remember { mutableStateOf(false) }
@@ -102,10 +103,7 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(9.dp),
         ) {
-            Box(
-                modifier = Modifier.size(26.dp).background(colors.darkGradient, RoundedCornerShape(9.dp)),
-                contentAlignment = Alignment.Center,
-            ) { Icon(SyncSpendIcons.Spark, null, tint = Color(0xFF7FD39A), modifier = Modifier.size(15.dp)) }
+            AppLogo(size = 26.dp, radius = 9.dp)
             Text("SyncSpend", style = MaterialTheme.typography.headlineSmall.copy(letterSpacing = (-0.18).sp), color = colors.ink)
         }
 
@@ -154,11 +152,7 @@ fun HomeScreen(
         ) {
         HeroCard(
             state,
-            onClick = {
-                // Straight to the Stats tab: Transactions slides its tab pill over once it appears.
-                container.selectionState.pendingTransactionsTab.value = TransactionsTab.ANALYTICS
-                onViewAllTransactions()
-            },
+            onClick = onOpenStats,
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
         )
 

@@ -4,8 +4,8 @@ import com.ajesh.syncspend.domain.model.CalendarBounds
 import com.ajesh.syncspend.domain.model.DateRange
 import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.StatsRange
-import com.ajesh.syncspend.domain.model.TransactionsTab
 import com.ajesh.syncspend.ui.transactions.headerDateClause
+import com.ajesh.syncspend.ui.transactions.statsDateClause
 import java.time.LocalDate
 import java.time.YearMonth
 import org.junit.Assert.assertEquals
@@ -48,20 +48,18 @@ class CalendarBoundsTest {
 
     @Test fun theHeaderShowsTheDatesTheCurrentChipCovers() {
         val thursday = LocalDate.of(2026, 9, 17)
-        val entries = TransactionsTab.ENTRIES
-        assertEquals("from 14 Sep to 17 Sep", headerDateClause(entries, EntryFilter.THIS_WEEK, null, StatsRange.THIS_MONTH, thursday))
-        assertEquals("from 1 Sep to 17 Sep", headerDateClause(entries, EntryFilter.THIS_MONTH, null, StatsRange.THIS_MONTH, thursday))
-        assertEquals("from 1 Aug to 31 Aug", headerDateClause(TransactionsTab.CATEGORIES, EntryFilter.LAST_MONTH, null, StatsRange.THIS_MONTH, thursday))
-        assertEquals("from 2 Jun to 9 Jun", headerDateClause(entries, EntryFilter.CUSTOM, DateRange(LocalDate.of(2026, 6, 2), LocalDate.of(2026, 6, 9)), StatsRange.THIS_MONTH, thursday))
-        assertNull(headerDateClause(entries, EntryFilter.CUSTOM, null, StatsRange.THIS_MONTH, thursday))
+        assertEquals("from 14 Sep to 17 Sep", headerDateClause(EntryFilter.THIS_WEEK, null, thursday))
+        assertEquals("from 1 Sep to 17 Sep", headerDateClause(EntryFilter.THIS_MONTH, null, thursday))
+        assertEquals("from 1 Aug to 31 Aug", headerDateClause(EntryFilter.LAST_MONTH, null, thursday))
+        assertEquals("from 2 Jun to 9 Jun", headerDateClause(EntryFilter.CUSTOM, DateRange(LocalDate.of(2026, 6, 2), LocalDate.of(2026, 6, 9)), thursday))
+        assertNull(headerDateClause(EntryFilter.CUSTOM, null, thursday))
     }
 
-    @Test fun theStatsTabShowsItsOwnRangeUpToToday() {
+    @Test fun theStatsPageShowsItsOwnRangeUpToToday() {
         val thursday = LocalDate.of(2026, 9, 17)
-        val stats = TransactionsTab.ANALYTICS
-        assertEquals("from 1 Sep to 17 Sep", headerDateClause(stats, EntryFilter.THIS_WEEK, null, StatsRange.THIS_MONTH, thursday))
-        assertEquals("from 1 Aug to 31 Aug", headerDateClause(stats, EntryFilter.THIS_WEEK, null, StatsRange.LAST_MONTH, thursday))
-        assertEquals("from 1 Jul to 17 Sep", headerDateClause(stats, EntryFilter.THIS_WEEK, null, StatsRange.LAST_3_MONTHS, thursday))
-        assertNull(headerDateClause(stats, EntryFilter.THIS_WEEK, null, StatsRange.ALL_TIME, thursday))
+        assertEquals("from 1 Sep to 17 Sep", statsDateClause(StatsRange.THIS_MONTH, thursday))
+        assertEquals("from 1 Aug to 31 Aug", statsDateClause(StatsRange.LAST_MONTH, thursday))
+        assertEquals("from 1 Jul to 17 Sep", statsDateClause(StatsRange.LAST_3_MONTHS, thursday))
+        assertNull(statsDateClause(StatsRange.ALL_TIME, thursday))
     }
 }

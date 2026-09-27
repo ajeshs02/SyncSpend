@@ -5,6 +5,7 @@ object Routes {
     const val TRANSACTIONS = "transactions"
     const val ADD_ENTRY = "add_entry"
     const val CATEGORIES = "categories"
+    const val STATS = "stats"
     const val SETTINGS = "settings"
 
     const val SUBS_REMINDERS = "subs_reminders/{listMode}?highlight={highlight}"
