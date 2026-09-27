@@ -312,7 +312,7 @@ internal fun RotatingInsight(lines: List<String>, modifier: Modifier = Modifier)
             }
         }
     }
-    Crossfade(targetState = index.coerceIn(lines.indices), animationSpec = tween(350), modifier = modifier, label = "hero-insight") { i ->
+    Crossfade(targetState = index.coerceIn(lines.indices), animationSpec = tween(900), modifier = modifier, label = "hero-insight") { i ->
         Text(lines[i.coerceIn(lines.indices)], fontSize = 11.5.sp, color = Color.White.copy(alpha = 0.6f), maxLines = 1)
     }
 }

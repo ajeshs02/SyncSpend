@@ -16,6 +16,7 @@ import com.ajesh.syncspend.data.repository.ReminderRepository
 import com.ajesh.syncspend.data.repository.SubscriptionRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
 import com.ajesh.syncspend.domain.state.SharedSelectionState
+import com.ajesh.syncspend.widget.WidgetRefresher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 
 /**
  * Manual DI root (no Hilt/Dagger/Koin). [com.ajesh.syncspend.SyncSpendApp] owns
@@ -50,6 +52,9 @@ interface AppContainer {
 
     /** Loads the shared streams so the first screen can draw complete data. */
     suspend fun warmUp()
+
+    /** Wipes transactions, categories, subscriptions and reminders, then restores the starter categories. */
+    suspend fun clearAllData()
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -105,6 +110,12 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val dailyReminderManager: DailyReminderManager by lazy {
         DailyReminderManager(preferencesRepository, alarmScheduler)
+    }
+
+    override suspend fun clearAllData() {
+        withContext(Dispatchers.IO) { database.clearAllTables() }
+        categorySeeder.reseed()
+        WidgetRefresher.requestUpdate(context)
     }
 }
 

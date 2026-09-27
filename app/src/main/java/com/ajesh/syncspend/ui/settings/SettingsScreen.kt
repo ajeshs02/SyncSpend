@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,6 +47,7 @@ import com.ajesh.syncspend.domain.model.CurrencyCode
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.model.ThemeMode
 import com.ajesh.syncspend.ui.components.AnimatedSegmentedControl
+import com.ajesh.syncspend.ui.components.ConfirmDialog
 import com.ajesh.syncspend.ui.components.DesignSwitch
 import com.ajesh.syncspend.ui.components.InfoDialog
 import com.ajesh.syncspend.ui.components.PeriodPickerSheet
@@ -87,6 +89,7 @@ fun SettingsScreen(onOpenCategories: () -> Unit) {
     var pendingExportScope by remember { mutableStateOf<ScopePeriod>(ScopePeriod.AllTime) }
     var infoDialog by remember { mutableStateOf<Pair<String, String>?>(null) }
     var timePickerOpen by remember { mutableStateOf(false) }
+    var confirmClearAll by remember { mutableStateOf(false) }
     val notificationGate = rememberNotificationGate()
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
@@ -239,6 +242,17 @@ fun SettingsScreen(onOpenCategories: () -> Unit) {
                 onClick = { exportPickerOpen = true },
             )
 
+            Text(
+                "Clear all data",
+                style = MaterialTheme.typography.labelLarge,
+                color = colors.neg,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { confirmClearAll = true }
+                    .padding(vertical = 10.dp),
+            )
+
             SettingsCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -250,6 +264,23 @@ fun SettingsScreen(onOpenCategories: () -> Unit) {
                 }
             }
         }
+    }
+
+    if (confirmClearAll) {
+        ConfirmDialog(
+            title = "Clear all data?",
+            body = "This permanently deletes every transaction, category, subscription and reminder. " +
+                "Export to CSV first if you want to keep a copy — this can't be undone.",
+            cta = "Clear all data",
+            onConfirm = {
+                confirmClearAll = false
+                scope.launch {
+                    container.clearAllData()
+                    infoDialog = "All data cleared" to "Your transactions, categories, subscriptions and reminders were removed. Default categories were restored."
+                }
+            },
+            onDismiss = { confirmClearAll = false },
+        )
     }
 
     if (exportPickerOpen) {

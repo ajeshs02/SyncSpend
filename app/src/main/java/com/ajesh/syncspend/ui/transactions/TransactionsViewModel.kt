@@ -133,8 +133,17 @@ internal object TransactionsCompute {
     }
 }
 
-/** Expense's chips include "This Week"; Income's don't (see [AnalyticsEngine.entryFilterOptions]). */
-private fun defaultEntryFilter(flow: FlowType): EntryFilter = if (flow == FlowType.INCOME) EntryFilter.THIS_MONTH else EntryFilter.THIS_WEEK
+/**
+ * The chips offered for the current (flow, tab) combo. The Categories tab always skips "This
+ * Week" regardless of flow; the Entries tab uses [AnalyticsEngine.entryFilterOptions]'s per-flow
+ * set (Expense sees all 4, Income already skips "This Week" too).
+ */
+internal fun entryFilterOptionsFor(flow: FlowType, tab: TransactionsTab): List<EntryFilter> =
+    if (tab == TransactionsTab.CATEGORIES) listOf(EntryFilter.THIS_MONTH, EntryFilter.LAST_MONTH, EntryFilter.CUSTOM)
+    else AnalyticsEngine.entryFilterOptions(flow)
+
+/** The first (and most relevant) chip for a (flow, tab) combo. */
+private fun defaultEntryFilter(flow: FlowType, tab: TransactionsTab): EntryFilter = entryFilterOptionsFor(flow, tab).first()
 
 /**
  * UI-only selections (tab, filter chips, stats range) are plain StateFlows read on the main thread,
@@ -151,7 +160,7 @@ class TransactionsViewModel(
 ) : ViewModel() {
 
     private val _tab = MutableStateFlow(TransactionsTab.ENTRIES)
-    private val _entryFilter = MutableStateFlow(defaultEntryFilter(selection.flow.value))
+    private val _entryFilter = MutableStateFlow(defaultEntryFilter(selection.flow.value, _tab.value))
     private val _customRange = MutableStateFlow<DateRange?>(null)
     private val _statsRange = MutableStateFlow(StatsRange.THIS_MONTH)
 
@@ -166,9 +175,12 @@ class TransactionsViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     init {
-        // Switching flow can leave a chip selected that flow no longer offers (Income drops "This
-        // Week"), so each flow change resets to that flow's own default rather than just re-clamping.
-        viewModelScope.launch { selection.flow.drop(1).collect { _entryFilter.value = defaultEntryFilter(it) } }
+        // Switching flow or tab can leave a chip selected that combo no longer offers (Income
+        // drops "This Week"; Categories always does), so each change resets to that combo's own
+        // default rather than just re-clamping.
+        viewModelScope.launch {
+            combine(selection.flow, _tab, ::Pair).drop(1).collect { (f, t) -> _entryFilter.value = defaultEntryFilter(f, t) }
+        }
     }
 
     private val ledger = combine(

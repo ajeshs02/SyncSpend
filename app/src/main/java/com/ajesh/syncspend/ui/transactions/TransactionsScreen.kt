@@ -68,7 +68,7 @@ fun TransactionsScreen() {
     val storedFilter by viewModel.entryFilter.collectAsStateWithLifecycle()
     val customRange by viewModel.customRange.collectAsStateWithLifecycle()
     val filter = storedFilter
-    val filterOptions = remember(flow) { AnalyticsEngine.entryFilterOptions(flow) }
+    val filterOptions = remember(flow, tab) { entryFilterOptionsFor(flow, tab) }
     // The dates the current chip covers, folded into the "Showing ..." sentence.
     val dateClause = remember(filter, customRange) { headerDateClause(filter, customRange, LocalDate.now()) }
     var rangePickerOpen by remember { mutableStateOf(false) }

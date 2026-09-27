@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Smallest size: just the amount, centered, no room for the caption. -->
+<!-- Smallest size: the amount, centered, with a small round "+" badge back in the corner. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -17,4 +17,20 @@
         android:maxLines="1"
         android:textColor="@color/widget_ink"
         android:textSize="15sp" />
+
+    <FrameLayout
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="2dp"
+        android:layout_marginBottom="2dp"
+        android:background="@drawable/widget_fab_bg">
+
+        <ImageView
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:layout_gravity="center"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_widget_plus" />
+    </FrameLayout>
 </FrameLayout>
