@@ -1,6 +1,7 @@
 package com.ajesh.syncspend.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,11 +31,14 @@ fun DesignTextField(
     singleLine: Boolean = true,
     textColor: Color = SyncSpendTheme.colors.ink,
     textStyle: TextStyle = MaterialTheme.typography.bodyMedium,
+    /** Outlines the field in the error colour (something required is missing). */
+    error: Boolean = false,
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .background(SyncSpendTheme.colors.tile, RoundedCornerShape(14.dp))
+            .then(if (error) Modifier.border(1.5.dp, SyncSpendTheme.colors.neg, RoundedCornerShape(14.dp)) else Modifier)
             .padding(horizontal = 13.dp, vertical = 12.dp),
     ) {
         if (value.isEmpty() && placeholder.isNotEmpty()) {

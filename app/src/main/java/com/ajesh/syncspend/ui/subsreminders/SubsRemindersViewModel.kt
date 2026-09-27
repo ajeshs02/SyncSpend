@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ajesh.syncspend.alarm.AlarmScheduler
 import com.ajesh.syncspend.alarm.AlarmTimes
-import com.ajesh.syncspend.alarm.DailyReminderManager
 import com.ajesh.syncspend.data.datastore.PreferencesRepository
 import com.ajesh.syncspend.data.db.entity.ReminderEntity
 import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
@@ -25,17 +24,13 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/**
- * One list row. [builtIn] rows (the daily log reminder) are owned by Settings'
- * preferences: their switch works but they can't be edited or deleted here.
- */
+/** One list row (a subscription or a reminder). The daily log reminder lives in Settings only. */
 data class ListRowUi(
     val id: Long,
     val name: String,
     val meta: String,
     val iconKey: String,
     val active: Boolean = true,
-    val builtIn: Boolean = false,
 )
 
 data class SubsRemindersUiState(
@@ -54,7 +49,6 @@ class SubsRemindersViewModel(
     private val reminderRepository: ReminderRepository,
     preferencesRepository: PreferencesRepository,
     private val alarmScheduler: AlarmScheduler,
-    private val dailyReminder: DailyReminderManager,
 ) : ViewModel() {
 
     val uiState: StateFlow<SubsRemindersUiState> = combine(
@@ -70,15 +64,7 @@ class SubsRemindersViewModel(
                 BillingCycle.YEARLY -> it.amount / 12.0
             }
         }
-        val dailyRow = ListRowUi(
-            id = DAILY_ROW_ID,
-            name = "Daily log reminder",
-            meta = "Every day · ${DateUtils.fmt12(prefs.dailyReminderMinuteOfDay)} · change the time in Settings",
-            iconKey = "clock",
-            active = prefs.dailyReminderEnabled,
-            builtIn = true,
-        )
-        val activeReminders = reminders.count { it.active } + if (prefs.dailyReminderEnabled) 1 else 0
+        val activeReminders = reminders.count { it.active }
         SubsRemindersUiState(
             currencySymbol = cur,
             subscriptions = subs,
@@ -95,7 +81,7 @@ class SubsRemindersViewModel(
                     active = it.active,
                 )
             },
-            reminderRows = listOf(dailyRow) + reminders.map {
+            reminderRows = reminders.map {
                 ListRowUi(it.id, it.label, reminderMeta(it), it.iconKey, active = it.active)
             },
         )
@@ -161,11 +147,6 @@ class SubsRemindersViewModel(
         }
     }
 
-    /** The built-in daily log reminder — the same switch as Settings. */
-    fun setDailyEnabled(enabled: Boolean) {
-        viewModelScope.launch { dailyReminder.setEnabled(enabled) }
-    }
-
     private fun reminderMeta(r: ReminderEntity): String {
         val time = DateUtils.fmt12(r.timeMinuteOfDay)
         val d = r.nextTriggerDate
@@ -181,10 +162,5 @@ class SubsRemindersViewModel(
     private fun ordinal(n: Int): String {
         val suffix = if (n in 11..13) "th" else when (n % 10) { 1 -> "st"; 2 -> "nd"; 3 -> "rd"; else -> "th" }
         return "$n$suffix"
-    }
-
-    companion object {
-        /** Row id of the built-in daily reminder (real reminder ids are positive). */
-        const val DAILY_ROW_ID = -1L
     }
 }

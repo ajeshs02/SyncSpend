@@ -1,10 +1,12 @@
 package com.ajesh.syncspend.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -12,6 +14,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.ajesh.syncspend.ui.addentry.AddEntryScreen
 import com.ajesh.syncspend.ui.categories.CategoriesScreen
 import com.ajesh.syncspend.ui.home.HomeScreen
@@ -33,6 +36,7 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
     // fights the incoming one.
     val enter = fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 40 }
     val exit = fadeOut(tween(90))
+
     NavHost(
         navController = navController,
         startDestination = Routes.HOME,
@@ -68,6 +72,14 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
             )
         }
     }
+
+    // The swipe-back gesture used to drive NavHost's own "predictive back" preview, which scrubs those
+    // (differently timed) transitions with your finger and looked broken. Owning the callback here makes
+    // the gesture exactly the same plain pop as the top-left back arrow. A handler registered after the
+    // NavHost's own one is asked first; on Home nothing is enabled, so the system handles back as usual.
+    val currentEntry by navController.currentBackStackEntryAsState()
+    val canGoBack = currentEntry != null && navController.previousBackStackEntry != null
+    BackHandler(enabled = canGoBack) { navController.popBackStack() }
 }
 
 /**

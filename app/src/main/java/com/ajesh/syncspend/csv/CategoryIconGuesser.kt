@@ -55,9 +55,13 @@ object CategoryIconGuesser {
         listOf("pet") to "heart",
     )
 
-    fun guess(name: String): String {
+    fun guess(name: String): String = guessAll(name).firstOrNull() ?: "tag"
+
+    /** Every icon whose keyword appears in [name], best match first (empty when nothing matches). */
+    fun guessAll(name: String): List<String> {
         val n = name.trim().lowercase()
-        exact[n]?.let { return it }
-        return keywords.firstOrNull { (words, _) -> words.any { n.contains(it) } }?.second ?: "tag"
+        if (n.isEmpty()) return emptyList()
+        val matches = keywords.filter { (words, _) -> words.any { n.contains(it) } }.map { it.second }
+        return (listOfNotNull(exact[n]) + matches).distinct()
     }
 }

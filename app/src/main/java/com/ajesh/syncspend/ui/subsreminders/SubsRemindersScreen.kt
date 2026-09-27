@@ -58,7 +58,6 @@ fun SubsRemindersScreen(listMode: String, onBack: () -> Unit) {
                     container.reminderRepository,
                     container.preferencesRepository,
                     container.alarmScheduler,
-                    container.dailyReminderManager,
                 )
             }
         },
@@ -135,11 +134,10 @@ fun SubsRemindersScreen(listMode: String, onBack: () -> Unit) {
                         modifier = Modifier.animateItem(),
                         onClick = {
                             if (isSubs) editingSub = state.subscriptions.find { it.id == row.id }
-                            else if (!row.builtIn) editingReminder = state.reminders.find { it.id == row.id }
+                            else editingReminder = state.reminders.find { it.id == row.id }
                         },
                         onToggle = { on ->
                             when {
-                                row.builtIn -> if (on) gate { viewModel.setDailyEnabled(true) } else viewModel.setDailyEnabled(false)
                                 isSubs -> state.subscriptions.find { it.id == row.id }?.let { sub ->
                                     if (on) gate(onDenied = { viewModel.setSubscriptionActive(sub, true) }) { viewModel.setSubscriptionActive(sub, true) }
                                     else viewModel.setSubscriptionActive(sub, false)
@@ -220,7 +218,7 @@ private fun ListRow(row: ListRowUi, onClick: () -> Unit, onToggle: (Boolean) -> 
             .fillMaxWidth()
             .background(colors.card, RoundedCornerShape(16.dp))
             .border(1.dp, colors.line, RoundedCornerShape(16.dp))
-            .clickable(enabled = !row.builtIn, interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
             .padding(horizontal = 13.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(11.dp),
@@ -230,19 +228,7 @@ private fun ListRow(row: ListRowUi, onClick: () -> Unit, onToggle: (Boolean) -> 
             contentAlignment = Alignment.Center,
         ) { Icon(SyncSpendIcons.iconFor(row.iconKey), null, tint = colors.ink, modifier = Modifier.size(16.dp)) }
         Column(modifier = Modifier.weight(1f).graphicsLayer { alpha = dim }) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(row.name, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
-                if (row.builtIn) {
-                    Text(
-                        "Built-in",
-                        fontSize = 9.sp,
-                        color = colors.sub,
-                        modifier = Modifier
-                            .background(colors.tile, RoundedCornerShape(6.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                    )
-                }
-            }
+            Text(row.name, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1)
             Text(row.meta, fontSize = 10.5.sp, color = colors.sub, modifier = Modifier.padding(top = 2.dp), maxLines = 2)
         }
         DesignSwitch(checked = row.active, onCheckedChange = onToggle)

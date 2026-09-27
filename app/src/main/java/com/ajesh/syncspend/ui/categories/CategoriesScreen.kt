@@ -42,6 +42,7 @@ import com.ajesh.syncspend.ui.components.HeaderAddButton
 import com.ajesh.syncspend.ui.components.NameIconDialog
 import com.ajesh.syncspend.ui.components.SquareIconButton
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
+import com.ajesh.syncspend.ui.icons.IconKind
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
@@ -124,6 +125,7 @@ fun CategoriesScreen() {
             cta = "Create",
             initialName = "",
             initialIconKey = null,
+            iconKind = IconKind.CATEGORY,
             namePlaceholder = if (state.type == FlowType.INCOME) "New Income ${state.categories.size + 1}" else "New Expense ${state.categories.size + 1}",
             onConfirm = { name, icon ->
                 viewModel.add(name, icon)
@@ -139,6 +141,7 @@ fun CategoriesScreen() {
             cta = "Save",
             initialName = cat.name,
             initialIconKey = cat.iconKey,
+            iconKind = IconKind.CATEGORY,
             namePlaceholder = "Category name",
             onConfirm = { name, icon ->
                 viewModel.update(cat, name, icon)

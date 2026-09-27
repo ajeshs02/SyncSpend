@@ -41,6 +41,8 @@ import com.ajesh.syncspend.ui.components.PrimaryButton
 import com.ajesh.syncspend.ui.components.SheetDeleteButton
 import com.ajesh.syncspend.ui.components.SheetHeader
 import com.ajesh.syncspend.ui.components.TimePickerSheet
+import com.ajesh.syncspend.ui.icons.IconKind
+import com.ajesh.syncspend.ui.icons.IconSuggestions
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.DateUtils
@@ -94,6 +96,8 @@ private fun SubscriptionFields(
     cycle: BillingCycle,
     onCycleChange: (BillingCycle) -> Unit,
     due: LocalDate,
+    /** Outlines the amount and says it is missing (after "Add" was tapped without one). */
+    amountError: Boolean = false,
     onPickDue: () -> Unit,
 ) {
     FieldLabel("Amount")
@@ -102,7 +106,11 @@ private fun SubscriptionFields(
         onValueChange = { v -> if (v.isEmpty() || v.matches(amountPattern)) onAmountChange(v) },
         placeholder = "${currencySymbol}0",
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        error = amountError,
     )
+    if (amountError) {
+        Text("Enter an amount", style = MaterialTheme.typography.labelSmall, color = SyncSpendTheme.colors.neg, modifier = Modifier.padding(top = 6.dp))
+    }
     FieldLabel("Billing cycle")
     Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
         BillingCycle.entries.forEach { c ->
@@ -177,13 +185,18 @@ fun SubscriptionDialog(
         body = "Add the service, amount and billing cycle. You'll get a notification on the due date.",
         cta = "Add",
         initialName = "",
-        initialIconKey = "card",
+        initialIconKey = null,
+        iconKind = IconKind.SUBSCRIPTION,
         namePlaceholder = "Netflix, Spotify, Gym…",
         extraValid = amount != null && amount > 0,
         onConfirm = { name, icon -> onSave(name, icon, amount ?: 0.0, cycle, due) },
         onDismiss = onDismiss,
-    ) {
-        SubscriptionFields(currencySymbol, amountText, { amountText = it }, cycle, { cycle = it }, due) { pickingDue = true }
+    ) { showErrors ->
+        SubscriptionFields(
+            currencySymbol, amountText, { amountText = it }, cycle, { cycle = it }, due,
+            onPickDue = { pickingDue = true },
+            amountError = showErrors && !(amount != null && amount > 0),
+        )
     }
 
     if (pickingDue) FutureDatePicker(due, "NEXT DUE DATE", { due = it }) { pickingDue = false }
@@ -205,7 +218,8 @@ fun ReminderDialog(
         body = "Choose what to be reminded about and when. It arrives as a real notification.",
         cta = "Add",
         initialName = "",
-        initialIconKey = "clock",
+        initialIconKey = null,
+        iconKind = IconKind.REMINDER,
         namePlaceholder = "Log today's spend, Rent due…",
         onConfirm = { name, icon -> onSave(name, icon, schedule, date, minute) },
         onDismiss = onDismiss,
@@ -269,7 +283,12 @@ fun SubscriptionEditSheet(
             )
         }
 
-        if (pickingIcon) IconPickerDialog(iconKey, onPick = { iconKey = it; pickingIcon = false }, onDismiss = { pickingIcon = false })
+        if (pickingIcon) {
+            IconPickerDialog(
+                iconKey, onPick = { iconKey = it; pickingIcon = false }, onDismiss = { pickingIcon = false },
+                suggestions = IconSuggestions.suggest(IconKind.SUBSCRIPTION, name),
+            )
+        }
         if (pickingDue) FutureDatePicker(due, "NEXT DUE DATE", { due = it }) { pickingDue = false }
         if (confirmDelete) {
             ConfirmDialog(
@@ -331,7 +350,12 @@ fun ReminderEditSheet(
             )
         }
 
-        if (pickingIcon) IconPickerDialog(iconKey, onPick = { iconKey = it; pickingIcon = false }, onDismiss = { pickingIcon = false })
+        if (pickingIcon) {
+            IconPickerDialog(
+                iconKey, onPick = { iconKey = it; pickingIcon = false }, onDismiss = { pickingIcon = false },
+                suggestions = IconSuggestions.suggest(IconKind.REMINDER, label),
+            )
+        }
         if (pickingDate) {
             FutureDatePicker(date, if (schedule == ReminderSchedule.ONCE) "REMINDER DATE" else "STARTING FROM", { date = it }) { pickingDate = false }
         }
