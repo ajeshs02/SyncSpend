@@ -66,7 +66,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.domain.model.CalendarBounds
 import com.ajesh.syncspend.MainActivity
 import com.ajesh.syncspend.SyncSpendApp
-import com.ajesh.syncspend.data.datastore.UserPreferences
 import com.ajesh.syncspend.di.AppContainer
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ThemeMode
@@ -87,9 +86,6 @@ import java.time.YearMonth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Mirrors MainActivity's SPLASH_MAX_MILLIS: how long to wait for a real preferences value before falling back. */
-private const val QUICK_ADD_PREFS_MAX_MILLIS = 1_500L
-
 /**
  * The widget's quick-add panel: a translucent overlay over the home screen with
  * the Add Entry pattern (amount, category field + picker sheet, keypad with date
@@ -103,36 +99,22 @@ class QuickAddActivity : ComponentActivity() {
         enableEdgeToEdge()
         val container = (application as SyncSpendApp).container
         setContent {
-            // Unlike MainActivity (installSplashScreen + container.ready), this activity has no splash to
-            // cover a cold start. Defaulting straight to UserPreferences() (ThemeMode.SYSTEM) would flash
-            // the wrong theme for a frame — and QuickAddPanel's entrance animation starts as soon as it's
-            // composed, so that flash would land mid-animation as a visible jitter. Instead: render nothing
-            // (the window is already transparent) until a real preferences value exists, from a single
-            // collector so there's no race between "do we have a real value" and "what is it."
-            var prefs by remember { mutableStateOf(container.preferencesRepository.current()) }
-            LaunchedEffect(Unit) { container.preferencesRepository.preferences.collect { prefs = it } }
-            var fallbackReady by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) {
-                delay(QUICK_ADD_PREFS_MAX_MILLIS)
-                fallbackReady = true
+            // Always follows the phone's system theme, ignoring the app's own stored Light/Dark
+            // override — this mirrors the home-screen widget itself, which is plain RemoteViews with
+            // night-qualified resources and has no notion of an in-app theme preference at all. Since
+            // this activity is freshly created on every widget tap (it finishes itself right after) and
+            // isSystemInDarkTheme() is available immediately with no data load, there's no cold-start
+            // flash to guard against either, unlike MainActivity's splash-gated path.
+            val dark = isSystemInDarkTheme()
+            DisposableEffect(dark) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT) { dark },
+                    navigationBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT) { dark },
+                )
+                onDispose {}
             }
-            val resolvedPrefs = prefs ?: if (fallbackReady) UserPreferences() else null
-            if (resolvedPrefs != null) {
-                val dark = when (resolvedPrefs.themeMode) {
-                    ThemeMode.LIGHT -> false
-                    ThemeMode.DARK -> true
-                    ThemeMode.SYSTEM -> isSystemInDarkTheme()
-                }
-                DisposableEffect(dark) {
-                    enableEdgeToEdge(
-                        statusBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT) { dark },
-                        navigationBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT) { dark },
-                    )
-                    onDispose {}
-                }
-                SyncSpendTheme(themeMode = resolvedPrefs.themeMode) {
-                    QuickAddPanel(container = container, onFinished = ::finishWithoutTransition, onOpenApp = ::openApp)
-                }
+            SyncSpendTheme(themeMode = ThemeMode.SYSTEM) {
+                QuickAddPanel(container = container, onFinished = ::finishWithoutTransition, onOpenApp = ::openApp)
             }
         }
     }
