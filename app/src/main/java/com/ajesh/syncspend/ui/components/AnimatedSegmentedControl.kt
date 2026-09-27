@@ -190,7 +190,7 @@ fun flowSegmentIcons(): List<SegmentIcon> {
     return remember(c) {
         listOf(
             SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.ArrowOut, c.expenseOnSelected, c.neg),
-            SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.ArrowIn, SyncSpendPalette.BrandGold, SyncSpendPalette.BrandGold),
+            SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.ArrowIn, SyncSpendPalette.BrandBlue, SyncSpendPalette.BrandBlue),
         )
     }
 }

@@ -16,7 +16,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.IntOffset
@@ -38,10 +37,7 @@ fun DesignSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier:
             Modifier
                 .size(width = 46.dp, height = 27.dp)
                 .graphicsLayer { alpha = trackOn }
-                .background(
-                    Brush.linearGradient(listOf(Color(0xFFFFCC00), Color(0xFFE6A700))),
-                    RoundedCornerShape(14.dp),
-                ),
+                .background(SyncSpendTheme.colors.acc, RoundedCornerShape(14.dp)),
         )
         Box(
             Modifier
