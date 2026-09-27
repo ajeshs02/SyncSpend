@@ -13,7 +13,7 @@ import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 
 /**
- * Version 3. There is no destructive-migration fallback (see
+ * Version 4 (see [MIGRATION_3_4]). There is no destructive-migration fallback (see
  * [com.ajesh.syncspend.di.DefaultAppContainer]) — bumping [Database.version]
  * requires shipping a real `Migration`.
  */
@@ -24,7 +24,7 @@ import com.ajesh.syncspend.data.db.entity.TransactionEntity
         SubscriptionEntity::class,
         ReminderEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)

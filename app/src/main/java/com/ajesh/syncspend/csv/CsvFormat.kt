@@ -3,7 +3,7 @@ package com.ajesh.syncspend.csv
 /**
  * The one CSV schema the app reads and writes:
  * `date,type,category,description,amount` — date yyyy-MM-dd, type
- * EXPENSE|INCOME, amount unsigned with 2 decimals.
+ * EXPENSE|INCOME, amount an unsigned whole number of rupees; the description column carries the entry's note.
  */
 object CsvFormat {
     val HEADER = listOf("date", "type", "category", "description", "amount")

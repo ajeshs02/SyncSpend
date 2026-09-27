@@ -11,6 +11,12 @@ import java.time.LocalDate
  * design's reference logic 1:1 — [type] is derived, not stored, so there is
  * only one source of truth for a transaction's flow direction.
  *
+ * [description] is the entry's optional note: blank when there is none. It is never auto-filled
+ * with the category name, since the row already shows the (live) category.
+ *
+ * [timeMinuteOfDay] is when the entry happened, 0..1439, or null when unknown. It is only known
+ * for entries logged on the day they are dated; back-dated and imported entries have none.
+ *
  * [categoryId] intentionally has no foreign-key cascade: deleting a category
  * must not delete or orphan-cascade its past transactions (spec: "past
  * entries keep their label"). Label resolution falls back to a
@@ -27,6 +33,7 @@ data class TransactionEntity(
     val categoryId: Long,
     val date: LocalDate,
     val createdAt: Long,
+    val timeMinuteOfDay: Int? = null,
 )
 
 val TransactionEntity.type: FlowType

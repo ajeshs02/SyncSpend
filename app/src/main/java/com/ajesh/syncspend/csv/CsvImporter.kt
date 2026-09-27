@@ -72,7 +72,8 @@ object CsvImporter {
                 }
 
                 val signed = if (row.type == FlowType.INCOME) row.amount else -row.amount
-                val description = row.description.ifEmpty { category.name }
+                // The description is the entry's optional note: blank stays blank (the row shows its category).
+                val description = row.description
                 if (existing.consumeIfDuplicate(row.date, signed, category.id, description)) {
                     duplicates++
                 } else {

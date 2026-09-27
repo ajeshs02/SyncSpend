@@ -1,8 +1,10 @@
 package com.ajesh.syncspend.data.db.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.ajesh.syncspend.domain.model.BillingCycle
+import com.ajesh.syncspend.domain.model.RemindOffsets
 import java.time.LocalDate
 
 /**
@@ -10,6 +12,9 @@ import java.time.LocalDate
  * AlarmManager notification but never auto-inserts a [TransactionEntity].
  * [categoryId] is nullable and used only to prefill Add Entry from the
  * notification's deep link.
+ *
+ * [remindDaysBefore] is the "remind me N days before" set (see [RemindOffsets]); the due day itself
+ * always notifies.
  */
 @Entity(tableName = "subscriptions")
 data class SubscriptionEntity(
@@ -21,4 +26,5 @@ data class SubscriptionEntity(
     val nextDueDate: LocalDate,
     val categoryId: Long?,
     val active: Boolean,
+    @ColumnInfo(defaultValue = RemindOffsets.DEFAULT_TEXT) val remindDaysBefore: String = RemindOffsets.DEFAULT_TEXT,
 )
