@@ -4,7 +4,6 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import com.ajesh.syncspend.SyncSpendApp
-import com.ajesh.syncspend.domain.model.ColorPalette
 import com.ajesh.syncspend.domain.model.CurrencyCode
 import com.ajesh.syncspend.util.CurrencyFormatter
 import java.time.LocalDate
@@ -35,10 +34,8 @@ object WidgetRefresher {
         val total = container.transactionRepository.getAllOnce()
             .filter { it.date == today && it.amount < 0 }
             .sumOf { -it.amount }
-        val prefs = container.preferencesRepository.current()
-        val symbol = prefs?.currencyCode?.symbol ?: CurrencyCode.INR.symbol
+        val symbol = container.preferencesRepository.current()?.currencyCode?.symbol ?: CurrencyCode.INR.symbol
         val amountText = symbol + CurrencyFormatter.amount(total)
-        val palette = prefs?.colorPalette ?: ColorPalette.FOREST
-        ids.forEach { id -> SyncSpendWidgetProvider.push(context, manager, id, amountText, palette) }
+        ids.forEach { id -> SyncSpendWidgetProvider.push(context, manager, id, amountText) }
     }
 }

@@ -42,9 +42,7 @@ import com.ajesh.syncspend.csv.CsvExporter
 import com.ajesh.syncspend.csv.CsvImporter
 import com.ajesh.syncspend.di.LocalAppContainer
 import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
-import com.ajesh.syncspend.domain.model.ColorPalette
 import com.ajesh.syncspend.domain.model.CurrencyCode
-import com.ajesh.syncspend.domain.model.FontChoice
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.model.ThemeMode
 import com.ajesh.syncspend.ui.components.AnimatedSegmentedControl
@@ -58,9 +56,6 @@ import com.ajesh.syncspend.ui.components.SquareIconButton
 import com.ajesh.syncspend.ui.components.TimePickerSheet
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
-import com.ajesh.syncspend.ui.theme.fontFamilyFor
-import com.ajesh.syncspend.ui.theme.swatchFor
-import com.ajesh.syncspend.ui.theme.ScreenTitleStyle
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.DateUtils
 import java.time.LocalDate
@@ -135,7 +130,7 @@ fun SettingsScreen(onOpenCategories: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(top = SyncSpendChrome.screenTopInset)) {
         Text(
             "Settings",
-            style = ScreenTitleStyle,
+            style = MaterialTheme.typography.headlineSmall.copy(fontSize = 21.sp),
             color = colors.ink,
             modifier = Modifier.padding(horizontal = 22.dp, vertical = 3.dp),
         )
@@ -166,49 +161,6 @@ fun SettingsScreen(onOpenCategories: () -> Unit) {
                     color = colors.sub,
                     modifier = Modifier.padding(top = 8.dp),
                 )
-            }
-
-            SettingsCard {
-                Text("Color palette", style = MaterialTheme.typography.labelLarge, color = colors.ink)
-                Text(
-                    "Experimental — pick your favorite, we'll finalize it later",
-                    fontSize = 10.sp,
-                    color = colors.sub,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-                Row(modifier = Modifier.padding(top = 11.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    ColorPalette.entries.forEach { palette ->
-                        PaletteChip(
-                            palette = palette,
-                            selected = prefs.colorPalette == palette,
-                            modifier = Modifier.weight(1f),
-                        ) { viewModel.setColorPalette(palette) }
-                    }
-                }
-            }
-
-            SettingsCard {
-                Text("Font", style = MaterialTheme.typography.labelLarge, color = colors.ink)
-                Text(
-                    "Experimental — pick your favorite, we'll finalize it later",
-                    fontSize = 10.sp,
-                    color = colors.sub,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-                Row(modifier = Modifier.padding(top = 11.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    FontChoice.entries.take(3).forEach { choice ->
-                        FontChip(choice = choice, selected = prefs.fontChoice == choice, modifier = Modifier.weight(1f)) {
-                            viewModel.setFontChoice(choice)
-                        }
-                    }
-                }
-                Row(modifier = Modifier.padding(top = 7.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    FontChoice.entries.drop(3).forEach { choice ->
-                        FontChip(choice = choice, selected = prefs.fontChoice == choice, modifier = Modifier.weight(1f)) {
-                            viewModel.setFontChoice(choice)
-                        }
-                    }
-                }
             }
 
             SettingsCard {
@@ -372,58 +324,6 @@ private fun IconTile(icon: ImageVector, tint: androidx.compose.ui.graphics.Color
         modifier = Modifier.size(32.dp).background(SyncSpendTheme.colors.tile, RoundedCornerShape(11.dp)),
         contentAlignment = Alignment.Center,
     ) { Icon(icon, null, tint = tint, modifier = Modifier.size(16.dp)) }
-}
-
-/** A [ColorPalette] option: a small swatch dot in that palette's accent color, plus its name. */
-@Composable
-private fun PaletteChip(palette: ColorPalette, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val colors = SyncSpendTheme.colors
-    Row(
-        modifier = modifier
-            .background(
-                if (selected) colors.selectedBrush else androidx.compose.ui.graphics.SolidColor(colors.pill),
-                RoundedCornerShape(13.dp),
-            )
-            .border(1.dp, colors.line, RoundedCornerShape(13.dp))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Box(modifier = Modifier.size(10.dp).background(swatchFor(palette), RoundedCornerShape(50)))
-        Text(
-            palette.label,
-            fontSize = 11.sp,
-            color = if (selected) colors.onSelected else colors.ink,
-            maxLines = 1,
-        )
-    }
-}
-
-/** A [FontChoice] option, its own label rendered in that font so the picker previews the typeface. */
-@Composable
-private fun FontChip(choice: FontChoice, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val colors = SyncSpendTheme.colors
-    Box(
-        modifier = modifier
-            .background(
-                if (selected) colors.selectedBrush else androidx.compose.ui.graphics.SolidColor(colors.pill),
-                RoundedCornerShape(13.dp),
-            )
-            .border(1.dp, colors.line, RoundedCornerShape(13.dp))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(horizontal = 6.dp, vertical = 10.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            choice.label,
-            fontFamily = fontFamilyFor(choice),
-            fontSize = 11.sp,
-            color = if (selected) colors.onSelected else colors.ink,
-            maxLines = 1,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
-    }
 }
 
 @Composable

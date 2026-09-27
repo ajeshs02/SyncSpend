@@ -41,7 +41,6 @@ import com.ajesh.syncspend.ui.components.FlowMenuToggle
 import com.ajesh.syncspend.ui.components.SegmentIcon
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
-import com.ajesh.syncspend.ui.theme.ScreenTitleStyle
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.DateUtils
 import java.time.LocalDate
@@ -85,7 +84,7 @@ fun TransactionsScreen() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "Transactions",
-                style = ScreenTitleStyle,
+                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 21.sp),
                 color = SyncSpendTheme.colors.ink,
                 modifier = Modifier.padding(vertical = 3.dp),
             )

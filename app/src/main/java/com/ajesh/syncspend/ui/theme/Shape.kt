@@ -16,8 +16,6 @@ object SyncSpendCorners {
     val sheetTop = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
     val dialog = RoundedCornerShape(22.dp)
     val circle = RoundedCornerShape(50)
-    /** Fully-rounded pill: the floating bottom nav, and any other fully-rounded control that joins it. */
-    val pill = RoundedCornerShape(31.dp)
 }
 
 val SyncSpendShapes = Shapes(

@@ -52,13 +52,11 @@
     </LinearLayout>
 
     <FrameLayout
-        android:id="@+id/widget_fab"
         android:layout_width="36dp"
         android:layout_height="36dp"
         android:background="@drawable/widget_fab_bg">
 
         <ImageView
-            android:id="@+id/widget_fab_icon"
             android:layout_width="20dp"
             android:layout_height="20dp"
             android:layout_gravity="center"

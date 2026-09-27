@@ -9,8 +9,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import com.ajesh.syncspend.domain.model.ColorPalette
-import com.ajesh.syncspend.domain.model.FontChoice
 import com.ajesh.syncspend.domain.model.ThemeMode
 
 /**
@@ -137,8 +135,6 @@ object SyncSpendTheme {
 @Composable
 fun SyncSpendTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
-    colorPalette: ColorPalette = ColorPalette.FOREST,
-    fontChoice: FontChoice = FontChoice.ARCHIVO,
     content: @Composable () -> Unit,
 ) {
     val dark = when (themeMode) {
@@ -146,22 +142,7 @@ fun SyncSpendTheme(
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
-    // Neutrals (ink/sub/card/line/tile/sheet/scrEnd/selectedBrush/button/...) stay identical across
-    // every palette; only the accent-bearing fields below are swapped in per [ColorPalette].
-    val accents = accentsFor(colorPalette, dark)
-    val base = if (dark) DarkColors else LightColors
-    val tokens = base.copy(
-        acc = accents.acc,
-        acc2 = accents.acc2,
-        pos = accents.acc,
-        brand = accents.brand,
-        onAcc = accents.onAcc,
-        darkGradient = accents.darkGradient,
-        mintGradient = accents.mintGradient,
-        chartFill = accents.chartFill,
-        chartFillDim = accents.chartFillDim,
-    )
-    val typography = typographyFor(fontChoice)
+    val tokens = if (dark) DarkColors else LightColors
 
     // A Material3 scheme is still provided underneath so stock M3 components
     // (ripples, text selection handles, default TextField colors before we
@@ -191,7 +172,7 @@ fun SyncSpendTheme(
     CompositionLocalProvider(LocalSyncSpendColors provides tokens) {
         MaterialTheme(
             colorScheme = materialScheme,
-            typography = typography,
+            typography = SyncSpendTypography,
             shapes = SyncSpendShapes,
             content = content,
         )
