@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.ajesh.syncspend.data.db.entity.ReminderEntity
 import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.domain.model.BillingCycle
+import com.ajesh.syncspend.domain.model.RemindOffsets
 import com.ajesh.syncspend.domain.model.ReminderSchedule
 import com.ajesh.syncspend.ui.components.ConfirmDialog
 import com.ajesh.syncspend.ui.components.DatePickerSheet
@@ -96,6 +97,8 @@ private fun SubscriptionFields(
     cycle: BillingCycle,
     onCycleChange: (BillingCycle) -> Unit,
     due: LocalDate,
+    remindDays: Set<Int>,
+    onRemindChange: (Set<Int>) -> Unit,
     /** Outlines the amount and says it is missing (after "Add" was tapped without one). */
     amountError: Boolean = false,
     onPickDue: () -> Unit,
@@ -123,6 +126,22 @@ private fun SubscriptionFields(
     }
     FieldLabel("Next due date")
     PickerTile(SyncSpendIcons.Cal, DateUtils.shortDateYear(due), Modifier.fillMaxWidth(), onPickDue)
+    FieldLabel("Remind me before")
+    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+        RemindOffsets.CHOICES.forEach { days ->
+            PickerChip(
+                label = if (days == 1) "1 day" else "$days days",
+                selected = days in remindDays,
+                modifier = Modifier.weight(1f),
+            ) { onRemindChange(if (days in remindDays) remindDays - days else remindDays + days) }
+        }
+    }
+    Text(
+        "You always get a reminder on the due date. Tap to add or remove early ones.",
+        style = MaterialTheme.typography.labelSmall,
+        color = SyncSpendTheme.colors.sub,
+        modifier = Modifier.padding(top = 7.dp),
+    )
 }
 
 @Composable
@@ -171,12 +190,13 @@ private fun FutureDatePicker(initial: LocalDate, title: String, onApply: (LocalD
 @Composable
 fun SubscriptionDialog(
     currencySymbol: String,
-    onSave: (name: String, iconKey: String, amount: Double, cycle: BillingCycle, due: LocalDate) -> Unit,
+    onSave: (name: String, iconKey: String, amount: Double, cycle: BillingCycle, due: LocalDate, remindDaysBefore: Set<Int>) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var amountText by remember { mutableStateOf("") }
     var cycle by remember { mutableStateOf(BillingCycle.MONTHLY) }
     var due by remember { mutableStateOf(LocalDate.now().plusMonths(1)) }
+    var remindDays by remember { mutableStateOf(RemindOffsets.DEFAULT.toSet()) }
     var pickingDue by remember { mutableStateOf(false) }
     val amount = amountText.toDoubleOrNull()
 
@@ -189,11 +209,12 @@ fun SubscriptionDialog(
         iconKind = IconKind.SUBSCRIPTION,
         namePlaceholder = "Netflix, Spotify, Gym…",
         extraValid = amount != null && amount > 0,
-        onConfirm = { name, icon -> onSave(name, icon, amount ?: 0.0, cycle, due) },
+        onConfirm = { name, icon -> onSave(name, icon, amount ?: 0.0, cycle, due, remindDays) },
         onDismiss = onDismiss,
     ) { showErrors ->
         SubscriptionFields(
             currencySymbol, amountText, { amountText = it }, cycle, { cycle = it }, due,
+            remindDays = remindDays, onRemindChange = { remindDays = it },
             onPickDue = { pickingDue = true },
             amountError = showErrors && !(amount != null && amount > 0),
         )
@@ -241,11 +262,12 @@ fun ReminderDialog(
 fun SubscriptionEditSheet(
     initial: SubscriptionEntity,
     currencySymbol: String,
-    onSave: (name: String, iconKey: String, amount: Double, cycle: BillingCycle, due: LocalDate) -> Unit,
+    onSave: (name: String, iconKey: String, amount: Double, cycle: BillingCycle, due: LocalDate, remindDaysBefore: Set<Int>) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var name by remember(initial.id) { mutableStateOf(initial.name) }
+    var remindDays by remember(initial.id) { mutableStateOf(RemindOffsets.parse(initial.remindDaysBefore).toSet()) }
     var iconKey by remember(initial.id) { mutableStateOf(initial.iconKey) }
     var amountText by remember(initial.id) { mutableStateOf(formatAmount(initial.amount)) }
     var cycle by remember(initial.id) { mutableStateOf(initial.billingCycle) }
@@ -266,7 +288,10 @@ fun SubscriptionEditSheet(
             IconPickTile(iconKey, onClick = { pickingIcon = true })
             DesignTextField(value = name, onValueChange = { name = it }, placeholder = "Name", modifier = Modifier.weight(1f))
         }
-        SubscriptionFields(currencySymbol, amountText, { amountText = it }, cycle, { cycle = it }, due) { pickingDue = true }
+        SubscriptionFields(
+            currencySymbol, amountText, { amountText = it }, cycle, { cycle = it }, due,
+            remindDays = remindDays, onRemindChange = { remindDays = it },
+        ) { pickingDue = true }
 
         Row(modifier = Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             SheetDeleteButton(onClick = { confirmDelete = true })
@@ -277,7 +302,7 @@ fun SubscriptionEditSheet(
                 radius = 16.dp,
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    onSave(name.trim(), iconKey, amount ?: return@PrimaryButton, cycle, due)
+                    onSave(name.trim(), iconKey, amount ?: return@PrimaryButton, cycle, due, remindDays)
                     close()
                 },
             )

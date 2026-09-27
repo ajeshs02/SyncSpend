@@ -48,7 +48,7 @@ import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
 /** Subscriptions or Reminders (one screen, two modes) — both post real AlarmManager notifications. */
 @Composable
-fun SubsRemindersScreen(listMode: String, onBack: () -> Unit) {
+fun SubsRemindersScreen(listMode: String, highlightId: Long?, onBack: () -> Unit) {
     val container = LocalAppContainer.current
     val viewModel: SubsRemindersViewModel = viewModel(
         factory = viewModelFactory {
@@ -72,7 +72,8 @@ fun SubsRemindersScreen(listMode: String, onBack: () -> Unit) {
     var showAddReminder by remember { mutableStateOf(false) }
     var editingReminder by remember { mutableStateOf<ReminderEntity?>(null) }
 
-    val rows = if (isSubs) state.subscriptionRows else state.reminderRows
+    // A notification opened this page for one entry: it goes to the top and is outlined.
+    val rows = (if (isSubs) state.subscriptionRows else state.reminderRows).withHighlightFirst(highlightId)
 
     Column(modifier = Modifier.fillMaxSize().padding(top = SyncSpendChrome.screenTopInset)) {
         Row(
@@ -131,6 +132,7 @@ fun SubsRemindersScreen(listMode: String, onBack: () -> Unit) {
                 items(rows, key = { it.id }, contentType = { "row" }) { row ->
                     ListRow(
                         row = row,
+                        highlighted = highlightId != null && row.id == highlightId,
                         modifier = Modifier.animateItem(),
                         onClick = {
                             if (isSubs) editingSub = state.subscriptions.find { it.id == row.id }
@@ -161,10 +163,10 @@ fun SubsRemindersScreen(listMode: String, onBack: () -> Unit) {
     if (showAddSub) {
         SubscriptionDialog(
             currencySymbol = state.currencySymbol,
-            onSave = { name, icon, amount, cycle, due ->
+            onSave = { name, icon, amount, cycle, due, remind ->
                 showAddSub = false
-                gate(onDenied = { viewModel.saveSubscription(null, name, icon, amount, cycle, due) }) {
-                    viewModel.saveSubscription(null, name, icon, amount, cycle, due)
+                gate(onDenied = { viewModel.saveSubscription(null, name, icon, amount, cycle, due, remind) }) {
+                    viewModel.saveSubscription(null, name, icon, amount, cycle, due, remind)
                 }
             },
             onDismiss = { showAddSub = false },
@@ -174,9 +176,9 @@ fun SubsRemindersScreen(listMode: String, onBack: () -> Unit) {
         SubscriptionEditSheet(
             initial = sub,
             currencySymbol = state.currencySymbol,
-            onSave = { name, icon, amount, cycle, due ->
-                gate(onDenied = { viewModel.saveSubscription(sub, name, icon, amount, cycle, due) }) {
-                    viewModel.saveSubscription(sub, name, icon, amount, cycle, due)
+            onSave = { name, icon, amount, cycle, due, remind ->
+                gate(onDenied = { viewModel.saveSubscription(sub, name, icon, amount, cycle, due, remind) }) {
+                    viewModel.saveSubscription(sub, name, icon, amount, cycle, due, remind)
                 }
             },
             onDelete = { viewModel.deleteSubscription(sub) },
@@ -210,14 +212,15 @@ fun SubsRemindersScreen(listMode: String, onBack: () -> Unit) {
 
 /** Icon · name/meta · on/off switch. Tap the row to edit; the switch mutes or resumes its notification. */
 @Composable
-private fun ListRow(row: ListRowUi, onClick: () -> Unit, onToggle: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+private fun ListRow(row: ListRowUi, highlighted: Boolean, onClick: () -> Unit, onToggle: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     val colors = SyncSpendTheme.colors
     val dim by animateFloatAsState(if (row.active) 1f else 0.5f, tween(200), label = "row-dim")
     Row(
         modifier = modifier
             .fillMaxWidth()
             .background(colors.card, RoundedCornerShape(16.dp))
-            .border(1.dp, colors.line, RoundedCornerShape(16.dp))
+            .then(if (highlighted) Modifier.background(colors.acc.copy(alpha = 0.09f), RoundedCornerShape(16.dp)) else Modifier)
+            .border(if (highlighted) 1.5.dp else 1.dp, if (highlighted) colors.acc else colors.line, RoundedCornerShape(16.dp))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
             .padding(horizontal = 13.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,

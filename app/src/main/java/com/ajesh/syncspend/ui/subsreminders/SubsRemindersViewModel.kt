@@ -11,6 +11,7 @@ import com.ajesh.syncspend.data.repository.ReminderRepository
 import com.ajesh.syncspend.data.repository.SubscriptionRepository
 import com.ajesh.syncspend.domain.model.BillingCycle
 import com.ajesh.syncspend.domain.model.ReminderSchedule
+import com.ajesh.syncspend.domain.model.RemindOffsets
 import com.ajesh.syncspend.util.CurrencyFormatter
 import com.ajesh.syncspend.util.DateUtils
 import java.time.LocalDate
@@ -32,6 +33,13 @@ data class ListRowUi(
     val iconKey: String,
     val active: Boolean = true,
 )
+
+/** [id] (the row a notification was about) moved to the top, the rest in their order; unchanged when it isn't in the list. */
+internal fun List<ListRowUi>.withHighlightFirst(id: Long?): List<ListRowUi> {
+    val hit = if (id == null) -1 else indexOfFirst { it.id == id }
+    if (hit <= 0) return this
+    return listOf(this[hit]) + filterIndexed { index, _ -> index != hit }
+}
 
 data class SubsRemindersUiState(
     val currencySymbol: String = "₹",
@@ -88,10 +96,14 @@ class SubsRemindersViewModel(
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SubsRemindersUiState())
 
-    fun saveSubscription(existing: SubscriptionEntity?, name: String, iconKey: String, amount: Double, cycle: BillingCycle, due: LocalDate) {
+    /** [remindDaysBefore] are the "N days before" heads-ups (the due day itself always notifies). */
+    fun saveSubscription(
+        existing: SubscriptionEntity?, name: String, iconKey: String, amount: Double, cycle: BillingCycle, due: LocalDate,
+        remindDaysBefore: Collection<Int>,
+    ) {
         viewModelScope.launch {
             val entity = (existing ?: SubscriptionEntity(name = name, iconKey = iconKey, amount = amount, billingCycle = cycle, nextDueDate = due, categoryId = null, active = true))
-                .copy(name = name, iconKey = iconKey, amount = amount, billingCycle = cycle, nextDueDate = due)
+                .copy(name = name, iconKey = iconKey, amount = amount, billingCycle = cycle, nextDueDate = due, remindDaysBefore = RemindOffsets.format(remindDaysBefore))
             val saved = if (existing == null) entity.copy(id = subscriptionRepository.insert(entity)) else entity.also { subscriptionRepository.update(it) }
             alarmScheduler.scheduleSubscription(saved)
         }

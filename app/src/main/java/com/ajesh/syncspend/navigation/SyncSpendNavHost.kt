@@ -64,10 +64,14 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
         composable(Routes.SETTINGS) { SettingsScreen() }
         composable(
             route = Routes.SUBS_REMINDERS,
-            arguments = listOf(navArgument("listMode") { type = NavType.StringType }),
+            arguments = listOf(
+                navArgument("listMode") { type = NavType.StringType },
+                navArgument("highlight") { type = NavType.LongType; defaultValue = -1L },
+            ),
         ) { entry ->
             SubsRemindersScreen(
                 listMode = entry.arguments?.getString("listMode") ?: "subs",
+                highlightId = entry.arguments?.getLong("highlight")?.takeIf { it > 0 },
                 onBack = { navController.popBackStack() },
             )
         }
@@ -95,4 +99,15 @@ fun NavHostController.navigateToTab(route: String) {
         launchSingleTop = true
         restoreState = true
     }
+}
+
+/**
+ * Opens the Subscriptions ("subs") or Reminders ("alerts") page from anywhere, with [highlightId] on top.
+ * Starts from Home so Back returns there; if a subscriptions/reminders page is already open it is reused
+ * rather than stacked.
+ */
+fun NavHostController.openSubsReminders(listMode: String, highlightId: Long?) {
+    val onSubsPage = currentDestination?.route?.startsWith(Routes.SUBS_REMINDERS_PREFIX) == true
+    if (!onSubsPage) navigateToTab(Routes.HOME)
+    navigate(Routes.subsReminders(listMode, highlightId)) { launchSingleTop = true }
 }

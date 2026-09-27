@@ -7,7 +7,9 @@ object Routes {
     const val CATEGORIES = "categories"
     const val SETTINGS = "settings"
 
-    const val SUBS_REMINDERS = "subs_reminders/{listMode}"
+    const val SUBS_REMINDERS = "subs_reminders/{listMode}?highlight={highlight}"
     const val SUBS_REMINDERS_PREFIX = "subs_reminders/"
-    fun subsReminders(listMode: String) = "subs_reminders/$listMode"
+    /** [highlightId] (a subscription or reminder id) is moved to the top of the list and outlined. */
+    fun subsReminders(listMode: String, highlightId: Long? = null) =
+        "subs_reminders/$listMode" + (highlightId?.let { "?highlight=$it" } ?: "")
 }

@@ -1,5 +1,6 @@
 package com.ajesh.syncspend.domain.state
 
+import com.ajesh.syncspend.domain.model.AppLink
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.model.TransactionsTab
@@ -30,4 +31,10 @@ class SharedSelectionState {
      * sets it to Stats). Transactions consumes and clears it, so the tab pill visibly slides.
      */
     val pendingTransactionsTab = MutableStateFlow<TransactionsTab?>(null)
+
+    /**
+     * A page a tapped notification asked for. MainActivity sets it (also on a cold start, before anything
+     * is composed); the navigation root follows it once and clears it.
+     */
+    val pendingLink = MutableStateFlow<AppLink?>(null)
 }

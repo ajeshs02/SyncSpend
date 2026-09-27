@@ -14,6 +14,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.ajesh.syncspend.MainActivity
 import com.ajesh.syncspend.R
+import com.ajesh.syncspend.domain.model.AppLink
 
 object NotificationHelper {
     const val CHANNEL_ID = "syncspend_reminders"
@@ -27,6 +28,26 @@ object NotificationHelper {
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
+    /** A button on a notification. */
+    class Action(val label: String, val intent: PendingIntent)
+
+    /** The launch intent that follows [link] (and dismisses notification [cancelNotificationId], if given). */
+    fun linkIntent(context: Context, link: AppLink, cancelNotificationId: Int? = null): Intent =
+        Intent(context, MainActivity::class.java)
+            .putExtra(AppLink.EXTRA_KIND, AppLink.kindOf(link))
+            .putExtra(AppLink.EXTRA_ID, AppLink.idOf(link))
+            .apply { cancelNotificationId?.let { putExtra(AppLink.EXTRA_CANCEL_NOTIFICATION, it) } }
+
+    /** A button that opens [link] and dismisses the notification it sits on. */
+    fun linkAction(context: Context, notificationId: Int, label: String, link: AppLink): Action {
+        val intent = linkIntent(context, link, cancelNotificationId = notificationId)
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        return Action(
+            label,
+            PendingIntent.getActivity(context, notificationId * 10 + 1, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
+        )
+    }
+
     @SuppressLint("MissingPermission") // guarded above for API 33+
     fun show(
         context: Context,
@@ -34,6 +55,7 @@ object NotificationHelper {
         title: String,
         text: String,
         openIntent: Intent = Intent(context, MainActivity::class.java),
+        actions: List<Action> = emptyList(),
     ) {
         // POST_NOTIFICATIONS is only a runtime permission on Android 13+; on older
         // releases it doesn't exist, so checking it would wrongly read as "denied".
@@ -47,7 +69,7 @@ object NotificationHelper {
             openIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(text)
@@ -55,7 +77,8 @@ object NotificationHelper {
             .setAutoCancel(true)
             .setContentIntent(tap)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
+        actions.forEach { builder.addAction(0, it.label, it.intent) }
+        val notification = builder.build()
         NotificationManagerCompat.from(context).notify(notificationId, notification)
     }
 }

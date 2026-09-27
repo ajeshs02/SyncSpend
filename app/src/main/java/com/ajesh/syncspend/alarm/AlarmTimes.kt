@@ -40,16 +40,33 @@ object AlarmTimes {
         return millis
     }
 
-    /** First recurrence of a subscription strictly after [now], or null if it can't be computed. */
-    fun nextSubscription(due: LocalDate, cycle: BillingCycle, now: Long = System.currentTimeMillis()): Long {
+    /**
+     * One alert of a subscription: it goes off at [atMillis], [daysBefore] days ahead of the due day
+     * [dueDate] (0 = on the day itself).
+     */
+    data class SubscriptionAlert(val atMillis: Long, val daysBefore: Int, val dueDate: LocalDate)
+
+    /**
+     * The next alert strictly after [now]: on the due day at 9:00, and on each of [offsets] days before
+     * it. Due days already fully in the past are rolled forward by the billing cycle.
+     */
+    fun nextSubscriptionAlert(
+        due: LocalDate,
+        cycle: BillingCycle,
+        offsets: Collection<Int>,
+        now: Long = System.currentTimeMillis(),
+    ): SubscriptionAlert {
+        val daysBefore = (offsets.filter { it > 0 } + 0).distinct().sortedDescending() // earliest alert of a due day first
         var date = due
-        var millis = toMillis(date, SUBSCRIPTION_MINUTE_OF_DAY)
         var guard = 0
-        while (millis <= now && guard++ < 2000) {
+        while (guard++ < 2000) {
+            for (d in daysBefore) {
+                val at = toMillis(date.minusDays(d.toLong()), SUBSCRIPTION_MINUTE_OF_DAY)
+                if (at > now) return SubscriptionAlert(at, d, date)
+            }
             date = advance(date, cycle)
-            millis = toMillis(date, SUBSCRIPTION_MINUTE_OF_DAY)
         }
-        return millis
+        return SubscriptionAlert(toMillis(date, SUBSCRIPTION_MINUTE_OF_DAY), 0, date)
     }
 
     /** First recurrence of a reminder strictly after [now]; null for a ONCE reminder already in the past. */

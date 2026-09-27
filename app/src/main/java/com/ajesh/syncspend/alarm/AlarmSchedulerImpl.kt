@@ -11,6 +11,7 @@ import com.ajesh.syncspend.data.db.entity.ReminderEntity
 import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.data.repository.ReminderRepository
 import com.ajesh.syncspend.data.repository.SubscriptionRepository
+import com.ajesh.syncspend.domain.model.RemindOffsets
 import kotlinx.coroutines.flow.first
 
 /**
@@ -28,11 +29,13 @@ class AlarmSchedulerImpl(
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    private fun pendingIntent(type: String, id: Long): PendingIntent {
+    /** Extras are not part of what identifies an alarm, so a cancel (no extras) still matches a scheduled one. */
+    private fun pendingIntent(type: String, id: Long, extras: Intent.() -> Unit = {}): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java)
             .setData(Uri.parse("syncspend://alarm/$type/$id"))
             .putExtra(AlarmReceiver.EXTRA_TYPE, type)
             .putExtra(AlarmReceiver.EXTRA_ID, id)
+            .apply(extras)
         return PendingIntent.getBroadcast(
             context, 0, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
@@ -61,9 +64,16 @@ class AlarmSchedulerImpl(
 
     override fun scheduleSubscription(subscription: SubscriptionEntity) {
         if (!subscription.active) return cancelSubscription(subscription.id)
+        // One pending alarm per subscription: the next of its "N days before" alerts or the due day.
+        val alert = AlarmTimes.nextSubscriptionAlert(
+            subscription.nextDueDate, subscription.billingCycle, RemindOffsets.parse(subscription.remindDaysBefore),
+        )
         arm(
-            AlarmTimes.nextSubscription(subscription.nextDueDate, subscription.billingCycle),
-            pendingIntent(AlarmReceiver.TYPE_SUBSCRIPTION, subscription.id),
+            alert.atMillis,
+            pendingIntent(AlarmReceiver.TYPE_SUBSCRIPTION, subscription.id) {
+                putExtra(AlarmReceiver.EXTRA_DAYS_BEFORE, alert.daysBefore)
+                putExtra(AlarmReceiver.EXTRA_DUE_DAY, alert.dueDate.toEpochDay())
+            },
         )
     }
 
