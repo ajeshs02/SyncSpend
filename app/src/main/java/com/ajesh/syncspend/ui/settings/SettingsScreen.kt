@@ -186,7 +186,7 @@ fun SettingsScreen(onOpenCategories: () -> Unit) {
                 onClick = onOpenCategories,
             )
 
-            SettingsCard(gradient = true) {
+            SettingsCard {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
                     IconTile(SyncSpendIcons.Clock)
                     Column(modifier = Modifier.weight(1f)) {

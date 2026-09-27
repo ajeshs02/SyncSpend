@@ -63,10 +63,7 @@ enum class NavDestination(val route: String) {
 }
 
 private val NavPillDark = Color(0xFF050806)
-private val NavActiveTint = SyncSpendPalette.Accent
-private val NavIndicatorFill = Color.White.copy(alpha = 0.10f) // neutral: the vibrant green is only ever the glyph
-private val NavInactiveTint = Color(0x7AFFFFFF) // rgba(255,255,255,.48)
-private val NavAddInactiveTint = Color(0x99FFFFFF) // rgba(255,255,255,.6)
+private val NavInk = Color(0xFF1A1A1A) // the same dark ink used everywhere else on the accent fill
 
 // Pill geometry. Five cells, the centre Add cell wider and with a bigger plus so it reads as the
 // key button: 4 x 56 + 72 + 2 x 10 padding = 316dp.
@@ -124,6 +121,17 @@ fun BottomFadeAndNav(
         }
     }
 
+    // Light theme: near-black pill, accent-tinted active icon. Dark theme flips the pairing — an accent
+    // pill with dark-ink icons — rather than keeping the same near-black pill in both themes. Every pair
+    // below keeps the exact same alpha/relationship as before, just swapping which color is ink-on-accent
+    // vs. accent-on-ink.
+    val isDark = SyncSpendTheme.colors.isDark
+    val pillBg = if (isDark) SyncSpendPalette.Accent else NavPillDark
+    val activeTint = if (isDark) NavInk else SyncSpendPalette.Accent
+    val indicatorFill = if (isDark) NavInk.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.10f)
+    val inactiveTint = if (isDark) Color(0x7A1A1A1A) else Color(0x7AFFFFFF) // both ~48% alpha
+    val addInactiveTint = if (isDark) Color(0x991A1A1A) else Color(0x99FFFFFF) // both ~60% alpha
+
     Box(modifier = modifier.fillMaxSize()) {
         val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
         val scrEnd = SyncSpendTheme.colors.scrEnd
@@ -141,28 +149,28 @@ fun BottomFadeAndNav(
                 .navigationBarsPadding()
                 .padding(bottom = SyncSpendChrome.bottomBarBottomInset)
                 .shadow(elevation = 16.dp, shape = RoundedCornerShape(PillRadius), clip = false)
-                .background(NavPillDark, RoundedCornerShape(PillRadius))
+                .background(pillBg, RoundedCornerShape(PillRadius))
                 .padding(horizontal = PillPadding, vertical = PillVerticalPadding),
         ) {
-            ActiveIndicator(selected)
+            ActiveIndicator(selected, indicatorFill)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                NavIconButton(SyncSpendIcons.Home, "Home", selected == 0) {
+                NavIconButton(SyncSpendIcons.Home, "Home", selected == 0, activeTint, inactiveTint) {
                     selected = 0
                     onNavigate(NavDestination.Home)
                 }
-                NavIconButton(SyncSpendIcons.Swap, "Transactions", selected == 1) {
+                NavIconButton(SyncSpendIcons.Swap, "Transactions", selected == 1, activeTint, inactiveTint) {
                     selected = 1
                     onNavigate(NavDestination.Transactions)
                 }
-                AddButton(active = selected == NAV_ADD_SLOT) {
+                AddButton(active = selected == NAV_ADD_SLOT, activeTint = activeTint, inactiveTint = addInactiveTint) {
                     selected = NAV_ADD_SLOT
                     onAddClick()
                 }
-                NavIconButton(SyncSpendIcons.Trend, "Stats", selected == 3) {
+                NavIconButton(SyncSpendIcons.Trend, "Stats", selected == 3, activeTint, inactiveTint) {
                     selected = 3
                     onNavigate(NavDestination.Stats)
                 }
-                NavIconButton(SyncSpendIcons.Cog, "Settings", selected == 4) {
+                NavIconButton(SyncSpendIcons.Cog, "Settings", selected == 4, activeTint, inactiveTint) {
                     selected = 4
                     onNavigate(NavDestination.Settings)
                 }
@@ -178,7 +186,7 @@ fun BottomFadeAndNav(
  * invalidate the shadowed pill it sits in.
  */
 @Composable
-private fun BoxScope.ActiveIndicator(slot: Int) {
+private fun BoxScope.ActiveIndicator(slot: Int, indicatorFill: Color) {
     val density = LocalDensity.current
     // Keep the last real slot while hidden so the pill fades out in place instead of flying off.
     // A plain holder (not snapshot state): it only remembers the last tab for the fade-out.
@@ -209,7 +217,7 @@ private fun BoxScope.ActiveIndicator(slot: Int) {
                 val inset = 3.dp.toPx()
                 val radius = (PillRadius - PillVerticalPadding - 3.dp).toPx()
                 drawRoundRect(
-                    color = NavIndicatorFill,
+                    color = indicatorFill,
                     topLeft = Offset(x.value + inset, inset),
                     size = Size(width.value - 2 * inset, size.height - 2 * inset),
                     cornerRadius = CornerRadius(radius, radius),
@@ -224,7 +232,7 @@ private fun BoxScope.ActiveIndicator(slot: Int) {
  * active/inactive change costs no recomposition per frame.
  */
 @Composable
-private fun NavGlyph(icon: ImageVector, active: Boolean, inactiveTint: Color, size: Dp) {
+private fun NavGlyph(icon: ImageVector, active: Boolean, activeTint: Color, inactiveTint: Color, size: Dp) {
     val fraction = remember { Animatable(if (active) 1f else 0f) }
     LaunchedEffect(active) { fraction.animateTo(if (active) 1f else 0f, tween(200)) }
     Box(contentAlignment = Alignment.Center) {
@@ -233,14 +241,14 @@ private fun NavGlyph(icon: ImageVector, active: Boolean, inactiveTint: Color, si
             modifier = Modifier.size(size).graphicsLayer { alpha = 1f - fraction.value },
         )
         Icon(
-            imageVector = icon, contentDescription = null, tint = NavActiveTint,
+            imageVector = icon, contentDescription = null, tint = activeTint,
             modifier = Modifier.size(size).graphicsLayer { alpha = fraction.value },
         )
     }
 }
 
 @Composable
-private fun NavIconButton(icon: ImageVector, label: String, active: Boolean, onClick: () -> Unit) {
+private fun NavIconButton(icon: ImageVector, label: String, active: Boolean, activeTint: Color, inactiveTint: Color, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val press by animateFloatAsState(if (pressed) 0.9f else 1f, tween(90), label = "nav-press")
@@ -259,12 +267,12 @@ private fun NavIconButton(icon: ImageVector, label: String, active: Boolean, onC
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        NavGlyph(icon, active, NavInactiveTint, 24.dp)
+        NavGlyph(icon, active, activeTint, inactiveTint, 24.dp)
     }
 }
 
 @Composable
-private fun AddButton(active: Boolean, onClick: () -> Unit) {
+private fun AddButton(active: Boolean, activeTint: Color, inactiveTint: Color, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val press by animateFloatAsState(if (pressed) 0.9f else 1f, tween(90), label = "nav-add-press")
@@ -283,6 +291,6 @@ private fun AddButton(active: Boolean, onClick: () -> Unit) {
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        NavGlyph(SyncSpendIcons.PlusBold, active, NavAddInactiveTint, 36.dp)
+        NavGlyph(SyncSpendIcons.PlusBold, active, activeTint, inactiveTint, 36.dp)
     }
 }

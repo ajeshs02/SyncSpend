@@ -112,11 +112,12 @@ object AnalyticsEngine {
         if (flow == FlowType.INCOME) listOf(EntryFilter.THIS_MONTH, EntryFilter.LAST_MONTH, EntryFilter.CUSTOM) else EntryFilter.entries
 
     /**
-     * The dates a filter's header label shows: this week is Monday to today, this month is the 1st to today,
-     * last month is its whole span, custom is the range the user picked (null until one is).
+     * The dates a filter's header label shows: this week is Monday to today, last week and last month are
+     * their whole span, this month is the 1st to today, custom is the range the user picked (null until one is).
      */
     fun entryFilterRange(filter: EntryFilter, custom: DateRange?, today: LocalDate = LocalDate.now()): DateRange? = when (filter) {
         EntryFilter.THIS_WEEK -> DateRange(weekStart(today), today)
+        EntryFilter.LAST_WEEK -> weekStart(today).let { DateRange(it.minusDays(7), it.minusDays(1)) }
         EntryFilter.THIS_MONTH -> DateRange(today.withDayOfMonth(1), today)
         EntryFilter.LAST_MONTH -> YearMonth.from(today).minusMonths(1).let { DateRange(it.atDay(1), it.atEndOfMonth()) }
         EntryFilter.CUSTOM -> custom
@@ -136,6 +137,7 @@ object AnalyticsEngine {
         today: LocalDate = LocalDate.now(),
     ): List<TransactionEntity> = when (filter) {
         EntryFilter.THIS_WEEK -> weekStart(today).let { start -> tx.filter { !it.date.isBefore(start) && !it.date.isAfter(start.plusDays(6)) } }
+        EntryFilter.LAST_WEEK -> weekStart(today).minusDays(7).let { start -> tx.filter { !it.date.isBefore(start) && !it.date.isAfter(start.plusDays(6)) } }
         EntryFilter.THIS_MONTH -> YearMonth.from(today).let { month -> tx.filter { inMonth(it.date, month) } }
         EntryFilter.LAST_MONTH -> YearMonth.from(today).minusMonths(1).let { month -> tx.filter { inMonth(it.date, month) } }
         EntryFilter.CUSTOM -> if (custom == null) tx else tx.filter { it.date in custom }

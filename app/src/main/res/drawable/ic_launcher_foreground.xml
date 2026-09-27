@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  A minimal wallet: a cream rounded-rect body over a green card sliver (the
+  A minimal wallet: a white rounded-rect body over a dark-ink card sliver (the
   card's top peeks out above the body before the wallet fill covers the
-  rest of it), with a small green clasp nub on the right edge — the standard
+  rest of it), with a small dark-ink clasp nub on the right edge — the standard
   wallet-glyph closure, kept as a simple geometric shape rather than any
-  literal buckle detail.
+  literal buckle detail. Sits on the pale mint [ic_launcher_background]; the
+  card/clasp use the same dark ink as the rest of the app's on-accent content
+  (colors.mink/onAcc), and the wallet body is bumped from the old cream to
+  white since cream was too close in lightness to the new pale background.
 
   All three shapes sit inside the 66dp adaptive-icon safe zone: the
   farthest corners (wallet 77,73 and card 65,28) are ~28-30dp from the
@@ -18,16 +21,16 @@
 
     <!-- Card, tucked mostly behind the wallet body; only its top edge shows. -->
     <path
-        android:fillColor="#4CAF7D"
+        android:fillColor="#1A1A1A"
         android:pathData="M45,28 L65,28 A5,5 0 0,1 70,33 L70,41 A5,5 0 0,1 65,46 L45,46 A5,5 0 0,1 40,41 L40,33 A5,5 0 0,1 45,28 Z" />
 
     <!-- Wallet body -->
     <path
-        android:fillColor="#EEF3EA"
+        android:fillColor="#FFFFFF"
         android:pathData="M38,39 L70,39 A7,7 0 0,1 77,46 L77,66 A7,7 0 0,1 70,73 L38,73 A7,7 0 0,1 31,66 L31,46 A7,7 0 0,1 38,39 Z" />
 
     <!-- Clasp nub on the right edge -->
     <path
-        android:fillColor="#4CAF7D"
+        android:fillColor="#1A1A1A"
         android:pathData="M77,51 L79,51 A3,3 0 0,1 82,54 L82,58 A3,3 0 0,1 79,61 L77,61 A3,3 0 0,1 74,58 L74,54 A3,3 0 0,1 77,51 Z" />
 </vector>
