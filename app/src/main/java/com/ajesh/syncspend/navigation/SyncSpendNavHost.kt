@@ -64,7 +64,7 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
         }
         composable(Routes.CATEGORIES) { CategoriesScreen() }
         composable(Routes.STATS) { StatsScreen() }
-        composable(Routes.SETTINGS) { SettingsScreen(onOpenCategories = { navController.navigate(Routes.CATEGORIES) }) }
+        composable(Routes.SETTINGS) { SettingsScreen(onOpenCategories = { navController.navigateToCategories() }) }
         composable(
             route = Routes.SUBS_REMINDERS,
             arguments = listOf(
@@ -86,7 +86,10 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
     // NavHost's own one is asked first; on Home nothing is enabled, so the system handles back as usual.
     val currentEntry by navController.currentBackStackEntryAsState()
     val canGoBack = currentEntry != null && navController.previousBackStackEntry != null
-    BackHandler(enabled = canGoBack) { navController.popBackStack() }
+    BackHandler(enabled = canGoBack) {
+        if (currentEntry?.destination?.route == Routes.CATEGORIES) navController.popFromCategories()
+        else navController.popBackStack()
+    }
 }
 
 /**
@@ -102,6 +105,22 @@ fun NavHostController.navigateToTab(route: String) {
         launchSingleTop = true
         restoreState = true
     }
+}
+
+/**
+ * Categories is only ever reached by pushing it from Settings, so unlike the tab switch above it
+ * must leave Settings itself on the back stack. Round-tripping through Settings would otherwise
+ * cold-start a fresh CategoriesViewModel (and an empty-state flash) on every visit; saving and
+ * restoring just this one destination's state keeps it resident like a tab, without touching
+ * anything below it and without any extra fade/gate in the screen itself.
+ */
+fun NavHostController.navigateToCategories() {
+    navigate(Routes.CATEGORIES) { launchSingleTop = true; restoreState = true }
+}
+
+/** The other half of [navigateToCategories]: leaves Categories's state saved so the next visit restores it. */
+fun NavHostController.popFromCategories() {
+    popBackStack(Routes.CATEGORIES, inclusive = true, saveState = true)
 }
 
 /**
