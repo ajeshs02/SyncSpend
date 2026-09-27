@@ -227,16 +227,16 @@ fun SettingsScreen(onOpenCategories: () -> Unit) {
             }
 
             ActionCard(
-                icon = SyncSpendIcons.Download,
-                title = "Export CSV",
-                note = state.exportNote,
-                onClick = { exportPickerOpen = true },
-            )
-            ActionCard(
                 icon = SyncSpendIcons.Upload,
                 title = "Import CSV",
                 note = "Works with SyncSpend exports and your old tracker's CSV",
                 onClick = { importLauncher.launch(arrayOf("*/*")) },
+            )
+            ActionCard(
+                icon = SyncSpendIcons.Download,
+                title = "Export CSV",
+                note = state.exportNote,
+                onClick = { exportPickerOpen = true },
             )
 
             SettingsCard {

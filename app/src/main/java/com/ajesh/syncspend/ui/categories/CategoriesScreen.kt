@@ -77,47 +77,52 @@ fun CategoriesScreen() {
             HeaderAddButton("New", onClick = { showAdd = true })
         }
 
-        FlowToggle(
-            type = state.type,
-            onSelect = viewModel::setType,
-            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
-        )
-        Text(
-            "Use the arrows to reorder · tap a category to rename it, change its icon or delete it",
-            fontSize = 10.5.sp,
-            color = colors.sub,
-            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp, bottom = 8.dp),
-        )
+        // Nothing below the header until the first real state exists, so a fresh visit (this
+        // screen is a plain push, not a resident tab, so it cold-starts every time) never flashes
+        // the empty state before the real list pops in.
+        if (state.loaded) {
+            FlowToggle(
+                type = state.type,
+                onSelect = viewModel::setType,
+                modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
+            )
+            Text(
+                "Use the arrows to reorder · tap a category to rename it, change its icon or delete it",
+                fontSize = 10.5.sp,
+                color = colors.sub,
+                modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp, bottom = 8.dp),
+            )
 
-        if (state.categories.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(top = 48.dp, start = 40.dp, end = 40.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text("No $flowWord categories yet", style = MaterialTheme.typography.bodyMedium, color = colors.ink)
-                Text(
-                    "Tap New to create one and pick an icon for it.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.sub,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 22.dp, end = 22.dp, bottom = SyncSpendChrome.screenBottomContentPadding),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                itemsIndexed(state.categories, key = { _, c -> c.id }, contentType = { _, _ -> "category" }) { index, cat ->
-                    CategoryRow(
-                        category = cat,
-                        canMoveUp = index > 0,
-                        canMoveDown = index < state.categories.lastIndex,
-                        onEdit = { editing = cat },
-                        onUp = { viewModel.move(cat, -1) },
-                        onDown = { viewModel.move(cat, 1) },
-                        modifier = Modifier.animateItem(),
+            if (state.categories.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(top = 48.dp, start = 40.dp, end = 40.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text("No $flowWord categories yet", style = MaterialTheme.typography.bodyMedium, color = colors.ink)
+                    Text(
+                        "Tap New to create one and pick an icon for it.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.sub,
+                        modifier = Modifier.padding(top = 4.dp),
                     )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 22.dp, end = 22.dp, bottom = SyncSpendChrome.screenBottomContentPadding),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    itemsIndexed(state.categories, key = { _, c -> c.id }, contentType = { _, _ -> "category" }) { index, cat ->
+                        CategoryRow(
+                            category = cat,
+                            canMoveUp = index > 0,
+                            canMoveDown = index < state.categories.lastIndex,
+                            onEdit = { editing = cat },
+                            onUp = { viewModel.move(cat, -1) },
+                            onDown = { viewModel.move(cat, 1) },
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
                 }
             }
         }

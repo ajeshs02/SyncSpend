@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 data class CategoriesUiState(
     val type: FlowType = FlowType.EXPENSE,
     val categories: List<CategoryEntity> = emptyList(),
+    val loaded: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -31,7 +32,7 @@ class CategoriesViewModel(
     val uiState: StateFlow<CategoriesUiState> = combine(
         type,
         type.flatMapLatest { categoryRepository.getAllByType(it) },
-    ) { t, cats -> CategoriesUiState(t, cats) }
+    ) { t, cats -> CategoriesUiState(t, cats, loaded = true) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CategoriesUiState())
 
     fun setType(newType: FlowType) {

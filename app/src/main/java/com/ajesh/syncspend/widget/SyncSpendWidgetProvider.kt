@@ -8,37 +8,50 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.RemoteViews
 import com.ajesh.syncspend.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
- * Plain RemoteViews widget (no Glance): an expense-only quick-add shortcut.
- * Two layouts — money glyph only, or glyph + "Expense +" — picked from the
- * current width so it resizes cleanly between them.
+ * Plain RemoteViews widget (no Glance): a live "today's expense" tile that doubles as an
+ * expense-only quick-add shortcut. Two layouts — compact amount only, or a caption + amount —
+ * picked from the current width so it resizes cleanly between them.
  */
 class SyncSpendWidgetProvider : AppWidgetProvider() {
 
-    override fun onUpdate(context: Context, manager: AppWidgetManager, appWidgetIds: IntArray) {
-        appWidgetIds.forEach { update(context, manager, it) }
+    override fun onUpdate(context: Context, manager: AppWidgetManager, appWidgetIds: IntArray) = refresh(context)
+
+    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, appWidgetId: Int, newOptions: Bundle) = refresh(context)
+
+    /** [goAsync] extends this receiver's lifetime past `onReceive` so the suspend DB read is safe to await. */
+    private fun refresh(context: Context) {
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                WidgetRefresher.refreshNow(context.applicationContext)
+            } finally {
+                pending.finish()
+            }
+        }
     }
 
-    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, appWidgetId: Int, newOptions: Bundle) {
-        update(context, manager, appWidgetId)
-    }
+    companion object {
+        /** ~1 launcher cell is under this; 2+ cells is wide enough for the caption. */
+        private const val WIDE_THRESHOLD_DP = 110
 
-    private fun update(context: Context, manager: AppWidgetManager, id: Int) {
-        val minWidthDp = manager.getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
-        val layout = if (minWidthDp in 1 until WIDE_THRESHOLD_DP) R.layout.widget_small else R.layout.widget_wide
-        val views = RemoteViews(context.packageName, layout)
-        val open = Intent(context, QuickAddActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
-        views.setOnClickPendingIntent(
-            R.id.widget_root,
-            PendingIntent.getActivity(context, 0, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
-        )
-        manager.updateAppWidget(id, views)
-    }
-
-    private companion object {
-        /** ~1 launcher cell is under this; 2+ cells is wide enough for the text. */
-        const val WIDE_THRESHOLD_DP = 110
+        /** Builds and pushes one widget instance's RemoteViews, showing [amountText]. */
+        fun push(context: Context, manager: AppWidgetManager, id: Int, amountText: String) {
+            val minWidthDp = manager.getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
+            val layout = if (minWidthDp in 1 until WIDE_THRESHOLD_DP) R.layout.widget_small else R.layout.widget_wide
+            val views = RemoteViews(context.packageName, layout)
+            views.setTextViewText(R.id.widget_amount, amountText)
+            val open = Intent(context, QuickAddActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+            views.setOnClickPendingIntent(
+                R.id.widget_root,
+                PendingIntent.getActivity(context, 0, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
+            )
+            manager.updateAppWidget(id, views)
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.ajesh.syncspend.ui.home
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -291,20 +292,19 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
     }
 }
 
-/** How long a single character takes to appear while an insight is being typed out. */
-private const val TYPEWRITER_MILLIS_PER_CHAR = 22L
-
 /**
- * One of the hero's averages, changing to a different random one every few seconds, typed out
- * one character at a time. The timer only runs while the screen is visible (STARTED), so nothing
- * ticks in the background.
+ * One of the hero's averages, changing to a different random one every few seconds with a
+ * cross-fade. The timer only runs while the screen is visible (STARTED), so nothing ticks in the
+ * background. Keyed on [lines] itself (not just its size): toggling Income/Expense swaps in a
+ * same-size but different-content list, and keying on size alone left the rotation running with a
+ * stale index into the new content — this restarts it cleanly instead.
  */
 @Composable
 internal fun RotatingInsight(lines: List<String>, modifier: Modifier = Modifier) {
     if (lines.isEmpty()) return
     var index by remember { mutableIntStateOf(Random.nextInt(lines.size)) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(lines.size, lifecycle) {
+    LaunchedEffect(lines, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (lines.size > 1) {
                 delay(HomeInsights.ROTATE_MILLIS)
@@ -312,16 +312,9 @@ internal fun RotatingInsight(lines: List<String>, modifier: Modifier = Modifier)
             }
         }
     }
-    val line = lines[index.coerceIn(lines.indices)]
-    var visibleChars by remember { mutableIntStateOf(0) }
-    LaunchedEffect(line) {
-        visibleChars = 0
-        while (visibleChars < line.length) {
-            delay(TYPEWRITER_MILLIS_PER_CHAR)
-            visibleChars++
-        }
+    Crossfade(targetState = index.coerceIn(lines.indices), animationSpec = tween(350), modifier = modifier, label = "hero-insight") { i ->
+        Text(lines[i.coerceIn(lines.indices)], fontSize = 11.5.sp, color = Color.White.copy(alpha = 0.6f), maxLines = 1)
     }
-    Text(line.take(visibleChars), fontSize = 11.5.sp, color = Color.White.copy(alpha = 0.6f), maxLines = 1, modifier = modifier)
 }
 
 @Composable
