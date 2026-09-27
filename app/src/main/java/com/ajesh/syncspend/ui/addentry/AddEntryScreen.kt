@@ -181,7 +181,13 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                     )
                     PrimaryButton(
                         text = "Save Entry",
-                        onClick = { viewModel.save(note, onSaved) },
+                        onClick = {
+                            viewModel.save(note) {
+                                // Tab state is saved and restored, so the next New Entry must not come back with this note.
+                                note = ""
+                                onSaved()
+                            }
+                        },
                         modifier = Modifier.padding(top = 10.dp).fillMaxWidth(),
                         leading = {
                             // Flow dot tinted to read on the button (same tints the toggle's icons use).
