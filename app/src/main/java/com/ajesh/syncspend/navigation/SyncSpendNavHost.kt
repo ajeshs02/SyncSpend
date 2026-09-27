@@ -100,6 +100,11 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
  */
 fun NavHostController.navigateToTab(route: String) {
     if (currentDestination?.route?.startsWith(Routes.SUBS_REMINDERS_PREFIX) == true) popBackStack()
+    // Categories sits on top of Settings outside the tab system (see navigateToCategories below)
+    // with no saved state of its own, so it must be dropped before the popUpTo/saveState sweep
+    // below: leaving it in would fold it into Settings' own saved back-stack chain, and the next
+    // time Settings was reselected this restored Categories on top of it instead.
+    if (currentDestination?.route == Routes.CATEGORIES) popBackStack()
     navigate(route) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
@@ -108,19 +113,18 @@ fun NavHostController.navigateToTab(route: String) {
 }
 
 /**
- * Categories is only ever reached by pushing it from Settings, so unlike the tab switch above it
- * must leave Settings itself on the back stack. Round-tripping through Settings would otherwise
- * cold-start a fresh CategoriesViewModel (and an empty-state flash) on every visit; saving and
- * restoring just this one destination's state keeps it resident like a tab, without touching
- * anything below it and without any extra fade/gate in the screen itself.
+ * Categories is only ever reached by pushing it from Settings. It intentionally keeps no saved
+ * state of its own (see [navigateToTab]'s note) — every visit is a plain fresh push, exactly like
+ * navigating between any other two screens (e.g. Home to Transactions), just not part of the tab
+ * back-stack.
  */
 fun NavHostController.navigateToCategories() {
-    navigate(Routes.CATEGORIES) { launchSingleTop = true; restoreState = true }
+    navigate(Routes.CATEGORIES) { launchSingleTop = true }
 }
 
-/** The other half of [navigateToCategories]: leaves Categories's state saved so the next visit restores it. */
+/** The other half of [navigateToCategories]: Settings sits directly beneath, so this is a plain pop back to it. */
 fun NavHostController.popFromCategories() {
-    popBackStack(Routes.CATEGORIES, inclusive = true, saveState = true)
+    popBackStack()
 }
 
 /**

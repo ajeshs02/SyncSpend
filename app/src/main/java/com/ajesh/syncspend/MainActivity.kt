@@ -31,9 +31,7 @@ import com.ajesh.syncspend.navigation.Routes
 import com.ajesh.syncspend.navigation.SyncSpendNavHost
 import com.ajesh.syncspend.navigation.navigateToTab
 import com.ajesh.syncspend.navigation.openSubsReminders
-import com.ajesh.syncspend.navigation.popFromCategories
 import com.ajesh.syncspend.ui.components.BottomFadeAndNav
-import com.ajesh.syncspend.ui.components.NavDestination
 import com.ajesh.syncspend.ui.editentry.EditEntryHost
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
@@ -129,13 +127,7 @@ private fun SyncSpendAppRoot() {
         BottomFadeAndNav(
             currentRoute = currentRoute,
             onNavigate = { destination ->
-                if (destination == NavDestination.Settings && currentRoute == Routes.CATEGORIES) {
-                    // Categories sits on top of Settings, not in the tab back stack, so re-tapping
-                    // Settings from there is a plain pop back to it, not a tab switch.
-                    navController.popFromCategories()
-                } else if (currentRoute != destination.route) {
-                    navController.navigateToTab(destination.route)
-                }
+                if (currentRoute != destination.route) navController.navigateToTab(destination.route)
             },
             onAddClick = {
                 if (currentRoute != Routes.ADD_ENTRY) navController.navigateToTab(Routes.ADD_ENTRY)
