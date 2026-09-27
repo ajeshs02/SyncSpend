@@ -1,7 +1,6 @@
 package com.ajesh.syncspend.ui.home
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -43,6 +42,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -166,7 +166,7 @@ fun HomeScreen(
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Repeat, "Subscription", "${state.subsCount} active", onOpenSubscriptions)
+            ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Repeat, "Subscriptions & EMIs", "${state.subsCount} active", onOpenSubscriptions)
             ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Bell, "Reminders", "${state.remindersCount} set", onOpenReminders)
         }
 
@@ -290,17 +290,20 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
                             .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(13.dp))
                             .padding(horizontal = 10.dp, vertical = 5.dp),
                     )
+                    RotatingInsight(state.insights, modifier = Modifier.weight(1f))
                 }
             }
-            RotatingInsight(state.insights, modifier = Modifier.padding(top = 10.dp))
         }
     }
 }
 
+/** How long a single character takes to appear while an insight is being typed out. */
+private const val TYPEWRITER_MILLIS_PER_CHAR = 22L
+
 /**
- * One of the hero's averages, changing to a different random one every few seconds with a cross-fade.
- * The timer only runs while the screen is visible (STARTED), so nothing ticks in the background, and the
- * fade is an alpha layer: no recomposition per frame.
+ * One of the hero's averages, changing to a different random one every few seconds, typed out
+ * one character at a time. The timer only runs while the screen is visible (STARTED), so nothing
+ * ticks in the background.
  */
 @Composable
 internal fun RotatingInsight(lines: List<String>, modifier: Modifier = Modifier) {
@@ -315,9 +318,16 @@ internal fun RotatingInsight(lines: List<String>, modifier: Modifier = Modifier)
             }
         }
     }
-    Crossfade(targetState = index.coerceIn(lines.indices), animationSpec = tween(350), modifier = modifier, label = "hero-insight") { i ->
-        Text(lines[i.coerceIn(lines.indices)], fontSize = 11.5.sp, color = Color.White.copy(alpha = 0.6f), maxLines = 1)
+    val line = lines[index.coerceIn(lines.indices)]
+    var visibleChars by remember { mutableIntStateOf(0) }
+    LaunchedEffect(line) {
+        visibleChars = 0
+        while (visibleChars < line.length) {
+            delay(TYPEWRITER_MILLIS_PER_CHAR)
+            visibleChars++
+        }
     }
+    Text(line.take(visibleChars), fontSize = 11.5.sp, color = Color.White.copy(alpha = 0.6f), maxLines = 1, modifier = modifier)
 }
 
 @Composable
@@ -350,7 +360,7 @@ private fun ShortcutCard(modifier: Modifier, icon: ImageVector, title: String, s
             contentAlignment = Alignment.Center,
         ) { Icon(icon, null, tint = SyncSpendTheme.colors.ink, modifier = Modifier.size(16.dp)) }
         Column {
-            Text(title, style = MaterialTheme.typography.labelLarge, color = SyncSpendTheme.colors.ink)
+            Text(title, style = MaterialTheme.typography.labelLarge, color = SyncSpendTheme.colors.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(subtitle, fontSize = 10.sp, color = SyncSpendTheme.colors.sub, modifier = Modifier.padding(top = 1.dp))
         }
     }
@@ -380,7 +390,7 @@ private fun RecentRow(row: TxRow, onClick: () -> Unit) {
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(row.amountFormatted, style = MaterialTheme.typography.bodyMedium, color = if (row.isPositive) colors.pos else colors.neg)
-            Text(row.dayLabel, fontSize = 10.5.sp, color = colors.sub, modifier = Modifier.padding(top = 2.dp))
+            Text(row.dayLabel, fontSize = 10.5.sp, color = colors.sub, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }

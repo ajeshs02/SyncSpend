@@ -96,14 +96,20 @@ class SubsRemindersViewModel(
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SubsRemindersUiState())
 
-    /** [remindDaysBefore] are the "N days before" heads-ups (the due day itself always notifies). */
+    /**
+     * [remindDaysBefore] are the "N days before" heads-ups (the due day itself always notifies);
+     * [remindMinuteOfDay] is used for the due-date alert and every one of those heads-ups alike.
+     */
     fun saveSubscription(
         existing: SubscriptionEntity?, name: String, iconKey: String, amount: Double, cycle: BillingCycle, due: LocalDate,
-        remindDaysBefore: Collection<Int>,
+        remindDaysBefore: Collection<Int>, remindMinuteOfDay: Int,
     ) {
         viewModelScope.launch {
             val entity = (existing ?: SubscriptionEntity(name = name, iconKey = iconKey, amount = amount, billingCycle = cycle, nextDueDate = due, categoryId = null, active = true))
-                .copy(name = name, iconKey = iconKey, amount = amount, billingCycle = cycle, nextDueDate = due, remindDaysBefore = RemindOffsets.format(remindDaysBefore))
+                .copy(
+                    name = name, iconKey = iconKey, amount = amount, billingCycle = cycle, nextDueDate = due,
+                    remindDaysBefore = RemindOffsets.format(remindDaysBefore), remindMinuteOfDay = remindMinuteOfDay,
+                )
             val saved = if (existing == null) entity.copy(id = subscriptionRepository.insert(entity)) else entity.also { subscriptionRepository.update(it) }
             alarmScheduler.scheduleSubscription(saved)
         }
@@ -112,7 +118,7 @@ class SubsRemindersViewModel(
     fun setSubscriptionActive(subscription: SubscriptionEntity, active: Boolean) {
         viewModelScope.launch {
             // While paused nothing advanced the due date; when resuming, show the next real one.
-            val due = if (active) AlarmTimes.nextSubscriptionDate(subscription.nextDueDate, subscription.billingCycle) else subscription.nextDueDate
+            val due = if (active) AlarmTimes.nextSubscriptionDate(subscription.nextDueDate, subscription.billingCycle, subscription.remindMinuteOfDay) else subscription.nextDueDate
             val updated = subscription.copy(active = active, nextDueDate = due)
             subscriptionRepository.update(updated)
             alarmScheduler.scheduleSubscription(updated)

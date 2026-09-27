@@ -87,7 +87,7 @@ private fun TxRowCard(row: TxRow, onClick: () -> Unit, modifier: Modifier = Modi
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (row.isPositive) SyncSpendTheme.colors.pos else SyncSpendTheme.colors.neg,
             )
-            Text(row.dayLabel, style = MaterialTheme.typography.labelSmall, color = SyncSpendTheme.colors.sub)
+            Text(row.dayLabel, style = MaterialTheme.typography.labelSmall, color = SyncSpendTheme.colors.sub, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }

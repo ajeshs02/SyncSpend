@@ -128,9 +128,9 @@ fun SettingsScreen() {
     Column(modifier = Modifier.fillMaxSize().padding(top = SyncSpendChrome.screenTopInset)) {
         Text(
             "Settings",
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.headlineSmall.copy(fontSize = 21.sp),
             color = colors.ink,
-            modifier = Modifier.padding(horizontal = 22.dp),
+            modifier = Modifier.padding(horizontal = 22.dp, vertical = 3.dp),
         )
         Column(
             modifier = Modifier

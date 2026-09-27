@@ -76,7 +76,7 @@ fun TimePickerSheet(
         ChipGrid(columns = 6, cells = (1..12).map { h -> GridCell(h.toString(), h == hour) { hour = h } })
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {

@@ -86,7 +86,12 @@ fun SubsRemindersScreen(listMode: String, highlightId: Long?, onBack: () -> Unit
                 background = colors.pill,
                 modifier = Modifier.border(1.dp, colors.line, RoundedCornerShape(13.dp)),
             )
-            Text(if (isSubs) "Subscriptions" else "Reminders", style = MaterialTheme.typography.titleLarge, color = colors.ink, modifier = Modifier.weight(1f))
+            Text(
+                if (isSubs) "Subscriptions & EMIs" else "Reminders",
+                style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
+                color = colors.ink,
+                modifier = Modifier.weight(1f).padding(vertical = 3.dp),
+            )
             HeaderAddButton("Add", onClick = { if (isSubs) showAddSub = true else showAddReminder = true })
         }
 
@@ -114,7 +119,7 @@ fun SubsRemindersScreen(listMode: String, highlightId: Long?, onBack: () -> Unit
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    if (isSubs) "No subscriptions yet" else "No reminders yet",
+                    if (isSubs) "No subscriptions & EMIs yet" else "No reminders yet",
                     style = MaterialTheme.typography.bodyMedium, color = colors.ink,
                 )
                 Text(
@@ -163,10 +168,10 @@ fun SubsRemindersScreen(listMode: String, highlightId: Long?, onBack: () -> Unit
     if (showAddSub) {
         SubscriptionDialog(
             currencySymbol = state.currencySymbol,
-            onSave = { name, icon, amount, cycle, due, remind ->
+            onSave = { name, icon, amount, cycle, due, remind, minute ->
                 showAddSub = false
-                gate(onDenied = { viewModel.saveSubscription(null, name, icon, amount, cycle, due, remind) }) {
-                    viewModel.saveSubscription(null, name, icon, amount, cycle, due, remind)
+                gate(onDenied = { viewModel.saveSubscription(null, name, icon, amount, cycle, due, remind, minute) }) {
+                    viewModel.saveSubscription(null, name, icon, amount, cycle, due, remind, minute)
                 }
             },
             onDismiss = { showAddSub = false },
@@ -176,9 +181,9 @@ fun SubsRemindersScreen(listMode: String, highlightId: Long?, onBack: () -> Unit
         SubscriptionEditSheet(
             initial = sub,
             currencySymbol = state.currencySymbol,
-            onSave = { name, icon, amount, cycle, due, remind ->
-                gate(onDenied = { viewModel.saveSubscription(sub, name, icon, amount, cycle, due, remind) }) {
-                    viewModel.saveSubscription(sub, name, icon, amount, cycle, due, remind)
+            onSave = { name, icon, amount, cycle, due, remind, minute ->
+                gate(onDenied = { viewModel.saveSubscription(sub, name, icon, amount, cycle, due, remind, minute) }) {
+                    viewModel.saveSubscription(sub, name, icon, amount, cycle, due, remind, minute)
                 }
             },
             onDelete = { viewModel.deleteSubscription(sub) },

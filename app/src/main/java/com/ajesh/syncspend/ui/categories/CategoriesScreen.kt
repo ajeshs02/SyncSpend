@@ -68,7 +68,12 @@ fun CategoriesScreen() {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("Categories", style = MaterialTheme.typography.headlineSmall, color = colors.ink)
+            Text(
+                "Categories",
+                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 21.sp),
+                color = colors.ink,
+                modifier = Modifier.padding(vertical = 3.dp),
+            )
             HeaderAddButton("New", onClick = { showAdd = true })
         }
 

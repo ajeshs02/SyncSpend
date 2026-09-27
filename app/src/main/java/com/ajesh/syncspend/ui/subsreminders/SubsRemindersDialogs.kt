@@ -99,6 +99,8 @@ private fun SubscriptionFields(
     due: LocalDate,
     remindDays: Set<Int>,
     onRemindChange: (Set<Int>) -> Unit,
+    remindMinute: Int,
+    onPickTime: () -> Unit,
     /** Outlines the amount and says it is missing (after "Add" was tapped without one). */
     amountError: Boolean = false,
     onPickDue: () -> Unit,
@@ -142,6 +144,8 @@ private fun SubscriptionFields(
         color = SyncSpendTheme.colors.sub,
         modifier = Modifier.padding(top = 7.dp),
     )
+    FieldLabel("Remind me at")
+    PickerTile(SyncSpendIcons.Clock, DateUtils.fmt12(remindMinute), Modifier.fillMaxWidth(), onPickTime)
 }
 
 @Composable
@@ -190,14 +194,16 @@ private fun FutureDatePicker(initial: LocalDate, title: String, onApply: (LocalD
 @Composable
 fun SubscriptionDialog(
     currencySymbol: String,
-    onSave: (name: String, iconKey: String, amount: Double, cycle: BillingCycle, due: LocalDate, remindDaysBefore: Set<Int>) -> Unit,
+    onSave: (name: String, iconKey: String, amount: Double, cycle: BillingCycle, due: LocalDate, remindDaysBefore: Set<Int>, remindMinuteOfDay: Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var amountText by remember { mutableStateOf("") }
     var cycle by remember { mutableStateOf(BillingCycle.MONTHLY) }
     var due by remember { mutableStateOf(LocalDate.now().plusMonths(1)) }
     var remindDays by remember { mutableStateOf(RemindOffsets.DEFAULT.toSet()) }
+    var minute by remember { mutableIntStateOf(9 * 60) }
     var pickingDue by remember { mutableStateOf(false) }
+    var pickingTime by remember { mutableStateOf(false) }
     val amount = amountText.toDoubleOrNull()
 
     NameIconDialog(
@@ -209,18 +215,20 @@ fun SubscriptionDialog(
         iconKind = IconKind.SUBSCRIPTION,
         namePlaceholder = "Netflix, Spotify, Gym…",
         extraValid = amount != null && amount > 0,
-        onConfirm = { name, icon -> onSave(name, icon, amount ?: 0.0, cycle, due, remindDays) },
+        onConfirm = { name, icon -> onSave(name, icon, amount ?: 0.0, cycle, due, remindDays, minute) },
         onDismiss = onDismiss,
     ) { showErrors ->
         SubscriptionFields(
             currencySymbol, amountText, { amountText = it }, cycle, { cycle = it }, due,
             remindDays = remindDays, onRemindChange = { remindDays = it },
+            remindMinute = minute, onPickTime = { pickingTime = true },
             onPickDue = { pickingDue = true },
             amountError = showErrors && !(amount != null && amount > 0),
         )
     }
 
     if (pickingDue) FutureDatePicker(due, "NEXT DUE DATE", { due = it }) { pickingDue = false }
+    if (pickingTime) TimePickerSheet(minute, onApply = { minute = it }, onDismiss = { pickingTime = false })
 }
 
 @Composable
@@ -262,18 +270,20 @@ fun ReminderDialog(
 fun SubscriptionEditSheet(
     initial: SubscriptionEntity,
     currencySymbol: String,
-    onSave: (name: String, iconKey: String, amount: Double, cycle: BillingCycle, due: LocalDate, remindDaysBefore: Set<Int>) -> Unit,
+    onSave: (name: String, iconKey: String, amount: Double, cycle: BillingCycle, due: LocalDate, remindDaysBefore: Set<Int>, remindMinuteOfDay: Int) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var name by remember(initial.id) { mutableStateOf(initial.name) }
     var remindDays by remember(initial.id) { mutableStateOf(RemindOffsets.parse(initial.remindDaysBefore).toSet()) }
+    var minute by remember(initial.id) { mutableIntStateOf(initial.remindMinuteOfDay) }
     var iconKey by remember(initial.id) { mutableStateOf(initial.iconKey) }
     var amountText by remember(initial.id) { mutableStateOf(formatAmount(initial.amount)) }
     var cycle by remember(initial.id) { mutableStateOf(initial.billingCycle) }
     var due by remember(initial.id) { mutableStateOf(initial.nextDueDate) }
     var pickingIcon by remember { mutableStateOf(false) }
     var pickingDue by remember { mutableStateOf(false) }
+    var pickingTime by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     val amount = amountText.toDoubleOrNull()
     val canSave = name.isNotBlank() && amount != null && amount > 0
@@ -291,7 +301,9 @@ fun SubscriptionEditSheet(
         SubscriptionFields(
             currencySymbol, amountText, { amountText = it }, cycle, { cycle = it }, due,
             remindDays = remindDays, onRemindChange = { remindDays = it },
-        ) { pickingDue = true }
+            remindMinute = minute, onPickTime = { pickingTime = true },
+            onPickDue = { pickingDue = true },
+        )
 
         Row(modifier = Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             SheetDeleteButton(onClick = { confirmDelete = true })
@@ -302,7 +314,7 @@ fun SubscriptionEditSheet(
                 radius = 16.dp,
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    onSave(name.trim(), iconKey, amount ?: return@PrimaryButton, cycle, due, remindDays)
+                    onSave(name.trim(), iconKey, amount ?: return@PrimaryButton, cycle, due, remindDays, minute)
                     close()
                 },
             )
@@ -315,6 +327,7 @@ fun SubscriptionEditSheet(
             )
         }
         if (pickingDue) FutureDatePicker(due, "NEXT DUE DATE", { due = it }) { pickingDue = false }
+        if (pickingTime) TimePickerSheet(minute, onApply = { minute = it }, onDismiss = { pickingTime = false })
         if (confirmDelete) {
             ConfirmDialog(
                 title = "Delete subscription?",
