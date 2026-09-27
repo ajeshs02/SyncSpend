@@ -82,7 +82,7 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     }
 
     override val transactionRepository: TransactionRepository by lazy {
-        TransactionRepository(database.transactionDao(), appScope)
+        TransactionRepository(database.transactionDao(), appScope, context)
     }
 
     override val subscriptionRepository: SubscriptionRepository by lazy {

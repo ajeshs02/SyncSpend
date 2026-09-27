@@ -104,8 +104,12 @@ object AnalyticsEngine {
         ScopePeriod.AllTime -> "All time"
     }
 
-    /** The chips offered on the Entries and Categories tabs, for both flows. */
-    fun entryFilterOptions(): List<EntryFilter> = EntryFilter.entries
+    /**
+     * The chips offered on the Entries and Categories tabs. Income skips "This Week" — its chips
+     * are This Month, Last Month, Custom.
+     */
+    fun entryFilterOptions(flow: FlowType): List<EntryFilter> =
+        if (flow == FlowType.INCOME) listOf(EntryFilter.THIS_MONTH, EntryFilter.LAST_MONTH, EntryFilter.CUSTOM) else EntryFilter.entries
 
     /**
      * The dates a filter's header label shows: this week is Monday to today, this month is the 1st to today,

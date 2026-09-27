@@ -126,8 +126,11 @@ private fun SubscriptionFields(
             ) { onCycleChange(c) }
         }
     }
-    FieldLabel("Next due date")
-    PickerTile(SyncSpendIcons.Cal, DateUtils.shortDateYear(due), Modifier.fillMaxWidth(), onPickDue)
+    FieldLabel("Next due date & reminder time")
+    Row(horizontalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.fillMaxWidth()) {
+        PickerTile(SyncSpendIcons.Cal, DateUtils.shortDateYear(due), Modifier.weight(1f), onPickDue)
+        PickerTile(SyncSpendIcons.Clock, DateUtils.fmt12(remindMinute), Modifier.weight(1f), onPickTime)
+    }
     FieldLabel("Remind me before")
     Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
         RemindOffsets.CHOICES.forEach { days ->
@@ -144,8 +147,6 @@ private fun SubscriptionFields(
         color = SyncSpendTheme.colors.sub,
         modifier = Modifier.padding(top = 7.dp),
     )
-    FieldLabel("Remind me at")
-    PickerTile(SyncSpendIcons.Clock, DateUtils.fmt12(remindMinute), Modifier.fillMaxWidth(), onPickTime)
 }
 
 @Composable

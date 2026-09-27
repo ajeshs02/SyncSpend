@@ -62,8 +62,9 @@ class AnalyticsEngineTest {
         assertEquals(2, AnalyticsEngine.applyEntryFilter(later, EntryFilter.THIS_MONTH, null, thursday).size)
     }
 
-    @Test fun onlyFourDateChipsAreOfferedForBothFlows() {
-        assertEquals(listOf("THIS_WEEK", "THIS_MONTH", "LAST_MONTH", "CUSTOM"), AnalyticsEngine.entryFilterOptions().map { it.name })
+    @Test fun expenseGetsAllFourDateChipsIncomeSkipsThisWeek() {
+        assertEquals(listOf("THIS_WEEK", "THIS_MONTH", "LAST_MONTH", "CUSTOM"), AnalyticsEngine.entryFilterOptions(FlowType.EXPENSE).map { it.name })
+        assertEquals(listOf("THIS_MONTH", "LAST_MONTH", "CUSTOM"), AnalyticsEngine.entryFilterOptions(FlowType.INCOME).map { it.name })
     }
 
     @Test fun headerRangesFollowEachChip() {

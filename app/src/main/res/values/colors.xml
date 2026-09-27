@@ -16,8 +16,6 @@
     -->
     <color name="widget_surface">#FFF4F7F1</color>
     <color name="widget_ink">#FF151A12</color>
-    <color name="widget_accent">#FF2F7A45</color>
-    <color name="widget_fab">#FF2F7A45</color>
-    <color name="widget_on_fab">#FFFFFFFF</color>
+    <color name="widget_sub">#FF7D867A</color>
     <color name="widget_ripple">#1F151A12</color>
 </resources>

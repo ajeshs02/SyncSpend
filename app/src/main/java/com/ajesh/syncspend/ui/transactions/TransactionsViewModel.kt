@@ -27,8 +27,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /** One entry in a list (Home's recent list and the Entries tab). */
 data class TxRow(
@@ -131,6 +133,9 @@ internal object TransactionsCompute {
     }
 }
 
+/** Expense's chips include "This Week"; Income's don't (see [AnalyticsEngine.entryFilterOptions]). */
+private fun defaultEntryFilter(flow: FlowType): EntryFilter = if (flow == FlowType.INCOME) EntryFilter.THIS_MONTH else EntryFilter.THIS_WEEK
+
 /**
  * UI-only selections (tab, filter chips, stats range) are plain StateFlows read on the main thread,
  * so a tap moves its pill immediately. Each tab's heavy state is its own flow, computed on
@@ -146,7 +151,7 @@ class TransactionsViewModel(
 ) : ViewModel() {
 
     private val _tab = MutableStateFlow(TransactionsTab.ENTRIES)
-    private val _entryFilter = MutableStateFlow(EntryFilter.THIS_MONTH)
+    private val _entryFilter = MutableStateFlow(defaultEntryFilter(selection.flow.value))
     private val _customRange = MutableStateFlow<DateRange?>(null)
     private val _statsRange = MutableStateFlow(StatsRange.THIS_MONTH)
 
@@ -159,6 +164,12 @@ class TransactionsViewModel(
 
     val earliestDate: StateFlow<LocalDate?> = transactionRepository.getEarliestDate()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    init {
+        // Switching flow can leave a chip selected that flow no longer offers (Income drops "This
+        // Week"), so each flow change resets to that flow's own default rather than just re-clamping.
+        viewModelScope.launch { selection.flow.drop(1).collect { _entryFilter.value = defaultEntryFilter(it) } }
+    }
 
     private val ledger = combine(
         transactionRepository.getAll(),

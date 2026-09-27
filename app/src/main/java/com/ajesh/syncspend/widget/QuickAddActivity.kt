@@ -186,7 +186,7 @@ private fun QuickAddPanel(container: AppContainer, onFinished: () -> Unit, onOpe
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .drawBehind { drawRect(Color(0xFF080E0A), alpha = 0.4f * progress.value) }
+            .drawBehind { drawRect(Color(0xFF080E0A), alpha = 0.28f * progress.value) }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = ::dismiss),
         contentAlignment = Alignment.BottomCenter,
     ) {
