@@ -39,7 +39,7 @@ fun DesignSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier:
                 .size(width = 46.dp, height = 27.dp)
                 .graphicsLayer { alpha = trackOn }
                 .background(
-                    Brush.linearGradient(listOf(Color(0xFF7CC25C), Color(0xFF3F8F4E))),
+                    Brush.linearGradient(listOf(Color(0xFFFFCC00), Color(0xFFE6A700))),
                     RoundedCornerShape(14.dp),
                 ),
         )

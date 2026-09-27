@@ -72,7 +72,7 @@ fun StatsScreen() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "Stats",
-                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 21.sp),
+                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 23.sp),
                 color = colors.ink,
                 modifier = Modifier.padding(vertical = 3.dp),
             )

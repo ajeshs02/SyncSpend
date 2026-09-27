@@ -69,7 +69,12 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
     val viewModel: AddEntryViewModel = viewModel(
         factory = viewModelFactory {
             initializer {
-                AddEntryViewModel(container.transactionRepository, container.categoryRepository, container.preferencesRepository)
+                AddEntryViewModel(
+                    container.transactionRepository,
+                    container.categoryRepository,
+                    container.preferencesRepository,
+                    container.selectionState,
+                )
             }
         },
     )

@@ -70,7 +70,7 @@ fun CategoriesScreen() {
         ) {
             Text(
                 "Categories",
-                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 21.sp),
+                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 23.sp),
                 color = colors.ink,
                 modifier = Modifier.padding(vertical = 3.dp),
             )

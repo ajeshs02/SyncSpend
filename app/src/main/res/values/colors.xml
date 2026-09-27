@@ -7,18 +7,20 @@
   start before Compose's first frame lands.
 -->
 <resources>
-    <color name="window_background">#FFFAFCF9</color>
+    <color name="window_background">#FFFAFAFA</color>
 
     <!--
       Home-screen widget colours. The widget does not paint its own gradient: it
       takes a plain surface that follows the system light/dark setting (and, on
-      Android 12+, the wallpaper-derived Material You palette — see values-v31).
+      Android 12+, the wallpaper-derived Material You neutral — see values-v31).
+      True neutral grays, matching the app's monochrome base; only widget_fab
+      carries the gold accent.
     -->
-    <color name="widget_surface">#FFF4F7F1</color>
-    <color name="widget_ink">#FF151A12</color>
-    <color name="widget_sub">#FF7D867A</color>
+    <color name="widget_surface">#FFF7F7F8</color>
+    <color name="widget_ink">#FF141416</color>
+    <color name="widget_sub">#FF6C7075</color>
     <color name="widget_neg">#FFC0392B</color>
-    <color name="widget_fab">#FF2F7A45</color>
-    <color name="widget_on_fab">#FFFFFFFF</color>
-    <color name="widget_ripple">#1F151A12</color>
+    <color name="widget_fab">#FFFFCC00</color>
+    <color name="widget_on_fab">#FF1A1A1A</color>
+    <color name="widget_ripple">#1F141416</color>
 </resources>

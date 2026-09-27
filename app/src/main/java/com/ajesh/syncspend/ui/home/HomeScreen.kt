@@ -224,17 +224,17 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
             .background(SyncSpendTheme.colors.darkGradient)
             .drawWithCache {
-                // The design's soft green glow tucked into the top-right corner (brush built once per size, not per draw).
+                // A soft gold glow tucked into the top-right corner (brush built once per size, not per draw).
                 val r = 100.dp.toPx()
                 val center = Offset(size.width - 50.dp.toPx(), 30.dp.toPx())
                 val glow = Brush.radialGradient(
-                    colorStops = arrayOf(0f to Color(0x615FBF7D), 0.7f to Color.Transparent),
+                    colorStops = arrayOf(0f to Color(0x61FFCC00), 0.7f to Color.Transparent),
                     center = center,
                     radius = r,
                 )
                 onDrawBehind { drawCircle(brush = glow, radius = r, center = center) }
             }
-            .padding(20.dp),
+            .padding(24.dp),
     ) {
         Column {
             Text(
@@ -257,7 +257,7 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
                     val good = if (state.flow == FlowType.INCOME) state.trendIsUp else !state.trendIsUp
                     Row(
                         modifier = Modifier
-                            .background(if (good) Color(0x335FBF7D) else Color(0x38F08579), RoundedCornerShape(13.dp))
+                            .background(if (good) Color(0x33FFCC00) else Color(0x38F08579), RoundedCornerShape(13.dp))
                             .padding(horizontal = 10.dp, vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -265,10 +265,10 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
                         Icon(
                             if (state.trendIsUp) SyncSpendIcons.Up else SyncSpendIcons.Down,
                             null,
-                            tint = if (good) Color(0xFF9FE0B4) else Color(0xFFFFB3A8),
+                            tint = if (good) Color(0xFFF5D485) else Color(0xFFFFB3A8),
                             modifier = Modifier.size(11.dp),
                         )
-                        Text("${state.trendPercent}%", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (good) Color(0xFF9FE0B4) else Color(0xFFFFB3A8))
+                        Text("${state.trendPercent}%", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (good) Color(0xFFF5D485) else Color(0xFFFFB3A8))
                     }
                     Text(
                         "vs ${state.prevScopeLabel} (${state.currencySymbol}${state.prevTotalFormatted})",
@@ -360,12 +360,12 @@ private fun RecentRow(row: TxRow, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(11.dp),
     ) {
         Box(
-            modifier = Modifier.size(34.dp).background(colors.tile, RoundedCornerShape(11.dp)),
+            modifier = Modifier.size(34.dp).background(colors.tile, SyncSpendCorners.tile),
             contentAlignment = Alignment.Center,
         ) { Icon(SyncSpendIcons.iconFor(row.iconKey), null, tint = colors.ink, modifier = Modifier.size(16.dp)) }
         Column(modifier = Modifier.weight(1f)) {

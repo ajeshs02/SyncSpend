@@ -140,7 +140,14 @@ class QuickAddActivity : ComponentActivity() {
 private fun QuickAddPanel(container: AppContainer, onFinished: () -> Unit, onOpenApp: () -> Unit) {
     val viewModel: AddEntryViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { AddEntryViewModel(container.transactionRepository, container.categoryRepository, container.preferencesRepository) }
+            initializer {
+                AddEntryViewModel(
+                    container.transactionRepository,
+                    container.categoryRepository,
+                    container.preferencesRepository,
+                    container.selectionState,
+                )
+            }
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()

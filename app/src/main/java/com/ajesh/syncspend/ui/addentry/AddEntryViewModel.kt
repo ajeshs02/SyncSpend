@@ -9,6 +9,7 @@ import com.ajesh.syncspend.data.repository.CategoryRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
 import com.ajesh.syncspend.domain.model.EntryNote
 import com.ajesh.syncspend.domain.model.FlowType
+import com.ajesh.syncspend.domain.state.SharedSelectionState
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,9 +34,12 @@ class AddEntryViewModel(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val selection: SharedSelectionState,
 ) : ViewModel() {
 
-    private val type = MutableStateFlow(FlowType.EXPENSE)
+    // Seeded from the shared selection (Home's toggle) rather than a hardcoded default, so Add
+    // Entry opens on whichever flow is currently selected elsewhere.
+    private val type = MutableStateFlow(selection.flow.value)
     private val amountText = MutableStateFlow("0")
     private val date = MutableStateFlow(LocalDate.now())
     private val selectedCategory = MutableStateFlow<CategoryEntity?>(null)
@@ -80,6 +84,7 @@ class AddEntryViewModel(
 
     fun setType(newType: FlowType) {
         type.value = newType
+        selection.flow.value = newType
         selectedCategory.value = null
     }
 

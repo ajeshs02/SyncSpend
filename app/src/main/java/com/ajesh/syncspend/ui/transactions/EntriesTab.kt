@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.ajesh.syncspend.ui.components.DateSeparator
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
+import com.ajesh.syncspend.ui.theme.SyncSpendCorners
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
 @Composable
@@ -59,17 +60,17 @@ private fun TxRowCard(row: TxRow, onClick: () -> Unit, modifier: Modifier = Modi
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(SyncSpendTheme.colors.card, RoundedCornerShape(16.dp))
-            .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(16.dp))
+            .background(SyncSpendTheme.colors.card, SyncSpendCorners.chip)
+            .border(1.dp, SyncSpendTheme.colors.line, SyncSpendCorners.chip)
             .clickable(onClick = onClick)
-            .padding(horizontal = 13.dp, vertical = 11.dp),
+            .padding(horizontal = 14.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(11.dp),
     ) {
         Box(
             modifier = Modifier
                 .size(34.dp)
-                .background(SyncSpendTheme.colors.tile, RoundedCornerShape(11.dp)),
+                .background(SyncSpendTheme.colors.tile, SyncSpendCorners.tile),
             contentAlignment = Alignment.Center,
         ) {
             Icon(SyncSpendIcons.iconFor(row.iconKey), null, tint = SyncSpendTheme.colors.ink, modifier = Modifier.size(16.dp))

@@ -84,7 +84,7 @@ fun TransactionsScreen() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "Transactions",
-                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 21.sp),
+                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 23.sp),
                 color = SyncSpendTheme.colors.ink,
                 modifier = Modifier.padding(vertical = 3.dp),
             )

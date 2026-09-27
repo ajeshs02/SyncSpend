@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 12+: widget colours come from the system's dynamic (Material You) palette. -->
+<!-- Android 12+: neutral surfaces follow the system's dynamic (Material You) neutral role. -->
 <resources>
     <color name="widget_surface">@android:color/system_neutral1_50</color>
     <color name="widget_ink">@android:color/system_neutral1_900</color>
     <color name="widget_sub">@android:color/system_neutral1_600</color>
     <!-- Red (expense) and the FAB accent are fixed brand colours, not wallpaper-tinted. -->
     <color name="widget_neg">#FFC0392B</color>
-    <color name="widget_fab">@android:color/system_accent1_600</color>
-    <color name="widget_on_fab">@android:color/system_accent1_0</color>
+    <color name="widget_fab">#FFFFCC00</color>
+    <color name="widget_on_fab">#FF1A1A1A</color>
 </resources>
