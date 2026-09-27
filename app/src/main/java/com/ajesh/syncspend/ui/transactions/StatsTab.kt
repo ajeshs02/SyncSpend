@@ -70,7 +70,11 @@ fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
                     .background(colors.mintGradient, RoundedCornerShape(22.dp))
                     .padding(17.dp),
             ) {
-                Text(stats.kicker, fontSize = 11.sp, color = colors.msub)
+                // This card's own background is colors.mintGradient, which — unlike chartFill — is a
+                // pale tint in light mode but a genuinely dark tinted panel in dark mode, so its text
+                // uses colors.pos (dark-safe deep green in light, the pale accent itself in dark)
+                // rather than colors.mink (tuned for the bright chartFill fill elsewhere on this screen).
+                Text(stats.kicker, fontSize = 11.sp, color = colors.pos.copy(alpha = 0.7f))
                 Row(
                     modifier = Modifier.padding(top = 9.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -79,12 +83,12 @@ fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
                     Box(
                         modifier = Modifier.size(36.dp).background(Color.White.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center,
-                    ) { Icon(SyncSpendIcons.iconFor(stats.topIconKey), null, tint = colors.mink, modifier = Modifier.size(18.dp)) }
+                    ) { Icon(SyncSpendIcons.iconFor(stats.topIconKey), null, tint = colors.pos, modifier = Modifier.size(18.dp)) }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(stats.topName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colors.mink, maxLines = 1)
-                        Text(stats.topShareLine, fontSize = 11.sp, color = colors.msub, modifier = Modifier.padding(top = 2.dp))
+                        Text(stats.topName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colors.pos, maxLines = 1)
+                        Text(stats.topShareLine, fontSize = 11.sp, color = colors.pos.copy(alpha = 0.7f), modifier = Modifier.padding(top = 2.dp))
                     }
-                    Text(stats.topTotal, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.19).sp, color = colors.mink)
+                    Text(stats.topTotal, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.19).sp, color = colors.pos)
                 }
             }
         }

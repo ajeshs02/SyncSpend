@@ -38,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,7 +59,6 @@ import com.ajesh.syncspend.ui.components.PeriodPickerSheet
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendCorners
-import com.ajesh.syncspend.ui.theme.SyncSpendPalette
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.ui.transactions.TxRow
 import kotlin.random.Random
@@ -217,18 +215,19 @@ fun HomeScreen(
 /**
  * Styled like an actual debit-card face — flat colour, a contactless-style glyph and brand mark up
  * top, the balance where a card's number would sit, and a period/brand row at the bottom in place
- * of a cardholder name and expiry. Green is reserved for this one card; everywhere else in the app
- * uses the blue accent.
+ * of a cardholder name and expiry. It's just another [SyncSpendTheme.colors.cardGradient] consumer
+ * like the rest of the app's highlighted cards (the same pale mint in light / dark tinted panel in
+ * dark), so its text uses the ordinary theme-aware ink/sub/accent tokens rather than a fixed color.
  */
 @Composable
 private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val onGreen = SyncSpendPalette.HeroOnGreen
+    val colors = SyncSpendTheme.colors
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(SyncSpendCorners.hero)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .background(SyncSpendPalette.HeroGreen)
+            .background(colors.cardGradient)
             .padding(24.dp),
     ) {
         Column {
@@ -240,7 +239,7 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
                 Icon(
                     SyncSpendIcons.Wifi,
                     contentDescription = null,
-                    tint = SyncSpendPalette.HeroGreenAccent,
+                    tint = colors.pos,
                     modifier = Modifier.size(20.dp).rotate(90f),
                 )
                 Text(
@@ -248,23 +247,23 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.4.sp,
-                    color = onGreen.copy(alpha = 0.75f),
+                    color = colors.ink.copy(alpha = 0.75f),
                 )
             }
             Text(
                 if (state.flow == FlowType.INCOME) "Total Income" else "Total Spending",
                 fontSize = 12.5.sp,
-                color = onGreen.copy(alpha = 0.66f),
+                color = colors.sub,
                 modifier = Modifier.padding(top = 18.dp),
             )
             Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(state.currencySymbol, fontSize = 23.sp, fontWeight = FontWeight.Normal, color = onGreen)
+                Text(state.currencySymbol, fontSize = 23.sp, fontWeight = FontWeight.Normal, color = colors.ink)
                 Text(
                     state.totalFormatted,
                     fontSize = 34.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = (-0.68).sp,
-                    color = onGreen,
+                    color = colors.ink,
                 )
             }
             Row(modifier = Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -272,7 +271,7 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
                     val good = if (state.flow == FlowType.INCOME) state.trendIsUp else !state.trendIsUp
                     Row(
                         modifier = Modifier
-                            .background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(13.dp))
+                            .background(colors.dim, RoundedCornerShape(13.dp))
                             .padding(horizontal = 10.dp, vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -280,24 +279,24 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
                         Icon(
                             if (state.trendIsUp) SyncSpendIcons.Up else SyncSpendIcons.Down,
                             null,
-                            tint = if (good) SyncSpendPalette.HeroGreenAccent else Color(0xFFFFB3A8),
+                            tint = if (good) colors.pos else colors.neg,
                             modifier = Modifier.size(11.dp),
                         )
-                        Text("${state.trendPercent}%", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (good) SyncSpendPalette.HeroGreenAccent else Color(0xFFFFB3A8))
+                        Text("${state.trendPercent}%", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (good) colors.pos else colors.neg)
                     }
                     Text(
                         "vs ${state.prevScopeLabel} (${state.currencySymbol}${state.prevTotalFormatted})",
                         fontSize = 11.5.sp,
-                        color = onGreen.copy(alpha = 0.6f),
+                        color = colors.sub,
                     )
                 } else {
                     Text(
                         state.entryCountLabel,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = onGreen.copy(alpha = 0.82f),
+                        color = colors.ink.copy(alpha = 0.82f),
                         modifier = Modifier
-                            .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(13.dp))
+                            .background(colors.dim, RoundedCornerShape(13.dp))
                             .padding(horizontal = 10.dp, vertical = 5.dp),
                     )
                     RotatingInsight(state.insights, modifier = Modifier.weight(1f))
@@ -313,7 +312,7 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.3.sp,
-                    color = onGreen.copy(alpha = 0.7f),
+                    color = colors.sub,
                 )
                 AppLogo(size = 18.dp, radius = 6.dp)
             }
@@ -342,7 +341,7 @@ internal fun RotatingInsight(lines: List<String>, modifier: Modifier = Modifier)
         }
     }
     Crossfade(targetState = index.coerceIn(lines.indices), animationSpec = tween(1200), modifier = modifier, label = "hero-insight") { i ->
-        Text(lines[i.coerceIn(lines.indices)], fontSize = 11.5.sp, color = Color.White.copy(alpha = 0.6f), maxLines = 1)
+        Text(lines[i.coerceIn(lines.indices)], fontSize = 11.5.sp, color = SyncSpendTheme.colors.sub, maxLines = 1)
     }
 }
 

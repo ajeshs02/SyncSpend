@@ -7,7 +7,7 @@
     <color name="widget_ink">#FFF1F1F2</color>
     <color name="widget_sub">#FF93989E</color>
     <color name="widget_neg">#FFF08579</color>
-    <color name="widget_fab">#FF0A84FF</color>
+    <color name="widget_fab">#FF4CAF7D</color>
     <color name="widget_on_fab">#FF1A1A1A</color>
     <color name="widget_ripple">#33FFFFFF</color>
 </resources>

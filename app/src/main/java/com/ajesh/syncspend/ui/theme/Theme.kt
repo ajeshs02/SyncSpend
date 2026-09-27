@@ -50,7 +50,7 @@ data class SyncSpendColors(
     val onButton: Color,
     /** Expense arrow tint when sitting on the selected (inverted) indicator. */
     val expenseOnSelected: Color,
-    /** [SyncSpendPalette.BrandBlue]: for the nav's selected icon and Income arrow icons only, never a fill. */
+    /** [SyncSpendPalette.BrandGreen]: for the nav's selected icon and Income arrow icons only, never a fill. */
     val brand: Color,
     val isDark: Boolean,
 )
@@ -87,7 +87,7 @@ private val LightColors = SyncSpendColors(
     // both themes too (previously this flipped between a lighter/darker red to match a near-black
     // vs near-white selected background — that inversion no longer applies).
     expenseOnSelected = Color(0xFFC0392B),
-    brand = SyncSpendPalette.BrandBlue,
+    brand = SyncSpendPalette.BrandGreen,
     isDark = false,
 )
 
@@ -120,7 +120,7 @@ private val DarkColors = SyncSpendColors(
     button = SyncSpendPalette.DarkButton,
     onButton = SyncSpendPalette.DarkOnButton,
     expenseOnSelected = Color(0xFFC0392B),
-    brand = SyncSpendPalette.BrandBlue,
+    brand = SyncSpendPalette.BrandGreen,
     isDark = true,
 )
 
