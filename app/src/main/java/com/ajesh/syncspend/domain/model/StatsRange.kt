@@ -39,7 +39,7 @@ enum class StatsRange(val label: String, private val months: Int) {
         )
     }
 
-    /** "September 2026", "Jul – Sep 2026", "2026" or "All time". */
+    /** "September 2026", "Jul - Sep 2026", "2026" or "All time". */
     fun describe(range: DateRange): String {
         fun short(m: YearMonth) = m.month.getDisplayName(TextStyle.SHORT, Locale.US)
         val first = YearMonth.from(range.start)
@@ -47,8 +47,8 @@ enum class StatsRange(val label: String, private val months: Int) {
         return when (this) {
             THIS_MONTH, LAST_MONTH -> "${first.month.getDisplayName(TextStyle.FULL, Locale.US)} ${first.year}"
             LAST_3_MONTHS, LAST_6_MONTHS ->
-                if (first.year == last.year) "${short(first)} – ${short(last)} ${last.year}"
-                else "${short(first)} ${first.year} – ${short(last)} ${last.year}"
+                if (first.year == last.year) "${short(first)} - ${short(last)} ${last.year}"
+                else "${short(first)} ${first.year} - ${short(last)} ${last.year}"
             THIS_YEAR -> first.year.toString()
             ALL_TIME -> "All time"
         }

@@ -109,5 +109,5 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
 /** Provided once at [com.ajesh.syncspend.MainActivity]'s root. */
 val LocalAppContainer = staticCompositionLocalOf<AppContainer> {
-    error("LocalAppContainer not provided — did you forget CompositionLocalProvider at the root?")
+    error("LocalAppContainer not provided. Did you forget CompositionLocalProvider at the root?")
 }

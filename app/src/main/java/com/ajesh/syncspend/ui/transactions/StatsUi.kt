@@ -75,7 +75,7 @@ fun buildStatsUi(
 ): StatsUi {
     val income = s.flow == FlowType.INCOME
     val label = kind.describe(s.range)
-    val prevLabel = s.previousRange?.let { kind.describe(it) } ?: "—"
+    val prevLabel = s.previousRange?.let { kind.describe(it) } ?: "-"
     fun money(v: Double) = cur + CurrencyFormatter.amount(v)
 
     val top = s.topCategory
@@ -110,7 +110,7 @@ fun buildStatsUi(
         add(
             StatTileUi(
                 if (income) "Biggest income day" else "Busiest day",
-                busiest?.let { DateUtils.shortDate(it.date) } ?: "—",
+                busiest?.let { DateUtils.shortDate(it.date) } ?: "-",
                 busiest?.let { money(it.total) + " in ${it.entryCount} ${if (it.entryCount == 1) "entry" else "entries"}" } ?: "Nothing logged yet",
                 StatTone.NEUTRAL,
             ),
@@ -124,7 +124,7 @@ fun buildStatsUi(
     val findings = buildList {
         add(
             if (top == null) "Nothing logged in this period yet."
-            else "${top.name} takes $topShare% of your ${if (income) "income" else "spending"} — ${top.count} entries totalling ${money(top.totalAbs)}.",
+            else "${top.name} takes $topShare% of your ${if (income) "income" else "spending"}: ${top.count} entries totalling ${money(top.totalAbs)}.",
         )
         add(
             s.biggestEntry?.let { "Largest single entry was ${it.description} at ${money(it.amount)} on ${DateUtils.shortDate(it.date)}." }
@@ -170,7 +170,7 @@ fun buildStatsUi(
         )
     }
     val weekdayCaption = peak?.let {
-        "You ${if (income) "earn" else "spend"} the most on ${it.day.getDisplayName(TextStyle.FULL, Locale.US)}s — about ${money(it.average)} each."
+        "You ${if (income) "earn" else "spend"} the most on ${it.day.getDisplayName(TextStyle.FULL, Locale.US)}s, about ${money(it.average)} each."
     } ?: ""
 
     val categoryNames = s.categories.associate { it.categoryId to it.name }
@@ -205,7 +205,7 @@ fun buildStatsUi(
     return StatsUi(
         range = kind,
         kicker = (if (income) "Top income source · " else "Top spending category · ") + label,
-        topName = top?.name ?: "—",
+        topName = top?.name ?: "-",
         topIconKey = top?.iconKey ?: "receipt",
         topShareLine = "$topShare% of $label",
         topTotal = money(top?.totalAbs ?: 0.0),

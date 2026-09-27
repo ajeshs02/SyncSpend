@@ -120,7 +120,7 @@ fun CategoriesScreen() {
     if (showAdd) {
         NameIconDialog(
             title = "New category",
-            body = "Name it and pick an icon — it will be added to the $flowWord list.",
+            body = "Name it and pick an icon. It will be added to the $flowWord list.",
             cta = "Create",
             initialName = "",
             initialIconKey = null,

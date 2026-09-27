@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.di.LocalAppContainer
+import com.ajesh.syncspend.domain.model.EntryNote
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.ui.components.ConfirmDialog
 import com.ajesh.syncspend.ui.components.DatePickerSheet
@@ -50,6 +51,7 @@ import com.ajesh.syncspend.ui.components.SheetDeleteButton
 import com.ajesh.syncspend.ui.components.SheetHeader
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
+import com.ajesh.syncspend.util.CurrencyFormatter
 import com.ajesh.syncspend.util.DateUtils
 import java.time.LocalDate
 import kotlin.math.abs
@@ -85,7 +87,7 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
     val loaded = tx
     if (loaded == null) return
 
-    var description by remember(loaded.id) { mutableStateOf(loaded.description) }
+    var note by remember(loaded.id) { mutableStateOf(loaded.description) }
     var amountText by remember(loaded.id) { mutableStateOf(trimAmount(abs(loaded.amount))) }
     var date by remember(loaded.id) { mutableStateOf(loaded.date) }
     val originalType = if (loaded.amount > 0) FlowType.INCOME else FlowType.EXPENSE
@@ -112,8 +114,8 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
                     categoryId = if (newType == originalType) loaded.categoryId else null
                 }
             },
-            description = description,
-            onDescriptionChange = { description = it },
+            note = note,
+            onNoteChange = { if (EntryNote.accepts(note, it)) note = it },
             amountText = amountText,
             onAmountChange = { amountText = it },
             currencySymbol = prefs.currencyCode.symbol,
@@ -125,14 +127,15 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
             onSave = {
                 val v = parsedAmount ?: return@EditEntryBody
                 val chosen = categoryId ?: return@EditEntryBody
-                val category = categories.find { it.id == chosen }
                 scope.launch {
                     container.transactionRepository.update(
                         loaded.copy(
-                            description = description.trim().ifEmpty { category?.name ?: loaded.description },
+                            description = EntryNote.normalize(note),
                             amount = if (isIncome) v else -v,
                             date = date,
                             categoryId = chosen,
+                            // The time was of the original day: it no longer applies once the entry moves to another day.
+                            timeMinuteOfDay = if (date == loaded.date) loaded.timeMinuteOfDay else null,
                         ),
                     )
                     close()
@@ -162,7 +165,8 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
         if (showDelete) {
             ConfirmDialog(
                 title = "Delete this entry?",
-                body = "Removing “${loaded.description}” cannot be undone.",
+                body = "Removing this ${prefs.currencyCode.symbol}${CurrencyFormatter.amount(loaded.amount)} " +
+                    "${categories.find { it.id == loaded.categoryId }?.name ?: "entry"} entry cannot be undone.",
                 cta = "Delete",
                 onDismiss = { showDelete = false },
                 onConfirm = {
@@ -190,8 +194,8 @@ private val amountPattern = Regex("""\d*""")
 internal fun EditEntryBody(
     type: FlowType,
     onTypeChange: (FlowType) -> Unit,
-    description: String,
-    onDescriptionChange: (String) -> Unit,
+    note: String,
+    onNoteChange: (String) -> Unit,
     amountText: String,
     onAmountChange: (String) -> Unit,
     currencySymbol: String,
@@ -212,8 +216,8 @@ internal fun EditEntryBody(
 
         FlowToggle(type = type, onSelect = onTypeChange, modifier = Modifier.padding(top = 14.dp))
 
-        FieldLabel("Description", top = 12.dp)
-        DesignTextField(value = description, onValueChange = onDescriptionChange, placeholder = "Description")
+        FieldLabel("Note (optional)", top = 12.dp)
+        DesignTextField(value = note, onValueChange = onNoteChange, placeholder = "Add a note")
 
         Row(modifier = Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             Column(modifier = Modifier.weight(1f)) {

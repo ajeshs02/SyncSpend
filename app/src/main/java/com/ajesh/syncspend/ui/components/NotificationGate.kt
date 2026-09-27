@@ -30,7 +30,7 @@ fun rememberNotificationGate(): NotificationGate {
         pendingGranted = null
         pendingDenied = null
         if (granted) ok?.invoke() else {
-            Toast.makeText(context, "Notifications are blocked — allow them in system settings to get reminders.", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "Notifications are blocked. Allow them in system settings to get reminders.", Toast.LENGTH_LONG).show()
             no?.invoke()
         }
     }

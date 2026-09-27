@@ -40,7 +40,7 @@ class SheetBodiesScreenshotTest {
     @androidx.compose.runtime.Composable
     private fun EditBody(type: FlowType, category: CategoryEntity?, modifier: Modifier = Modifier) = EditEntryBody(
         type = type, onTypeChange = {},
-        description = "Coffee & Snacks", onDescriptionChange = {},
+        note = "Coffee & Snacks", onNoteChange = {},
         amountText = "250", onAmountChange = {}, currencySymbol = "₹",
         dateLabel = "27 Sep 2026", onDateClick = {},
         category = category, onCategoryClick = {},

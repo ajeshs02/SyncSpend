@@ -183,7 +183,7 @@ fun HomeScreen(
 
         if (state.recentGroups.isEmpty()) {
             Text(
-                "No transactions yet — tap the + button to add your first one.",
+                "No transactions yet. Tap the + button to add your first one.",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.sub,
                 modifier = Modifier.padding(horizontal = 22.dp, vertical = 18.dp),
@@ -341,8 +341,11 @@ private fun RecentRow(row: TxRow, onClick: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) { Icon(SyncSpendIcons.iconFor(row.iconKey), null, tint = colors.ink, modifier = Modifier.size(16.dp)) }
         Column(modifier = Modifier.weight(1f)) {
-            Text(row.name, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1)
-            Text(row.categoryLabel, fontSize = 11.sp, color = colors.sub, modifier = Modifier.padding(top = 2.dp), maxLines = 1)
+            Text(row.categoryLabel, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1)
+            // The optional note wraps (the input length cap keeps it to about two lines); never cut off.
+            if (row.note.isNotEmpty()) {
+                Text(row.note, fontSize = 11.sp, color = colors.sub, modifier = Modifier.padding(top = 2.dp))
+            }
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(row.amountFormatted, style = MaterialTheme.typography.bodyMedium, color = if (row.isPositive) colors.pos else colors.neg)

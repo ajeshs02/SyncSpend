@@ -124,7 +124,7 @@ class AnalyticsEngineTest {
         val all = StatsRange.ALL_TIME.resolve(today, LocalDate.of(2025, 3, 3))
         assertEquals(DateRange(LocalDate.of(2025, 3, 3), today), all)
         assertNull(StatsRange.ALL_TIME.previous(all))
-        assertEquals("Jul – Sep 2026", StatsRange.LAST_3_MONTHS.describe(three))
+        assertEquals("Jul - Sep 2026", StatsRange.LAST_3_MONTHS.describe(three))
         assertEquals("September 2026", StatsRange.THIS_MONTH.describe(thisMonth))
     }
 

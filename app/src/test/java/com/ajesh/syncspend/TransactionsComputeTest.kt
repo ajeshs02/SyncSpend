@@ -38,7 +38,7 @@ class TransactionsComputeTest {
     @Test fun entriesAreFilteredByFlowAndRangeAndGroupedByDay() {
         val out = TransactionsCompute.entries(ledger, FlowType.EXPENSE, EntryFilter.THIS_MONTH, null, today)
         assertEquals(listOf("Today", "Yesterday"), out.groups.map { it.label })
-        assertEquals(listOf("Groceries", "Coffee"), out.groups[0].items.map { it.name }) // newest first within a day
+        assertEquals(listOf("Groceries", "Coffee"), out.groups[0].items.map { it.note }) // newest first within a day
         assertEquals("₹1,491", out.groups[0].totalFormatted)
         // "Old" is outside this month and income is a different flow.
         assertEquals(3, out.groups.sumOf { it.items.size })

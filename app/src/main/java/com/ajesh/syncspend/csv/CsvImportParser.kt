@@ -81,7 +81,7 @@ object CsvImportParser {
             val found = table.first().joinToString(", ") { it.trim() }.ifBlank { "none" }
             return ParseOutcome(
                 emptyList(), 0, emptyList(),
-                headerError = "This doesn't look like an expense CSV — missing column: ${missing.joinToString(", ")}. Found: $found.",
+                headerError = "This doesn't look like an expense CSV (missing column: ${missing.joinToString(", ")}). Found: $found.",
             )
         }
 

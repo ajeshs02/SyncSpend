@@ -36,8 +36,8 @@ class ScopePeriodTest {
 
     @Test fun labelsNameTheWindowWhileCurrentAndItsSpanOtherwise() {
         assertEquals("Last 3 months", AnalyticsEngine.scopeLabel(ScopePeriod.LastMonths(3, sep), now = sep))
-        assertEquals("Apr – Jun 2026", AnalyticsEngine.scopeLabel(ScopePeriod.LastMonths(3, YearMonth.of(2026, 6)), now = sep))
-        assertEquals("Sep 2025 – Feb 2026", AnalyticsEngine.scopeLabel(ScopePeriod.LastMonths(6, YearMonth.of(2026, 2)), now = sep))
+        assertEquals("Apr - Jun 2026", AnalyticsEngine.scopeLabel(ScopePeriod.LastMonths(3, YearMonth.of(2026, 6)), now = sep))
+        assertEquals("Sep 2025 - Feb 2026", AnalyticsEngine.scopeLabel(ScopePeriod.LastMonths(6, YearMonth.of(2026, 2)), now = sep))
         assertEquals("September 2026", AnalyticsEngine.scopeLabel(ScopePeriod.Month(sep), now = sep))
         assertEquals("2026", AnalyticsEngine.scopeLabel(ScopePeriod.Year(2026), now = sep))
     }

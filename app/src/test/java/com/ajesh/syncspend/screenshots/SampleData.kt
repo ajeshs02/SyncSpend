@@ -19,20 +19,21 @@ fun sampleContainer(): DefaultAppContainer {
         val salary = container.categoryRepository.createNext("Salary", "bank", FlowType.INCOME)
         val today = LocalDate.now()
         var order = 0L
-        suspend fun add(amount: Double, desc: String, cat: Long, daysAgo: Long) = container.transactionRepository.insert(
-            TransactionEntity(amount = amount, description = desc, categoryId = cat, date = today.minusDays(daysAgo), createdAt = order++),
+        // [note] is the entry's optional note (blank = none); [time] is its minute-of-day when known.
+        suspend fun add(amount: Double, note: String, cat: Long, daysAgo: Long, time: Int? = null) = container.transactionRepository.insert(
+            TransactionEntity(amount = amount, description = note, categoryId = cat, date = today.minusDays(daysAgo), createdAt = order++, timeMinuteOfDay = time),
         )
-        add(-250.0, "Coffee & Snacks", food.id, 0)
-        add(-1241.0, "Big Basket", groceries.id, 0)
-        add(-2100.0, "Petrol", fuel.id, 1)
-        add(-399.0, "Netflix", bills.id, 1)
-        add(-180.0, "Lunch", food.id, 3)
-        add(-3600.0, "Weekly groceries", groceries.id, 5)
+        add(-250.0, "Coffee and snacks with Rohan", food.id, 0, 9 * 60 + 12)
+        add(-1241.0, "", groceries.id, 0, 18 * 60 + 40)
+        add(-2100.0, "", fuel.id, 1)
+        add(-399.0, "Monthly plan", bills.id, 1, 7 * 60 + 5)
+        add(-180.0, "Team lunch at the new place near office", food.id, 3)
+        add(-3600.0, "", groceries.id, 5)
         add(-450.0, "Dinner out", food.id, 9)
-        add(-1500.0, "Electricity", bills.id, 12)
-        add(-980.0, "Petrol", fuel.id, 20)
-        add(-320.0, "Coffee", food.id, 33)
-        add(85000.0, "Salary", salary.id, 26)
+        add(-1500.0, "", bills.id, 12)
+        add(-980.0, "", fuel.id, 20)
+        add(-320.0, "", food.id, 33)
+        add(85000.0, "", salary.id, 26)
     }
     return container
 }

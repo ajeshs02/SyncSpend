@@ -291,7 +291,7 @@ private fun QuickAddPanel(container: AppContainer, onFinished: () -> Unit, onOpe
                                 viewModel.openCategoryPicker()
                             }
                             (state.amountText.toDoubleOrNull() ?: 0.0) == 0.0 -> hint = "Enter an amount."
-                            else -> viewModel.save {
+                            else -> viewModel.save(note = "") {
                                 saved = true
                                 scope.launch {
                                     delay(420)

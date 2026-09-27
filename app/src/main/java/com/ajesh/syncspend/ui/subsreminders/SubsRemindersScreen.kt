@@ -118,7 +118,7 @@ fun SubsRemindersScreen(listMode: String, onBack: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium, color = colors.ink,
                 )
                 Text(
-                    "Tap Add to create one — you'll get a real notification when it's due.",
+                    "Tap Add to create one. You'll get a real notification when it's due.",
                     style = MaterialTheme.typography.bodySmall, color = colors.sub,
                     modifier = Modifier.padding(top = 4.dp),
                 )

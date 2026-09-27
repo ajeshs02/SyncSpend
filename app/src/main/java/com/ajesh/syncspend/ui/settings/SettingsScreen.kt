@@ -153,7 +153,7 @@ fun SettingsScreen() {
                 )
                 Text(
                     if (prefs.themeMode == ThemeMode.SYSTEM) {
-                        "Following your device setting — currently ${if (colors.isDark) "dark" else "light"}"
+                        "Following your device setting, currently ${if (colors.isDark) "dark" else "light"}"
                     } else "Set manually",
                     fontSize = 10.sp,
                     color = colors.sub,

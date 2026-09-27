@@ -75,8 +75,11 @@ private fun TxRowCard(row: TxRow, onClick: () -> Unit, modifier: Modifier = Modi
             Icon(SyncSpendIcons.iconFor(row.iconKey), null, tint = SyncSpendTheme.colors.ink, modifier = Modifier.size(16.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(row.name, style = MaterialTheme.typography.bodyMedium, color = SyncSpendTheme.colors.ink)
-            Text(row.categoryLabel, style = MaterialTheme.typography.bodySmall, color = SyncSpendTheme.colors.sub)
+            Text(row.categoryLabel, style = MaterialTheme.typography.bodyMedium, color = SyncSpendTheme.colors.ink)
+            // The optional note wraps (the input length cap keeps it to about two lines); never cut off.
+            if (row.note.isNotEmpty()) {
+                Text(row.note, style = MaterialTheme.typography.bodySmall, color = SyncSpendTheme.colors.sub)
+            }
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(

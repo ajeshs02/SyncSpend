@@ -45,7 +45,7 @@ object TipsEngine {
                 ),
             )
         } else if (trend != null && trend <= -10) {
-            add(Tip(TipTone.GOOD, "Spending is down ${abs(trend)}%", "${money(s.previousTotal - s.total)} less than the previous period — keep it up."))
+            add(Tip(TipTone.GOOD, "Spending is down ${abs(trend)}%", "${money(s.previousTotal - s.total)} less than the previous period. Keep it up."))
         }
 
         val top = s.topCategory
@@ -68,7 +68,7 @@ object TipsEngine {
                     val gap = income * 0.2 - (income - s.total)
                     add(Tip(TipTone.WATCH, "You kept only $rate% of your income", "A common rule of thumb is to save about 20%. Cutting ${money(gap)} would get you there."))
                 }
-                rate >= 30 -> add(Tip(TipTone.GOOD, "You kept $rate% of your income", "That's a strong savings rate — consider moving some of it somewhere it can grow."))
+                rate >= 30 -> add(Tip(TipTone.GOOD, "You kept $rate% of your income", "That's a strong savings rate. Consider moving some of it somewhere it can grow."))
             }
         }
 
@@ -89,18 +89,18 @@ object TipsEngine {
         val weekend = s.weekday.filter { it.day == DayOfWeek.SATURDAY || it.day == DayOfWeek.SUNDAY }.sumOf { it.total }
         val weekendShare = if (s.total > 0) (weekend / s.total * 100).roundToInt() else 0
         if (s.entryCount >= 6 && weekendShare >= 45) {
-            add(Tip(TipTone.INFO, "Weekends drive $weekendShare% of spending", "Two days a week take nearly half — a rough plan for Saturday and Sunday goes a long way."))
+            add(Tip(TipTone.INFO, "Weekends drive $weekendShare% of spending", "Two days a week take nearly half. A rough plan for Saturday and Sunday goes a long way."))
         }
 
         val months = (ChronoUnit.DAYS.between(s.range.start, s.range.end) + 1) / 30.4
         val monthlySpend = if (months > 0) s.total / months.coerceAtLeast(1.0) else s.total
         if (subsMonthly > 0 && monthlySpend > 0 && subsMonthly / monthlySpend >= 0.15) {
-            add(Tip(TipTone.INFO, "Subscriptions are ${(subsMonthly / monthlySpend * 100).roundToInt()}% of monthly spend", "${money(subsMonthly)} a month — worth a look for anything you rarely use."))
+            add(Tip(TipTone.INFO, "Subscriptions are ${(subsMonthly / monthlySpend * 100).roundToInt()}% of monthly spend", "${money(subsMonthly)} a month. Worth a look for anything you rarely use."))
         }
 
         s.smallPurchases?.let { sp ->
             if (sp.sharePercent >= 15) {
-                add(Tip(TipTone.INFO, "Small purchases add up", "${sp.count} entries under ${money(sp.threshold)} each total ${money(sp.total)} — ${sp.sharePercent}% of spending."))
+                add(Tip(TipTone.INFO, "Small purchases add up", "${sp.count} entries under ${money(sp.threshold)} each total ${money(sp.total)}, which is ${sp.sharePercent}% of spending."))
             }
         }
 
@@ -122,11 +122,11 @@ object TipsEngine {
         if (trend != null && trend >= 10) {
             add(Tip(TipTone.GOOD, "Income is up $trend%", "${money(s.total - s.previousTotal)} more than the previous period."))
         } else if (trend != null && trend <= -15) {
-            add(Tip(TipTone.WATCH, "Income is down ${abs(trend)}%", "${money(s.previousTotal - s.total)} less than the previous period — worth checking what changed."))
+            add(Tip(TipTone.WATCH, "Income is down ${abs(trend)}%", "${money(s.previousTotal - s.total)} less than the previous period. Worth checking what changed."))
         }
         val top = s.topCategory
         if (top != null && top.sharePercent >= 80 && s.categories.size >= 1) {
-            add(Tip(TipTone.INFO, "${top.name} is ${top.sharePercent}% of income", "Relying on one source is risky — even a small second stream adds a cushion."))
+            add(Tip(TipTone.INFO, "${top.name} is ${top.sharePercent}% of income", "Relying on one source is risky. Even a small second stream adds a cushion."))
         }
         if (s.categories.size >= 3) {
             add(Tip(TipTone.GOOD, "${s.categories.size} income sources", "A spread of sources makes your income steadier."))

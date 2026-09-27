@@ -19,6 +19,7 @@ import com.ajesh.syncspend.domain.model.StatsRange
 import com.ajesh.syncspend.domain.model.TransactionsTab
 import com.ajesh.syncspend.domain.state.SharedSelectionState
 import com.ajesh.syncspend.util.CurrencyFormatter
+import com.ajesh.syncspend.util.DateUtils
 import java.time.LocalDate
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
@@ -29,15 +30,33 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 
+/** One entry in a list (Home's recent list and the Entries tab). */
 data class TxRow(
     val id: Long,
-    val name: String,
+    /** The category's current name: the row's main text. */
     val categoryLabel: String,
+    /** The entry's optional note (blank when there is none), wrapped under the category. */
+    val note: String,
     val amountFormatted: String,
     val isPositive: Boolean,
+    /** "27 Sep", or "27 Sep - 14:35" when the entry's time is known. */
     val dayLabel: String,
     val iconKey: String,
 )
+
+/** The row shown for this entry; [categoriesById] resolves the live category name and icon. */
+internal fun TransactionEntity.toTxRow(categoriesById: Map<Long, CategoryEntity>, currencySymbol: String): TxRow {
+    val category = categoriesById[categoryId]
+    return TxRow(
+        id = id,
+        categoryLabel = category?.name ?: "Deleted category",
+        note = description,
+        amountFormatted = currencySymbol + CurrencyFormatter.amount(amount),
+        isPositive = amount > 0,
+        dayLabel = DateUtils.entryDayLabel(date, timeMinuteOfDay),
+        iconKey = category?.iconKey ?: "receipt",
+    )
+}
 
 data class DayGroupUi(val label: String, val totalFormatted: String, val items: List<TxRow>)
 
@@ -77,7 +96,7 @@ internal object TransactionsCompute {
                 DayGroupUi(
                     label = g.label,
                     totalFormatted = cur + CurrencyFormatter.amount(g.totalAbs),
-                    items = g.items.map { it.toRow(categoriesById, cur) },
+                    items = g.items.map { it.toTxRow(categoriesById, cur) },
                 )
             },
         )
@@ -110,19 +129,6 @@ internal object TransactionsCompute {
     private fun filtered(ledger: Ledger, flow: FlowType, entryFilter: EntryFilter, customRange: DateRange?, today: LocalDate): List<TransactionEntity> {
         val effective = AnalyticsEngine.effectiveEntryFilter(entryFilter, flow)
         return AnalyticsEngine.applyEntryFilter(AnalyticsEngine.flowFilter(ledger.tx, flow), effective, customRange, today)
-    }
-
-    private fun TransactionEntity.toRow(categoriesById: Map<Long, CategoryEntity>, cur: String): TxRow {
-        val category = categoriesById[categoryId]
-        return TxRow(
-            id = id,
-            name = description,
-            categoryLabel = category?.name ?: "Deleted category",
-            amountFormatted = cur + CurrencyFormatter.amount(amount),
-            isPositive = amount > 0,
-            dayLabel = "${date.dayOfMonth} ${date.month.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.US)}",
-            iconKey = category?.iconKey ?: "receipt",
-        )
     }
 }
 

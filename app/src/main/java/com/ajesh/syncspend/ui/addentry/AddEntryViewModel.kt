@@ -7,8 +7,10 @@ import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.data.repository.CategoryRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
+import com.ajesh.syncspend.domain.model.EntryNote
 import com.ajesh.syncspend.domain.model.FlowType
 import java.time.LocalDate
+import java.time.LocalDateTime
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -111,8 +113,11 @@ class AddEntryViewModel(
         selectedCategory.value = null
     }
 
-    /** Mirrors the design's saveDraft: no category → open the picker; zero amount → just leave without saving. */
-    fun save(onDone: () -> Unit) {
+    /**
+     * Mirrors the design's saveDraft: no category → open the picker; zero amount → just leave without saving.
+     * [note] is the optional note typed on the screen (held there, so typing never waits on this ViewModel).
+     */
+    fun save(note: String, onDone: () -> Unit) {
         val category = selectedCategory.value
         if (category == null) {
             categoryPickerOpen.value = true
@@ -124,13 +129,16 @@ class AddEntryViewModel(
             return
         }
         viewModelScope.launch {
+            // The time is only known when the entry is for today: a back-dated entry was not made "now".
+            val now = LocalDateTime.now()
             transactionRepository.insert(
                 TransactionEntity(
                     amount = if (type.value == FlowType.INCOME) amount else -amount,
-                    description = category.name,
+                    description = EntryNote.normalize(note),
                     categoryId = category.id,
                     date = date.value,
                     createdAt = System.currentTimeMillis(),
+                    timeMinuteOfDay = if (date.value == now.toLocalDate()) now.hour * 60 + now.minute else null,
                 ),
             )
             amountText.value = "0"

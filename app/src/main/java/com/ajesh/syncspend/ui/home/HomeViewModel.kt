@@ -17,7 +17,7 @@ import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.state.SharedSelectionState
 import com.ajesh.syncspend.ui.transactions.DayGroupUi
-import com.ajesh.syncspend.ui.transactions.TxRow
+import com.ajesh.syncspend.ui.transactions.toTxRow
 import com.ajesh.syncspend.util.CurrencyFormatter
 import com.ajesh.syncspend.util.DateUtils
 import kotlinx.coroutines.Dispatchers
@@ -124,18 +124,7 @@ class HomeViewModel(
                 DayGroupUi(
                     label = group.label,
                     totalFormatted = cur + CurrencyFormatter.amount(group.totalAbs),
-                    items = group.items.map { t ->
-                        val category = categoriesById[t.categoryId]
-                        TxRow(
-                            id = t.id,
-                            name = t.description,
-                            categoryLabel = category?.name ?: "Deleted category",
-                            amountFormatted = cur + CurrencyFormatter.amount(t.amount),
-                            isPositive = t.amount > 0,
-                            dayLabel = DateUtils.shortDate(t.date),
-                            iconKey = category?.iconKey ?: "receipt",
-                        )
-                    },
+                    items = group.items.map { it.toTxRow(categoriesById, cur) },
                 )
             },
         )

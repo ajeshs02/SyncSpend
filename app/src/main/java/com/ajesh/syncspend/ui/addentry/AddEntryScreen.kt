@@ -14,11 +14,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,11 +29,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,10 +46,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.di.LocalAppContainer
+import com.ajesh.syncspend.domain.model.EntryNote
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.ui.components.AmountEntryPad
 import com.ajesh.syncspend.ui.components.CategoryField
 import com.ajesh.syncspend.ui.components.DatePickerSheet
+import com.ajesh.syncspend.ui.components.DesignTextField
 import com.ajesh.syncspend.ui.components.FlowToggle
 import com.ajesh.syncspend.ui.components.PrimaryButton
 import com.ajesh.syncspend.ui.components.CategoryPickerSheet
@@ -65,6 +74,9 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val colors = SyncSpendTheme.colors
     var showDatePicker by remember { mutableStateOf(false) }
+    // Held here (not in the ViewModel) so typing is never delayed by a state round-trip.
+    var note by rememberSaveable { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
     val earliest by container.transactionRepository.getEarliestDate().collectAsStateWithLifecycle(null)
     val draftColor = if (state.type == FlowType.INCOME) colors.pos else colors.neg
 
@@ -84,7 +96,8 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
             Text("New Entry", style = MaterialTheme.typography.titleLarge, color = colors.ink)
         }
 
-        BoxWithConstraints(modifier = Modifier.weight(1f)) {
+        // imePadding: with the keyboard up (typing a note) the scroll region shrinks and keeps the field in view.
+        BoxWithConstraints(modifier = Modifier.weight(1f).imePadding()) {
             val minHeight = maxHeight
             Column(
                 modifier = Modifier
@@ -138,10 +151,19 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                         )
                     }
 
+                    DesignTextField(
+                        value = note,
+                        onValueChange = { if (EntryNote.accepts(note, it)) note = it },
+                        placeholder = "Add a note (optional)",
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                        modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 16.dp),
+                    )
+
                     CategoryField(
                         category = state.selectedCategory,
                         onClick = viewModel::openCategoryPicker,
-                        modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 20.dp),
+                        modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp),
                     )
                 }
 
@@ -157,7 +179,7 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                     )
                     PrimaryButton(
                         text = "Save Entry",
-                        onClick = { viewModel.save(onSaved) },
+                        onClick = { viewModel.save(note, onSaved) },
                         modifier = Modifier.padding(top = 10.dp).fillMaxWidth(),
                         leading = {
                             // Flow dot tinted to read on the button (same tints the toggle's icons use).

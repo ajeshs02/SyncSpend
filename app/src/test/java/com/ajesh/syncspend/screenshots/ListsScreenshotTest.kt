@@ -34,7 +34,7 @@ class ListsScreenshotTest {
     @Test fun entries() {
         rule.snapshot(
             "entries_light", container = sampleContainer(),
-            beforeCapture = { waitUntil(15_000) { onAllNodes(hasText("Coffee & Snacks")).fetchSemanticsNodes().isNotEmpty() } },
+            beforeCapture = { waitUntil(15_000) { onAllNodes(hasText("Coffee and snacks with Rohan")).fetchSemanticsNodes().isNotEmpty() } },
         ) {
             Box(Modifier.fillMaxSize()) {
                 TransactionsScreen()
