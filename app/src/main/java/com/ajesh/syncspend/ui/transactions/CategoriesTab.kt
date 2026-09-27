@@ -52,25 +52,28 @@ fun CategoriesTab(rollups: List<CategoryRollupUi>, modifier: Modifier = Modifier
                             .background(SyncSpendTheme.colors.tile, RoundedCornerShape(11.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(SyncSpendIcons.iconFor(rollup.iconKey), null, tint = SyncSpendTheme.colors.ink, modifier = Modifier.size(16.dp))
+                        Icon(SyncSpendIcons.iconFor(rollup.iconKey), null, tint = SyncSpendTheme.colors.mink, modifier = Modifier.size(16.dp))
                     }
                     androidx.compose.foundation.layout.Spacer(Modifier.padding(start = 5.dp))
                     Column(modifier = Modifier.weight(1f).padding(start = 11.dp)) {
-                        Text(rollup.name, style = MaterialTheme.typography.bodyMedium, color = SyncSpendTheme.colors.ink)
+                        Text(rollup.name, style = MaterialTheme.typography.bodyMedium, color = SyncSpendTheme.colors.mink)
                         Text(
                             "${rollup.count} entries · ${rollup.sharePercent}% of spend",
                             style = MaterialTheme.typography.labelSmall,
-                            color = SyncSpendTheme.colors.sub,
+                            color = SyncSpendTheme.colors.msub,
                         )
                     }
-                    Text(rollup.totalFormatted, style = MaterialTheme.typography.bodyMedium, color = SyncSpendTheme.colors.ink)
+                    Text(rollup.totalFormatted, style = MaterialTheme.typography.bodyMedium, color = SyncSpendTheme.colors.mink)
                 }
                 androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 6.dp))
+                // Track is an opaque neutral (colors.tile), not the translucent colors.dim: on top of
+                // this row's own colors.cardGradient fill, a dim overlay lands almost on colors.chartFill
+                // itself — matching StatsTab's CategoryBar, which already gets this right.
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(5.dp)
-                        .background(SyncSpendTheme.colors.dim, RoundedCornerShape(3.dp)),
+                        .background(SyncSpendTheme.colors.tile, RoundedCornerShape(3.dp)),
                 ) {
                     Box(
                         modifier = Modifier

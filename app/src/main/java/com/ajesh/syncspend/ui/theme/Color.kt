@@ -49,8 +49,9 @@ object SyncSpendPalette {
     val LightNeg = Color(0xFFC0392B)
     val LightPill = Color(0xFFF0F1F2)
     val LightTile = Color(0xFFF1F1F2)
-    val LightMink = Color(0xFF2E7D4F)
-    val LightMsub = Color(0x992E7D4F) // rgba(46,125,79,.6)
+    /** Dark ink on the accent fill, not green — same `#1A1A1A` as [LightOnAcc]/[LightOnSelected]/[LightOnButton]. */
+    val LightMink = Color(0xFF1A1A1A)
+    val LightMsub = Color(0x991A1A1A) // rgba(26,26,26,.6)
     val LightDim = Color(0x2E141416) // rgba(20,20,22,.18)
     val LightOnAcc = Color(0xFF1A1A1A)
     val LightSheet = Color(0xFFFFFFFF)
