@@ -29,7 +29,7 @@ object SyncSpendIcons {
         return "M${cx - r},$cy a$r,$r 0 1,0 $d,0 a$r,$r 0 1,0 ${-d},0"
     }
 
-    private fun build(name: String, vararg d: String): ImageVector =
+    private fun build(name: String, vararg d: String, strokeWidth: Float = 1.7f): ImageVector =
         ImageVector.Builder(
             name = name,
             defaultWidth = 24.dp,
@@ -42,7 +42,7 @@ object SyncSpendIcons {
                     pathData = addPathNodes(segment),
                     fill = null,
                     stroke = SolidColor(Color.Black),
-                    strokeLineWidth = 1.7f,
+                    strokeLineWidth = strokeWidth,
                     strokeLineCap = StrokeCap.Round,
                     strokeLineJoin = StrokeJoin.Round,
                 )
@@ -124,6 +124,8 @@ object SyncSpendIcons {
     val Plane = build("plane", "M3 13.5l18-6-7 12-2.6-4.4z")
     val Bolt = build("bolt", "M13.5 3 6 13.5h5l-1 7.5 8-11h-5z")
     val Plus = build("plus", "M12 5.5v13", "M5.5 12h13")
+    /** A heavier plus: the bottom nav's Add button, which has to stand apart from the other four icons. */
+    val PlusBold = build("plusBold", "M12 5v14", "M5 12h14", strokeWidth = 2.3f)
     val Back = build("back", "M14.5 6.5 9 12l5.5 5.5")
     val Prev = build("prev", "M13.5 7.5 9.5 12l4 4.5")
     val Next = build("next", "M10.5 7.5l4 4.5-4 4.5")

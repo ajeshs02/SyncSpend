@@ -100,6 +100,8 @@ fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
                             .padding(14.dp),
                     ) {
                         Text(tile.label, fontSize = 10.5.sp, lineHeight = 13.sp, color = colors.sub, maxLines = 2)
+                        // A good figure is dark text on the same mint gradient as the Top spending card
+                        // (plain green text never matched the theme); a bad one stays red.
                         Text(
                             tile.value,
                             fontSize = 19.sp,
@@ -107,10 +109,13 @@ fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
                             letterSpacing = (-0.19).sp,
                             color = when (tile.tone) {
                                 StatTone.NEUTRAL -> colors.ink
-                                StatTone.POSITIVE -> colors.pos
+                                StatTone.POSITIVE -> colors.mink
                                 StatTone.NEGATIVE -> colors.neg
                             },
-                            modifier = Modifier.padding(top = 7.dp),
+                            // Every value carries the chip's vertical padding, so tiles stay level whether or not one has a chip.
+                            modifier = Modifier.padding(top = 5.dp).then(
+                                if (tile.tone == StatTone.POSITIVE) Modifier.mintChip() else Modifier.padding(vertical = 2.dp),
+                            ),
                         )
                         Text(tile.note, fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 3.dp))
                     }
@@ -417,19 +422,31 @@ private fun MoverRow(mover: MoverUi) {
             contentAlignment = Alignment.Center,
         ) { Icon(SyncSpendIcons.iconFor(mover.iconKey), null, tint = colors.ink, modifier = Modifier.size(14.dp)) }
         Text(mover.name, style = MaterialTheme.typography.bodyMedium, color = colors.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        Icon(
-            if (mover.up) SyncSpendIcons.Up else SyncSpendIcons.Down,
-            null,
-            tint = if (mover.good) colors.pos else colors.neg,
-            modifier = Modifier.size(12.dp),
-        )
-        Text(
-            mover.deltaFormatted,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (mover.good) colors.pos else colors.neg,
-        )
+        // Same rule as the tiles: an improvement sits on the mint gradient, a worsening stays red.
+        Row(
+            modifier = if (mover.good) Modifier.mintChip() else Modifier,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(
+                if (mover.up) SyncSpendIcons.Up else SyncSpendIcons.Down,
+                null,
+                tint = if (mover.good) colors.mink else colors.neg,
+                modifier = Modifier.size(12.dp),
+            )
+            Text(
+                mover.deltaFormatted,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (mover.good) colors.mink else colors.neg,
+            )
+        }
     }
 }
+
+/** A small pill filled with the mint gradient (the Top spending card's green) for text that reads as "good". */
+@Composable
+private fun Modifier.mintChip(): Modifier =
+    background(SyncSpendTheme.colors.chartFill, RoundedCornerShape(10.dp)).padding(horizontal = 9.dp, vertical = 2.dp)
 
 @Composable
 private fun TopEntryRow(rank: Int, entry: TopEntryUi) {

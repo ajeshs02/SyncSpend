@@ -51,7 +51,8 @@ data class HomeUiState(
     val canGoNext: Boolean = false,
     val earliestTransactionDate: java.time.LocalDate? = null,
     val entryCountLabel: String = "",
-    val avgNote: String = "",
+    /** The cycling averages under the hero total ("Averaging ₹X per entry / day / week"); empty when there are no entries. */
+    val insights: List<String> = emptyList(),
     /** The latest entries in the selected scope, grouped by day. */
     val recentGroups: List<DayGroupUi> = emptyList(),
 )
@@ -95,7 +96,8 @@ class HomeViewModel(
         val trend = AnalyticsEngine.trendPercent(total, prevTotal)
         val cur = sources.prefs.currencyCode.symbol
         val now = java.time.YearMonth.now()
-        val lower = CalendarBounds.dataLowerMonth(now, sources.tx.minOfOrNull { it.date })
+        val earliest = sources.tx.minOfOrNull { it.date }
+        val lower = CalendarBounds.dataLowerMonth(now, earliest)
         val recent = scopeTx.sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt }).take(10)
         val categoriesById = sources.categories.associateBy { it.id }
 
@@ -118,9 +120,11 @@ class HomeViewModel(
             currentScope = scope,
             canGoPrev = AnalyticsEngine.stepScope(scope, -1, now, lower) != null,
             canGoNext = AnalyticsEngine.stepScope(scope, 1, now, lower) != null,
-            earliestTransactionDate = sources.tx.minOfOrNull { it.date },
+            earliestTransactionDate = earliest,
             entryCountLabel = "${scopeTx.size} entries",
-            avgNote = "Averaging $cur${CurrencyFormatter.amount(if (scopeTx.isEmpty()) 0.0 else total / scopeTx.size)} per entry",
+            insights = HomeInsights.build(
+                total, scopeTx.size, AnalyticsEngine.daysInScope(scope, java.time.LocalDate.now(), earliest), cur,
+            ),
             recentGroups = AnalyticsEngine.groupByDay(recent).map { group ->
                 DayGroupUi(
                     label = group.label,

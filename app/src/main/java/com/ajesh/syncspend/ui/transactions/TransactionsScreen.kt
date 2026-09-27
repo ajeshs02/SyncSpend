@@ -50,6 +50,7 @@ import com.ajesh.syncspend.domain.model.TransactionsTab
 import com.ajesh.syncspend.ui.components.AnimatedSegmentedControl
 import com.ajesh.syncspend.ui.components.ChipsRow
 import com.ajesh.syncspend.ui.components.CustomRangeSheet
+import com.ajesh.syncspend.ui.components.SegmentIcon
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
@@ -112,8 +113,8 @@ fun TransactionsScreen() {
             Box {
                 Row(
                     modifier = Modifier
-                        .background(SyncSpendTheme.colors.card, RoundedCornerShape(14.dp))
-                        .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(14.dp))
+                        // Same selected colours as the Expense/Income toggle, so it reads in dark mode too.
+                        .background(SyncSpendTheme.colors.selectedBrush, RoundedCornerShape(14.dp))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -125,14 +126,14 @@ fun TransactionsScreen() {
                     Icon(
                         if (flow == FlowType.INCOME) SyncSpendIcons.ArrowIn else SyncSpendIcons.ArrowOut,
                         null,
-                        tint = if (flow == FlowType.INCOME) SyncSpendTheme.colors.brand else SyncSpendTheme.colors.neg,
+                        tint = if (flow == FlowType.INCOME) SyncSpendTheme.colors.brand else SyncSpendTheme.colors.expenseOnSelected,
                         modifier = Modifier.size(15.dp),
                     )
                     Box(Modifier.width(5.dp))
                     Text(
                         if (flow == FlowType.INCOME) "Income" else "Expense",
                         style = MaterialTheme.typography.labelLarge,
-                        color = SyncSpendTheme.colors.ink,
+                        color = SyncSpendTheme.colors.onSelected,
                     )
                 }
                 if (flowMenuOpen) {
@@ -167,10 +168,16 @@ fun TransactionsScreen() {
         }
 
         androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 14.dp))
+        val tabIcons = remember(colors) {
+            listOf(SyncSpendIcons.Receipt, SyncSpendIcons.Layers, SyncSpendIcons.Trend)
+                .map { SegmentIcon(it, colors.onSelected, colors.sub) }
+        }
         AnimatedSegmentedControl(
             options = listOf("Entries", "Categories", "Stats"),
             selectedIndex = tab.ordinal,
             onSelect = { viewModel.selectTab(TransactionsTab.entries[it]) },
+            icons = tabIcons,
+            iconSize = 14.dp,
         )
 
         androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 14.dp))

@@ -2,6 +2,7 @@ package com.ajesh.syncspend.domain.analytics
 
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.StatsSummary
+import com.ajesh.syncspend.domain.model.labelFor
 import com.ajesh.syncspend.domain.model.Tip
 import com.ajesh.syncspend.domain.model.TipTone
 import java.time.DayOfWeek
@@ -112,7 +113,7 @@ object TipsEngine {
         s.biggestEntry?.let { big ->
             val share = if (s.total > 0) abs(big.amount) / s.total * 100 else 0.0
             if (s.entryCount >= 3 && share >= 35) {
-                add(Tip(TipTone.INFO, "One purchase was ${share.roundToInt()}% of spending", "“${big.description}” at ${money(abs(big.amount))}. Big one-offs are worth planning for."))
+                add(Tip(TipTone.INFO, "One purchase was ${share.roundToInt()}% of spending", "“${s.labelFor(big)}” at ${money(abs(big.amount))}. Big one-offs are worth planning for."))
             }
         }
     }

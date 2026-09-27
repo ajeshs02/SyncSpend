@@ -35,16 +35,16 @@ object SyncSpendPalette {
     val LightDim = Color(0x2E151A12) // rgba(21,26,18,.18)
     val LightOnAcc = Color(0xFFFFFFFF)
     val LightSheet = Color(0xFFFFFFFF)
-    val LightScrEnd = Color(0xFFE9F0EB)
+    val LightScrEnd = Color(0xFFEAF0EC)
 
     private val lightScrStops = arrayOf(
-        0.00f to Color(0xFFE6EFE8),
-        0.07f to Color(0xFFF1F6F0),
+        0.00f to Color(0xFFE8EFEA),
+        0.07f to Color(0xFFF2F6F1),
         0.15f to Color(0xFFFAFCF9),
         // The bottom band is shorter than the top one (it sits behind the nav): it starts later.
         0.88f to Color(0xFFFAFCF9),
-        0.95f to Color(0xFFF1F6F0),
-        1.00f to Color(0xFFE9F0EB),
+        0.95f to Color(0xFFF2F6F1),
+        1.00f to Color(0xFFEAF0EC),
     )
     val LightScreenGradient = Brush.verticalGradient(colorStops = lightScrStops)
 
@@ -77,9 +77,9 @@ object SyncSpendPalette {
     )
 
     // ---- Dark ----
-    val DarkInk = Color(0xFFEEF3EA)
-    val DarkSub = Color(0xFF868F82)
-    val DarkCard = Color(0xFF1A211B)
+    val DarkInk = Color(0xFFEFF2EC)
+    val DarkSub = Color(0xFF8A9187)
+    val DarkCard = Color(0xFF1B201C)
     val DarkLine = Color(0x24FFFFFF) // rgba(255,255,255,.14)
     val DarkDark = Color(0xFF070A08)
     val DarkAcc = Color(0xFF7FD39A)
@@ -87,26 +87,26 @@ object SyncSpendPalette {
     val DarkPos = Color(0xFF7FD39A)
     val DarkNeg = Color(0xFFF08579)
     val DarkPill = Color(0x1AFFFFFF) // rgba(255,255,255,.10)
-    val DarkTile = Color(0xFF252D26)
+    val DarkTile = Color(0xFF272C28)
     val DarkMink = Color(0xFFE8F4EA)
     val DarkMsub = Color(0xADE8F4EA) // rgba(232,244,234,.68)
     val DarkDim = Color(0x42FFFFFF) // rgba(255,255,255,.26)
     val DarkOnAcc = Color(0xFF07120B)
-    val DarkSheet = Color(0xFF1B231C)
-    val DarkScrEnd = Color(0xFF142119)
+    val DarkSheet = Color(0xFF1C211D)
+    val DarkScrEnd = Color(0xFF121A15)
 
     private val darkScrStops = arrayOf(
-        0.00f to Color(0xFF142119),
-        0.07f to Color(0xFF0E1610),
-        0.15f to Color(0xFF0C0F0D),
-        0.88f to Color(0xFF0C0F0D),
-        0.95f to Color(0xFF0E1610),
-        1.00f to Color(0xFF142119),
+        0.00f to Color(0xFF121A15),
+        0.07f to Color(0xFF0E120F),
+        0.15f to Color(0xFF0D0F0E),
+        0.88f to Color(0xFF0D0F0E),
+        0.95f to Color(0xFF0E120F),
+        1.00f to Color(0xFF121A15),
     )
     val DarkScreenGradient = Brush.verticalGradient(colorStops = darkScrStops)
 
     val DarkCardGradient = Brush.linearGradient(
-        colorStops = arrayOf(0f to Color(0xFF1F271F), 0.6f to Color(0xFF1A211B), 1f to Color(0xFF161C17)),
+        colorStops = arrayOf(0f to Color(0xFF1E231E), 0.6f to Color(0xFF1B201C), 1f to Color(0xFF171B18)),
     )
     val DarkDarkGradient = Brush.linearGradient(
         colorStops = arrayOf(0f to Color(0xFF0B140E), 0.52f to Color(0xFF153A22), 1f to Color(0xFF08100A)),
@@ -122,11 +122,11 @@ object SyncSpendPalette {
         colorStops = arrayOf(0f to Color(0xFF2C5B3E), 0.45f to Color(0xFF264F36), 1f to Color(0xFF204530)),
     )
     val DarkNavGradient = Brush.linearGradient(
-        colorStops = arrayOf(0f to Color(0xFF1D251E), 1f to Color(0xFF10160F)),
+        colorStops = arrayOf(0f to Color(0xFF1E231F), 1f to Color(0xFF101410)),
     )
 
     val DarkSelectedBrush = Brush.linearGradient(
-        colorStops = arrayOf(0f to Color(0xFFF2F6EE), 1f to Color(0xFFDFE7DA)),
+        colorStops = arrayOf(0f to Color(0xFFF2F5EF), 1f to Color(0xFFE0E5DC)),
     )
     val DarkOnSelected = Color(0xFF101710)
     val DarkButton = Color(0xFFF2F6EE)

@@ -61,3 +61,11 @@ data class StatsSummary(
     val noSpendDays: Int,
     val smallPurchases: SmallPurchases?,
 )
+
+/** The category an entry belongs to, by its current name. */
+fun StatsSummary.categoryNameOf(entry: TransactionEntity): String =
+    categories.find { it.categoryId == entry.categoryId }?.name ?: "Deleted category"
+
+/** How an entry is named in a sentence: its category, plus its note in brackets when it has one ("Food (team lunch)"). */
+fun StatsSummary.labelFor(entry: TransactionEntity): String =
+    categoryNameOf(entry).let { name -> if (entry.description.isBlank()) name else "$name (${entry.description})" }

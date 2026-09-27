@@ -1,6 +1,7 @@
 package com.ajesh.syncspend.ui.home
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -27,7 +28,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,7 +45,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -57,6 +63,8 @@ import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendCorners
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.ui.transactions.TxRow
+import kotlin.random.Random
+import kotlinx.coroutines.delay
 
 @Composable
 fun HomeScreen(
@@ -282,10 +290,33 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
                             .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(13.dp))
                             .padding(horizontal = 10.dp, vertical = 5.dp),
                     )
-                    Text(state.avgNote, fontSize = 11.5.sp, color = Color.White.copy(alpha = 0.6f))
                 }
             }
+            RotatingInsight(state.insights, modifier = Modifier.padding(top = 10.dp))
         }
+    }
+}
+
+/**
+ * One of the hero's averages, changing to a different random one every few seconds with a cross-fade.
+ * The timer only runs while the screen is visible (STARTED), so nothing ticks in the background, and the
+ * fade is an alpha layer: no recomposition per frame.
+ */
+@Composable
+internal fun RotatingInsight(lines: List<String>, modifier: Modifier = Modifier) {
+    if (lines.isEmpty()) return
+    var index by remember { mutableIntStateOf(Random.nextInt(lines.size)) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lines.size, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (lines.size > 1) {
+                delay(HomeInsights.ROTATE_MILLIS)
+                index = HomeInsights.nextIndex(index, lines.size)
+            }
+        }
+    }
+    Crossfade(targetState = index.coerceIn(lines.indices), animationSpec = tween(350), modifier = modifier, label = "hero-insight") { i ->
+        Text(lines[i.coerceIn(lines.indices)], fontSize = 11.5.sp, color = Color.White.copy(alpha = 0.6f), maxLines = 1)
     }
 }
 

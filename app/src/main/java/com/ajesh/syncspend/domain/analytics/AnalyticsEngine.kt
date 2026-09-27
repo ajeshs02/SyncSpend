@@ -42,6 +42,22 @@ object AnalyticsEngine {
         ScopePeriod.AllTime -> true
     }
 
+    /**
+     * How many days of [scope] have happened by [today] (at least 1): the current month, year or window counts
+     * its elapsed days, a finished one its full length, and All Time runs from the oldest entry.
+     */
+    fun daysInScope(scope: ScopePeriod, today: LocalDate, earliest: LocalDate?): Int = when (scope) {
+        is ScopePeriod.Month -> daysBetween(scope.yearMonth.atDay(1), scope.yearMonth.atEndOfMonth(), today)
+        is ScopePeriod.Year -> daysBetween(LocalDate.of(scope.year, 1, 1), LocalDate.of(scope.year, 12, 31), today)
+        is ScopePeriod.LastMonths -> daysBetween(scope.startMonth.atDay(1), scope.endMonth.atEndOfMonth(), today)
+        ScopePeriod.AllTime -> daysBetween(earliest ?: today, today, today)
+    }
+
+    private fun daysBetween(start: LocalDate, end: LocalDate, today: LocalDate): Int {
+        val last = minOf(end, today)
+        return if (last.isBefore(start)) 1 else (last.toEpochDay() - start.toEpochDay()).toInt() + 1
+    }
+
     /** Year/month compare without allocating a YearMonth per transaction (this runs over every row). */
     private fun inMonth(date: LocalDate, month: YearMonth): Boolean = date.year == month.year && date.monthValue == month.monthValue
 

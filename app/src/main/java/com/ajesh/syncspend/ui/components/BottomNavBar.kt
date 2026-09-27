@@ -283,6 +283,6 @@ private fun AddButton(active: Boolean, onClick: () -> Unit) {
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        NavGlyph(SyncSpendIcons.Plus, active, NavAddInactiveTint, 32.dp)
+        NavGlyph(SyncSpendIcons.PlusBold, active, NavAddInactiveTint, 36.dp)
     }
 }

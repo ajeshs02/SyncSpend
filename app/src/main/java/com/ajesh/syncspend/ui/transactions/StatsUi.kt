@@ -1,6 +1,7 @@
 package com.ajesh.syncspend.ui.transactions
 
 import com.ajesh.syncspend.domain.analytics.TipsEngine
+import com.ajesh.syncspend.domain.model.labelFor
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.StatsRange
 import com.ajesh.syncspend.domain.model.StatsSummary
@@ -127,7 +128,7 @@ fun buildStatsUi(
             else "${top.name} takes $topShare% of your ${if (income) "income" else "spending"}: ${top.count} entries totalling ${money(top.totalAbs)}.",
         )
         add(
-            s.biggestEntry?.let { "Largest single entry was ${it.description} at ${money(it.amount)} on ${DateUtils.shortDate(it.date)}." }
+            s.biggestEntry?.let { "Largest single entry was ${s.labelFor(it)} at ${money(it.amount)} on ${DateUtils.shortDate(it.date)}." }
                 ?: "Nothing logged in this period yet.",
         )
         add(
@@ -185,8 +186,9 @@ fun buildStatsUi(
     }
     val topEntries = s.topEntries.map {
         TopEntryUi(
-            title = it.description,
-            subtitle = (categoryNames[it.categoryId] ?: "Deleted category") + " · " + DateUtils.shortDate(it.date),
+            // The category is the title; the entry's note (when it has one) leads the date line.
+            title = categoryNames[it.categoryId] ?: "Deleted category",
+            subtitle = (if (it.description.isBlank()) "" else it.description + " · ") + DateUtils.shortDate(it.date),
             amount = money(abs(it.amount)),
         )
     }

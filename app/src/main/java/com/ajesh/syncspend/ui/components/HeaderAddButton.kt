@@ -14,25 +14,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
-/** The dark "+ New" / "+ Add" pill in screen headers. */
+/** The "+ New" / "+ Add" pill in screen headers, in the same selected colours as the Expense/Income toggle (readable in both themes). */
 @Composable
 fun HeaderAddButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = SyncSpendTheme.colors
     Row(
         modifier = modifier
-            .background(SyncSpendTheme.colors.dark, RoundedCornerShape(15.dp))
+            .background(colors.selectedBrush, RoundedCornerShape(15.dp))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Icon(SyncSpendIcons.Plus, null, tint = Color.White, modifier = Modifier.size(13.dp))
-        Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+        Icon(SyncSpendIcons.Plus, null, tint = colors.onSelected, modifier = Modifier.size(13.dp))
+        Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = colors.onSelected)
     }
 }

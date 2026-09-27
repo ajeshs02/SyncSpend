@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Dark-mode starting-window background. See values/colors.xml. -->
 <resources>
-    <color name="window_background">#FF0C0F0D</color>
+    <color name="window_background">#FF0D0F0E</color>
 
-    <color name="widget_surface">#FF1C231D</color>
-    <color name="widget_ink">#FFEEF3EA</color>
+    <color name="widget_surface">#FF1D221E</color>
+    <color name="widget_ink">#FFEFF2EC</color>
     <color name="widget_accent">#FF7FD39A</color>
     <color name="widget_fab">#FF7FD39A</color>
     <color name="widget_on_fab">#FF07120B</color>

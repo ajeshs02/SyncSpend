@@ -71,4 +71,21 @@ class TransactionsComputeTest {
             assertEquals(range, stats.range)
         }
     }
+
+    @Test fun statsNameEntriesByCategoryEvenWithoutANote() {
+        val noNotes = ledger.copy(tx = ledger.tx.map { it.copy(description = "") })
+        val stats = TransactionsCompute.stats(noNotes, emptyList(), FlowType.EXPENSE, StatsRange.THIS_MONTH, today)
+        assertTrue(stats.topEntries.isNotEmpty())
+        assertTrue(stats.topEntries.all { it.title == "Food" })
+        assertTrue(stats.topEntries.all { it.subtitle.matches(Regex("""\d+ [A-Z][a-z]{2}""")) }) // just the date, no dangling separator
+        assertTrue(stats.findings.any { it.startsWith("Largest single entry was Food at") })
+    }
+
+    @Test fun aNoteLeadsTheDateLineAndJoinsTheSentence() {
+        val stats = TransactionsCompute.stats(ledger, emptyList(), FlowType.EXPENSE, StatsRange.THIS_MONTH, today)
+        val top = stats.topEntries.first()
+        assertEquals("Food", top.title)
+        assertEquals("Groceries · 27 Sep", top.subtitle) // the ₹1,241 entry, note "Groceries"
+        assertTrue(stats.findings.any { it.startsWith("Largest single entry was Food (Groceries) at") })
+    }
 }
