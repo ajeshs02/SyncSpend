@@ -22,6 +22,13 @@ object DefaultCategories {
         DefaultCategory("Salary", FlowType.INCOME, "bank"),
         DefaultCategory("Freelance", FlowType.INCOME, "brief"),
         DefaultCategory("Gift", FlowType.INCOME, "gift"),
+        // Deliberately not named "Savings" — the existing Expense category above already has that
+        // name and is left untouched; these are distinct, new, top-level-Savings-type categories.
+        // Icon keys match CategoryIconGuesser's own keyword guess for each name (verified by
+        // DefaultCategoriesTest) rather than being picked independently.
+        DefaultCategory("Savings Goals", FlowType.SAVINGS, "coin"),
+        DefaultCategory("Emergency Fund", FlowType.SAVINGS, "shield"),
+        DefaultCategory("Investments", FlowType.SAVINGS, "trend"),
     )
 
     /**

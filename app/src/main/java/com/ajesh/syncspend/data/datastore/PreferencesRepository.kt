@@ -18,6 +18,9 @@ import kotlinx.coroutines.flow.shareIn
 
 val Context.dataStore by preferencesDataStore(name = "syncspend_prefs")
 
+/** Disabled by default for INR (paise are rarely entered), enabled for every other currency. */
+private fun defaultAllowDecimalInput(code: CurrencyCode): Boolean = code != CurrencyCode.INR
+
 /**
  * User preferences over a DataStore. The store is injected (the app passes [dataStore] of its
  * Context) so tests can hand in an isolated one.
@@ -33,6 +36,8 @@ class PreferencesRepository(private val store: DataStore<Preferences>, scope: Co
         val DAILY_REMINDER_MINUTE_OF_DAY = intPreferencesKey("daily_reminder_minute_of_day")
         val NOTIF_PERMISSION_REQUESTED = booleanPreferencesKey("notif_permission_requested")
         val DEFAULT_CATEGORIES_SEEDED = booleanPreferencesKey("default_categories_seeded")
+        val ALLOW_DECIMAL_INPUT = booleanPreferencesKey("allow_decimal_input")
+        val ALLOW_DECIMAL_INPUT_USER_SET = booleanPreferencesKey("allow_decimal_input_user_set")
     }
 
     /**
@@ -49,6 +54,9 @@ class PreferencesRepository(private val store: DataStore<Preferences>, scope: Co
             dailyReminderMinuteOfDay = prefs[Keys.DAILY_REMINDER_MINUTE_OF_DAY] ?: (20 * 60),
             notifPermissionRequested = prefs[Keys.NOTIF_PERMISSION_REQUESTED] ?: false,
             defaultCategoriesSeeded = prefs[Keys.DEFAULT_CATEGORIES_SEEDED] ?: false,
+            allowDecimalInput = prefs[Keys.ALLOW_DECIMAL_INPUT]
+                ?: defaultAllowDecimalInput(prefs[Keys.CURRENCY_CODE]?.let { runCatching { CurrencyCode.valueOf(it) }.getOrNull() } ?: CurrencyCode.INR),
+            allowDecimalInputUserSet = prefs[Keys.ALLOW_DECIMAL_INPUT_USER_SET] ?: false,
         )
     }.shareIn(scope, SharingStarted.Eagerly, replay = 1)
 
@@ -59,8 +67,24 @@ class PreferencesRepository(private val store: DataStore<Preferences>, scope: Co
         store.edit { it[Keys.THEME_MODE] = mode.name }
     }
 
+    /**
+     * Re-seeds [UserPreferences.allowDecimalInput] from the new currency only if the user has never
+     * explicitly set it from Settings — an explicit choice survives later currency changes.
+     */
     suspend fun setCurrency(code: CurrencyCode) {
-        store.edit { it[Keys.CURRENCY_CODE] = code.name }
+        store.edit {
+            it[Keys.CURRENCY_CODE] = code.name
+            if (it[Keys.ALLOW_DECIMAL_INPUT_USER_SET] != true) {
+                it[Keys.ALLOW_DECIMAL_INPUT] = defaultAllowDecimalInput(code)
+            }
+        }
+    }
+
+    suspend fun setAllowDecimalInput(enabled: Boolean) {
+        store.edit {
+            it[Keys.ALLOW_DECIMAL_INPUT] = enabled
+            it[Keys.ALLOW_DECIMAL_INPUT_USER_SET] = true
+        }
     }
 
     suspend fun setDailyReminder(enabled: Boolean, minuteOfDay: Int) {

@@ -14,6 +14,12 @@ sealed interface AppLink {
     /** The Reminders page, with [highlightId] (if any) moved to the top and outlined. */
     data class Reminders(val highlightId: Long?) : AppLink
 
+    /**
+     * The Categories page, pre-selected to [flow] — used by the widget's quick-add "+ add category"
+     * shortcut, which runs in its own Activity and so can't push onto the main NavHost directly.
+     */
+    data class Categories(val flow: FlowType) : AppLink
+
     companion object {
         const val EXTRA_KIND = "syncspend.link.kind"
         const val EXTRA_ID = "syncspend.link.id"
@@ -23,17 +29,20 @@ sealed interface AppLink {
         const val KIND_ADD_ENTRY = "add_entry"
         const val KIND_SUBSCRIPTIONS = "subscriptions"
         const val KIND_REMINDERS = "reminders"
+        const val KIND_CATEGORIES = "categories"
 
         fun kindOf(link: AppLink): String = when (link) {
             AddEntry -> KIND_ADD_ENTRY
             is Subscriptions -> KIND_SUBSCRIPTIONS
             is Reminders -> KIND_REMINDERS
+            is Categories -> KIND_CATEGORIES
         }
 
         fun idOf(link: AppLink): Long = when (link) {
             AddEntry -> NO_ID
             is Subscriptions -> link.highlightId ?: NO_ID
             is Reminders -> link.highlightId ?: NO_ID
+            is Categories -> link.flow.ordinal.toLong()
         }
 
         const val NO_ID = -1L
@@ -45,6 +54,7 @@ sealed interface AppLink {
                 KIND_ADD_ENTRY -> AddEntry
                 KIND_SUBSCRIPTIONS -> Subscriptions(highlight)
                 KIND_REMINDERS -> Reminders(highlight)
+                KIND_CATEGORIES -> Categories(FlowType.values().getOrElse(id.toInt()) { FlowType.EXPENSE })
                 else -> null
             }
         }

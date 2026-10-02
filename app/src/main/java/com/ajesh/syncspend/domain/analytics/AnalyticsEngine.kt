@@ -3,6 +3,8 @@ package com.ajesh.syncspend.domain.analytics
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.domain.model.CategoryMover
+import com.ajesh.syncspend.domain.model.ContributionKind
+import com.ajesh.syncspend.domain.model.FundingSource
 import com.ajesh.syncspend.domain.model.CategoryRollup
 import com.ajesh.syncspend.domain.model.DayTotal
 import com.ajesh.syncspend.domain.model.DateRange
@@ -64,8 +66,47 @@ object AnalyticsEngine {
     fun scopeFilter(tx: List<TransactionEntity>, scope: ScopePeriod): List<TransactionEntity> =
         tx.filter { inScope(it, scope) }
 
+    /**
+     * [TransactionEntity.type] is a real stored column (not derived from the amount's sign) since
+     * Savings introduced a second positive-amount flow — filtering by sign alone would wrongly pull
+     * Savings contributions into an "Income" filter.
+     */
     fun flowFilter(tx: List<TransactionEntity>, flow: FlowType): List<TransactionEntity> =
-        tx.filter { if (flow == FlowType.INCOME) it.amount > 0 else it.amount < 0 }
+        tx.filter { it.type == flow }
+
+    /**
+     * Income actually received over [tx]: ordinary Income rows, plus Savings contributions that are
+     * newly received money ([ContributionKind.NEW_INCOME], the default for a null `contributionKind`)
+     * rather than a transfer of income already counted elsewhere ([ContributionKind.TRANSFER], which
+     * must never be counted as income a second time).
+     */
+    fun totalIncome(tx: List<TransactionEntity>): Double =
+        tx.filter { it.type == FlowType.INCOME }.sumOf { it.amount } +
+            tx.filter { it.type == FlowType.SAVINGS && it.contributionKind != ContributionKind.TRANSFER }.sumOf { it.amount }
+
+    /** Unaffected by [FundingSource] — an expense counts as an expense regardless of which pool paid for it. */
+    fun totalExpense(tx: List<TransactionEntity>): Double =
+        tx.filter { it.type == FlowType.EXPENSE }.sumOf { abs(it.amount) }
+
+    /**
+     * The savings pool's running balance: every Savings contribution (both [ContributionKind]s) minus
+     * every Expense whose [FundingSource] is [FundingSource.SAVINGS]. Always computed over the *whole*
+     * transaction list, never just a range — a balance is a point-in-time total, not a period sum.
+     */
+    fun savingsBalance(all: List<TransactionEntity>): Double =
+        all.filter { it.type == FlowType.SAVINGS }.sumOf { it.amount } -
+            all.filter { it.type == FlowType.EXPENSE && it.fundingSource == FundingSource.SAVINGS }.sumOf { abs(it.amount) }
+
+    /**
+     * The regular (non-savings) pool's running balance. A [ContributionKind.TRANSFER] subtracts here
+     * and adds the same amount to [savingsBalance] — never counted as income, never changing the
+     * combined total of the two balances, only which pool the money sits in.
+     */
+    fun regularFundsBalance(all: List<TransactionEntity>): Double =
+        all.filter { it.type == FlowType.INCOME }.sumOf { it.amount } -
+            all.filter { it.type == FlowType.EXPENSE && (it.fundingSource ?: FundingSource.REGULAR) == FundingSource.REGULAR }
+                .sumOf { abs(it.amount) } -
+            all.filter { it.type == FlowType.SAVINGS && it.contributionKind == ContributionKind.TRANSFER }.sumOf { it.amount }
 
     /** null for AllTime — there's no "previous all-time" to compare against. */
     fun previousScope(scope: ScopePeriod): ScopePeriod? = when (scope) {
@@ -105,8 +146,8 @@ object AnalyticsEngine {
     }
 
     /**
-     * The chips offered on the Entries and Categories tabs. Income skips "This Week" — its chips
-     * are This Month, Last Month, Custom.
+     * The chips offered on the Entries and Categories tabs. Income skips "This Week"/"Last Week" —
+     * its chips are This Month, Last Month, Custom. Expense and Savings get the full list.
      */
     fun entryFilterOptions(flow: FlowType): List<EntryFilter> =
         if (flow == FlowType.INCOME) listOf(EntryFilter.THIS_MONTH, EntryFilter.LAST_MONTH, EntryFilter.CUSTOM) else EntryFilter.entries
@@ -217,10 +258,13 @@ object AnalyticsEngine {
         val previousTx = if (previous == null) emptyList() else flowTx.filter { it.date in previous }
         val total = inRange.sumOf { abs(it.amount) }
         val previousTotal = previousTx.sumOf { abs(it.amount) }
-        val opposite = FlowType.values().first { it != flow }
-        val otherTotal = flowFilter(all, opposite).filter { it.date in range }.sumOf { abs(it.amount) }
-        val income = if (flow == FlowType.INCOME) total else otherTotal
-        val expense = if (flow == FlowType.EXPENSE) total else otherTotal
+        // Explicit per-type totals instead of a fragile "the other flow" lookup, which only ever made
+        // sense back when there were exactly two flows — income/expense feed the net figure below
+        // (otherFlowTotal) and netSavingsRatePercent; this tab's own headline total/categories/entries
+        // above stay scoped to exactly [flow]'s own rows, unaffected by the other two flows existing.
+        val income = totalIncome(all.filter { it.date in range })
+        val expense = totalExpense(all.filter { it.date in range })
+        val otherTotal = if (flow == FlowType.INCOME) expense else income
         val activeDates = inRange.mapTo(HashSet()) { it.date }
         val rollups = groupByCategory(inRange, categories)
         val average = if (inRange.isEmpty()) 0.0 else total / inRange.size
@@ -237,7 +281,7 @@ object AnalyticsEngine {
             dailyAverage = total / activeDates.size.coerceAtLeast(1),
             trendPercent = trendPercent(total, previousTotal),
             otherFlowTotal = otherTotal,
-            savingsRatePercent = if (income > 0) (((income - expense) / income) * 100).roundToInt() else null,
+            netSavingsRatePercent = if (income > 0) (((income - expense) / income) * 100).roundToInt() else null,
             topCategory = rollups.firstOrNull(),
             categories = rollups,
             biggestEntry = biggestEntry(inRange),

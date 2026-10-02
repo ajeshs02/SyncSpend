@@ -69,6 +69,7 @@ fun HomeScreen(
     onViewAllTransactions: () -> Unit,
     onOpenSubscriptions: () -> Unit,
     onOpenReminders: () -> Unit,
+    onOpenForecast: () -> Unit,
     onOpenStats: () -> Unit,
 ) {
     val container = LocalAppContainer.current
@@ -142,62 +143,71 @@ fun HomeScreen(
 
         // Nothing below the header until the first real state exists, so the first frame never flashes
         // a 0 total or the "No transactions yet" text before the rows arrive.
-        if (state.loaded) Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = SyncSpendChrome.screenBottomContentPadding),
-        ) {
-        HeroCard(
-            state,
-            onClick = onOpenStats,
-            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
-        )
+        if (state.loaded) {
+            // Hero card + shortcut tiles + divider are fixed, not part of the scrolling region below —
+            // only "Recent Transactions" scrolls, so the hero/tiles never slide out of view.
+            Column {
+                HeroCard(
+                    state,
+                    onClick = onOpenStats,
+                    modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
+                )
 
-        Row(
-            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Repeat, "Subscriptions & EMIs", "${state.subsCount} active", onOpenSubscriptions)
-            ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Bell, "Reminders", "${state.remindersCount} set", onOpenReminders)
-        }
+                Row(
+                    modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Repeat, "Subscriptions & EMIs", "${state.subsCount} active", onOpenSubscriptions)
+                    ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Bell, "Reminders", "${state.remindersCount} set", onOpenReminders)
+                    ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Cal, "Forecast", "Plan ahead", onOpenForecast)
+                }
 
-        Box(Modifier.padding(top = 16.dp).fillMaxWidth().height(1.dp).background(colors.line))
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, top = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Recent Transactions", style = MaterialTheme.typography.titleSmall, color = colors.ink)
-            Text(
-                "View All",
-                style = MaterialTheme.typography.labelMedium,
-                color = colors.acc,
-                modifier = Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onViewAllTransactions,
-                ),
-            )
-        }
+                // Breathing room before the scrollable section starts, per the ask for a visible gap here.
+                Box(Modifier.padding(top = 18.dp).fillMaxWidth().height(1.dp).background(colors.line))
+            }
 
-        if (state.recentGroups.isEmpty()) {
-            Text(
-                "No transactions yet. Tap the + button to add your first one.",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.sub,
-                modifier = Modifier.padding(horizontal = 22.dp, vertical = 18.dp),
-            )
-        } else {
-            Column(modifier = Modifier.padding(horizontal = 22.dp).padding(top = 2.dp)) {
-                state.recentGroups.forEach { group ->
-                    DateSeparator(label = group.label)
-                    group.items.forEach { row ->
-                        RecentRow(row) { container.selectionState.editingTransactionId.value = row.id }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = SyncSpendChrome.screenBottomContentPadding),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, top = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Recent Transactions", style = MaterialTheme.typography.titleSmall, color = colors.ink)
+                    Text(
+                        "View All",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.acc,
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onViewAllTransactions,
+                        ),
+                    )
+                }
+
+                if (state.recentGroups.isEmpty()) {
+                    Text(
+                        "No transactions yet. Tap the + button to add your first one.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.sub,
+                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 18.dp),
+                    )
+                } else {
+                    Column(modifier = Modifier.padding(horizontal = 22.dp).padding(top = 2.dp)) {
+                        state.recentGroups.forEach { group ->
+                            DateSeparator(label = group.label)
+                            group.items.forEach { row ->
+                                RecentRow(row) { container.selectionState.editingTransactionId.value = row.id }
+                            }
+                        }
                     }
                 }
             }
-        }
         }
     }
 
@@ -229,7 +239,7 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
             .clip(SyncSpendCorners.hero)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
             .background(colors.cardGradient)
-            .padding(20.dp),
+            .padding(18.dp),
     ) {
         Column {
             Row(
@@ -252,10 +262,14 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
                 )
             }
             Text(
-                if (state.flow == FlowType.INCOME) "Total Income" else "Total Spending",
+                when (state.flow) {
+                    FlowType.INCOME -> "Total Income"
+                    FlowType.SAVINGS -> "Total Savings"
+                    FlowType.EXPENSE -> "Total Spending"
+                },
                 fontSize = 12.5.sp,
                 color = colors.msub,
-                modifier = Modifier.padding(top = 14.dp),
+                modifier = Modifier.padding(top = 12.dp),
             )
             Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(state.currencySymbol, fontSize = 23.sp, fontWeight = FontWeight.Normal, color = colors.mink)
@@ -269,7 +283,8 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
             }
             Row(modifier = Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 if (state.hasTrend) {
-                    val good = if (state.flow == FlowType.INCOME) state.trendIsUp else !state.trendIsUp
+                    // More income or more saved is good; more spent is not.
+                    val good = if (state.flow == FlowType.EXPENSE) !state.trendIsUp else state.trendIsUp
                     Row(
                         modifier = Modifier
                             .background(colors.dim, RoundedCornerShape(13.dp))
@@ -304,7 +319,7 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
                 }
             }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -315,7 +330,8 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
                     letterSpacing = 0.3.sp,
                     color = colors.msub,
                 )
-                AppLogo(size = 18.dp, radius = 6.dp)
+                // Bumped up from 18dp: the user asked for this corner badge to read as clearly larger.
+                AppLogo(size = 25.dp, radius = 8.dp)
             }
         }
     }
@@ -360,25 +376,30 @@ private fun NavArrow(icon: ImageVector, description: String, enabled: Boolean, o
     }
 }
 
+/** Three of these now share the shortcuts row (was two) — tighter padding/icon size and a 2-line
+ * title so a longer label like "Subscriptions & EMIs" still fits at a third of the row's width. */
 @Composable
 private fun ShortcutCard(modifier: Modifier, icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
-    Row(
+    Column(
         modifier = modifier
-            .background(SyncSpendTheme.colors.card, RoundedCornerShape(18.dp))
-            .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(18.dp))
+            .background(SyncSpendTheme.colors.card, RoundedCornerShape(16.dp))
+            .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(16.dp))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 13.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = 10.dp, vertical = 12.dp),
     ) {
         Box(
-            modifier = Modifier.size(30.dp).background(SyncSpendTheme.colors.tile, RoundedCornerShape(10.dp)),
+            modifier = Modifier.size(26.dp).background(SyncSpendTheme.colors.tile, RoundedCornerShape(9.dp)),
             contentAlignment = Alignment.Center,
-        ) { Icon(icon, null, tint = SyncSpendTheme.colors.ink, modifier = Modifier.size(16.dp)) }
-        Column {
-            Text(title, style = MaterialTheme.typography.labelLarge, color = SyncSpendTheme.colors.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(subtitle, fontSize = 10.sp, color = SyncSpendTheme.colors.sub, modifier = Modifier.padding(top = 1.dp))
-        }
+        ) { Icon(icon, null, tint = SyncSpendTheme.colors.ink, modifier = Modifier.size(14.dp)) }
+        Text(
+            title,
+            style = MaterialTheme.typography.labelLarge.copy(fontSize = 12.sp, lineHeight = 14.sp),
+            color = SyncSpendTheme.colors.ink,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        Text(subtitle, fontSize = 10.sp, color = SyncSpendTheme.colors.sub, modifier = Modifier.padding(top = 2.dp))
     }
 }
 

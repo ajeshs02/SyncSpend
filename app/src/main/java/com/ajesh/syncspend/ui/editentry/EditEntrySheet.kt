@@ -92,16 +92,17 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
     var note by remember(loaded.id) { mutableStateOf(loaded.description) }
     var amountText by remember(loaded.id) { mutableStateOf(trimAmount(abs(loaded.amount))) }
     var date by remember(loaded.id) { mutableStateOf(loaded.date) }
-    val originalType = if (loaded.amount > 0) FlowType.INCOME else FlowType.EXPENSE
+    // loaded.type (a real stored column) rather than re-deriving from the amount's sign — sign alone
+    // can no longer tell Income apart from a Savings contribution (both positive).
+    val originalType = loaded.type
     var type by remember(loaded.id) { mutableStateOf(originalType) }
     var categoryId by remember(loaded.id) { mutableStateOf<Long?>(loaded.categoryId) }
     var showDate by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
     var showPicker by remember { mutableStateOf(false) }
 
-    val isIncome = type == FlowType.INCOME
-    // Expense and income categories never overlap. An archived category still shows while it is
-    // this entry's own, so the entry's current label stays visible and selected.
+    // Expense categories never overlap with Income's or Savings'. An archived category still shows
+    // while it is this entry's own, so the entry's current label stays visible and selected.
     val flowCategories = categories.filter { it.type == type && (!it.archived || it.id == loaded.categoryId) }
     val parsedAmount = amountText.toDoubleOrNull()
     val canSave = parsedAmount != null && parsedAmount > 0 && categoryId != null
@@ -120,6 +121,7 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
             onNoteChange = { if (EntryNote.accepts(note, it)) note = it },
             amountText = amountText,
             onAmountChange = { amountText = it },
+            allowDecimalInput = prefs.allowDecimalInput,
             currencySymbol = prefs.currencyCode.symbol,
             dateLabel = "${DateUtils.shortDate(date)} ${date.year}",
             onDateClick = { showDate = true },
@@ -133,11 +135,18 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
                     container.transactionRepository.update(
                         loaded.copy(
                             description = EntryNote.normalize(note),
-                            amount = if (isIncome) v else -v,
+                            amount = if (type == FlowType.EXPENSE) -v else v,
                             date = date,
                             categoryId = chosen,
                             // The time was of the original day: it no longer applies once the entry moves to another day.
                             timeMinuteOfDay = if (date == loaded.date) loaded.timeMinuteOfDay else null,
+                            // type is a stored column now (not sign-derived) — must be written explicitly, or
+                            // switching to/from Savings here would silently fail to persist. fundingSource/
+                            // contributionKind only mean something for their own type, so they're dropped
+                            // when the entry no longer has that type, rather than left stale.
+                            type = type,
+                            fundingSource = loaded.fundingSource.takeIf { type == FlowType.EXPENSE },
+                            contributionKind = loaded.contributionKind.takeIf { type == FlowType.SAVINGS },
                         ),
                     )
                     close()
@@ -183,8 +192,8 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
     }
 }
 
-/** Whole units only: the app has no paise/cents. */
-private val amountPattern = Regex("""\d*""")
+private val wholeAmountPattern = Regex("""\d*""")
+private val decimalAmountPattern = Regex("""\d*\.?\d{0,2}""")
 
 /**
  * Everything the Edit Entry sheet shows, with no repository or navigation access so it can be
@@ -200,6 +209,7 @@ internal fun EditEntryBody(
     onNoteChange: (String) -> Unit,
     amountText: String,
     onAmountChange: (String) -> Unit,
+    allowDecimalInput: Boolean,
     currencySymbol: String,
     dateLabel: String,
     onDateClick: () -> Unit,
@@ -212,7 +222,6 @@ internal fun EditEntryBody(
     modifier: Modifier = Modifier,
 ) {
     val colors = SyncSpendTheme.colors
-    val isIncome = type == FlowType.INCOME
     Column(modifier = modifier) {
         SheetHeader("Edit Entry", onClose = onClose)
 
@@ -226,9 +235,12 @@ internal fun EditEntryBody(
                 FieldLabel("Amount", top = 0.dp)
                 DesignTextField(
                     value = amountText,
-                    onValueChange = { v -> if (v.matches(amountPattern)) onAmountChange(v) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    textColor = if (isIncome) colors.pos else colors.neg,
+                    onValueChange = { v ->
+                        val pattern = if (allowDecimalInput) decimalAmountPattern else wholeAmountPattern
+                        if (v.matches(pattern)) onAmountChange(v)
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    textColor = if (type == FlowType.EXPENSE) colors.neg else colors.pos,
                     placeholder = currencySymbol + "0",
                 )
             }
@@ -280,4 +292,10 @@ private fun FieldLabel(text: String, top: androidx.compose.ui.unit.Dp, bottom: a
     )
 }
 
-private fun trimAmount(v: Double): String = Math.round(v).toString()
+/** Preserves real cents instead of rounding them away, so editing a decimal entry doesn't silently drop them. */
+private fun trimAmount(v: Double): String {
+    val totalCents = Math.round(v * 100)
+    val whole = totalCents / 100
+    val cents = totalCents % 100
+    return if (cents == 0L) whole.toString() else "$whole.${cents.toString().padStart(2, '0')}"
+}

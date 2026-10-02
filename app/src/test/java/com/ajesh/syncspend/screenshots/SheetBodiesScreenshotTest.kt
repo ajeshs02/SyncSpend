@@ -43,7 +43,7 @@ class SheetBodiesScreenshotTest {
     private fun EditBody(type: FlowType, category: CategoryEntity?, modifier: Modifier = Modifier) = EditEntryBody(
         type = type, onTypeChange = {},
         note = "Coffee & Snacks", onNoteChange = {},
-        amountText = "250", onAmountChange = {}, currencySymbol = "₹",
+        amountText = "250", onAmountChange = {}, allowDecimalInput = false, currencySymbol = "₹",
         dateLabel = "27 Sep 2026", onDateClick = {},
         category = category, onCategoryClick = {},
         canSave = category != null, onSave = {}, onDelete = {}, onClose = {},

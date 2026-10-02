@@ -9,7 +9,7 @@ import java.time.format.ResolverStyle
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
-/** One valid CSV row. [amount] is positive; [categoryName] is never blank (see [CsvImportParser.UNCATEGORIZED]). */
+/** One valid CSV row. [amount] is positive (may carry cents); [categoryName] is never blank (see [CsvImportParser.UNCATEGORIZED]). */
 data class ParsedRow(
     val line: Int,
     val date: LocalDate,
@@ -101,6 +101,7 @@ object CsvImportParser {
             val type = when (r[typeCol].trim().uppercase()) {
                 "EXPENSE" -> FlowType.EXPENSE
                 "INCOME" -> FlowType.INCOME
+                "SAVINGS" -> FlowType.SAVINGS
                 else -> return@forEachIndexed skip("bad type \"${r[typeCol].trim()}\"")
             }
             val amount = parseAmount(r[amountCol]) ?: return@forEachIndexed skip("bad amount \"${r[amountCol].trim()}\"")
@@ -130,14 +131,14 @@ object CsvImportParser {
     }
 
     /**
-     * "₹1,250.50" / " 450 " / "-320" -> positive whole-rupee amount (fractions round to the nearest
-     * rupee — the app has no paise); null for blank, zero or unparsable.
+     * "₹1,250.50" / " 450 " / "-320" -> positive amount, rounded to the nearest cent (not the
+     * nearest whole unit — paise/cents are preserved); null for blank, zero or unparsable.
      */
     private fun parseAmount(raw: String): Double? {
         val cleaned = raw.filter { it.isDigit() || it == '.' || it == '-' }
         val value = cleaned.toDoubleOrNull() ?: return null
-        val whole = abs(value).roundToLong().toDouble()
-        return whole.takeIf { it > 0 }
+        val cents = abs(value * 100).roundToLong()
+        return (cents / 100.0).takeIf { it > 0 }
     }
 }
 

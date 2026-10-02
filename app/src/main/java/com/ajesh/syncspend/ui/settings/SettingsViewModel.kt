@@ -48,6 +48,10 @@ class SettingsViewModel(
         viewModelScope.launch { preferencesRepository.setCurrency(code) }
     }
 
+    fun setAllowDecimalInput(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setAllowDecimalInput(enabled) }
+    }
+
     fun setReminderEnabled(enabled: Boolean) {
         viewModelScope.launch { dailyReminder.setEnabled(enabled) }
     }

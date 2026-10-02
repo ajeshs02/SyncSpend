@@ -10,8 +10,11 @@ import com.ajesh.syncspend.data.datastore.PreferencesRepository
 import com.ajesh.syncspend.data.db.AppDatabase
 import com.ajesh.syncspend.data.db.MIGRATION_3_4
 import com.ajesh.syncspend.data.db.MIGRATION_4_5
+import com.ajesh.syncspend.data.db.MIGRATION_5_6
+import com.ajesh.syncspend.data.db.MIGRATION_6_7
 import com.ajesh.syncspend.data.repository.CategoryRepository
 import com.ajesh.syncspend.data.repository.CategorySeeder
+import com.ajesh.syncspend.data.repository.ForecastRepository
 import com.ajesh.syncspend.data.repository.ReminderRepository
 import com.ajesh.syncspend.data.repository.SubscriptionRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
@@ -39,6 +42,7 @@ interface AppContainer {
     val transactionRepository: TransactionRepository
     val subscriptionRepository: SubscriptionRepository
     val reminderRepository: ReminderRepository
+    val forecastRepository: ForecastRepository
     val preferencesRepository: PreferencesRepository
     val selectionState: SharedSelectionState
     val alarmScheduler: AlarmScheduler
@@ -53,7 +57,7 @@ interface AppContainer {
     /** Loads the shared streams so the first screen can draw complete data. */
     suspend fun warmUp()
 
-    /** Wipes transactions, categories, subscriptions and reminders, then restores the starter categories. */
+    /** Wipes transactions, categories, subscriptions, reminders and forecasts, then restores the starter categories. */
     suspend fun clearAllData()
 }
 
@@ -76,7 +80,7 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         // Any future schema change needs an explicit Migration (a missing one
         // fails loudly instead of silently wiping the user's entries).
         Room.databaseBuilder(context, AppDatabase::class.java, "syncspend.db")
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .build()
     }
 
@@ -96,6 +100,10 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val reminderRepository: ReminderRepository by lazy {
         ReminderRepository(database.reminderDao())
+    }
+
+    override val forecastRepository: ForecastRepository by lazy {
+        ForecastRepository(database.forecastDao())
     }
 
     override val preferencesRepository: PreferencesRepository by lazy {

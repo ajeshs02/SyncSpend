@@ -89,10 +89,16 @@ class HomeViewModel(
     private fun compute(sources: Sources, scope: ScopePeriod, flowType: FlowType): HomeUiState {
         val flowTx = AnalyticsEngine.flowFilter(sources.tx, flowType)
         val scopeTx = AnalyticsEngine.scopeFilter(flowTx, scope)
-        val total = scopeTx.sumOf { kotlin.math.abs(it.amount) }
+        // "Total Income" also pulls in Savings contributions that are newly received money (not a
+        // transfer of income already counted) — see AnalyticsEngine.totalIncome's own doc. Expense and
+        // Savings totals are plain per-type sums; funding source/contribution kind don't change them.
+        fun periodTotal(period: ScopePeriod) =
+            if (flowType == FlowType.INCOME) AnalyticsEngine.totalIncome(AnalyticsEngine.scopeFilter(sources.tx, period))
+            else AnalyticsEngine.scopeFilter(flowTx, period).sumOf { kotlin.math.abs(it.amount) }
+        val total = periodTotal(scope)
 
         val prevScope = AnalyticsEngine.previousScope(scope)
-        val prevTotal = prevScope?.let { AnalyticsEngine.scopeFilter(flowTx, it).sumOf { t -> kotlin.math.abs(t.amount) } } ?: 0.0
+        val prevTotal = prevScope?.let(::periodTotal) ?: 0.0
         val trend = AnalyticsEngine.trendPercent(total, prevTotal)
         val cur = sources.prefs.currencyCode.symbol
         val now = java.time.YearMonth.now()
@@ -105,7 +111,11 @@ class HomeViewModel(
             loaded = true,
             flow = flowType,
             scopeLabel = AnalyticsEngine.scopeLabel(scope),
-            scopeSubLabel = "${scopeTx.size} " + if (flowType == FlowType.INCOME) "income entries logged" else "expenses logged",
+            scopeSubLabel = "${scopeTx.size} " + when (flowType) {
+                FlowType.INCOME -> "income entries logged"
+                FlowType.SAVINGS -> "savings entries logged"
+                FlowType.EXPENSE -> "expenses logged"
+            },
             total = total,
             totalFormatted = CurrencyFormatter.amount(total),
             currencySymbol = sources.prefs.currencyCode.symbol,

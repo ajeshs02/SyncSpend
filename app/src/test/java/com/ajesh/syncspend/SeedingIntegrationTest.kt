@@ -53,20 +53,20 @@ class SeedingIntegrationTest {
         scope.coroutineContext[Job]?.cancel()
     }
 
-    @Test fun freshInstallGetsTheElevenDefaultsExactlyOnce() = runBlocking {
+    @Test fun freshInstallGetsTheFourteenDefaultsExactlyOnce() = runBlocking {
         seeder.seedIfNeeded()
         val first = categories.getAllOnce()
-        assertEquals(11, first.size)
+        assertEquals(14, first.size)
         assertEquals(8, first.count { it.type == FlowType.EXPENSE })
         assertEquals((0..7).toList(), first.filter { it.type == FlowType.EXPENSE }.map { it.sortOrder })
 
         seeder.seedIfNeeded() // the next launch must not add anything
-        assertEquals(11, categories.getAllOnce().size)
+        assertEquals(14, categories.getAllOnce().size)
     }
 
     @Test fun overlappingCallsStillSeedOnlyOnce() = runBlocking {
         List(5) { async(Dispatchers.IO) { seeder.seedIfNeeded() } }.awaitAll()
-        assertEquals(11, categories.getAllOnce().size)
+        assertEquals(14, categories.getAllOnce().size)
     }
 
     @Test fun existingCategoriesAreKeptAndNotDuplicated() = runBlocking {
@@ -74,7 +74,7 @@ class SeedingIntegrationTest {
         categories.createNext("Rent", "house", FlowType.EXPENSE)
         seeder.seedIfNeeded()
         val all = categories.getAllOnce()
-        assertEquals(12, all.size) // 11 defaults + Rent (food already existed)
+        assertEquals(15, all.size) // 14 defaults + Rent (food already existed)
         assertEquals("coffee", all.single { it.name.equals("food", true) }.iconKey) // theirs untouched
         assertEquals(1, all.count { it.name.equals("food", true) })
     }
@@ -83,6 +83,6 @@ class SeedingIntegrationTest {
         seeder.seedIfNeeded()
         categories.delete(categories.getAllOnce().single { it.name == "Gift" })
         seeder.seedIfNeeded()
-        assertEquals(10, categories.getAllOnce().size)
+        assertEquals(13, categories.getAllOnce().size)
     }
 }
