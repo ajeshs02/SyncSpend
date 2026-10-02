@@ -60,7 +60,7 @@ fun StatsScreen() {
     val flow by viewModel.flow.collectAsStateWithLifecycle()
     val statsRange by viewModel.statsRange.collectAsStateWithLifecycle()
     val colors = SyncSpendTheme.colors
-    val flowColor by animateColorAsState(if (flow == FlowType.INCOME) colors.pos else colors.neg, tween(200), label = "flow-word")
+    val flowColor by animateColorAsState(com.ajesh.syncspend.ui.components.flowColor(flow, colors), tween(200), label = "flow-word")
     val dateClause = remember(statsRange) { statsDateClause(statsRange, LocalDate.now()) }
 
     Column(
@@ -85,7 +85,7 @@ fun StatsScreen() {
             buildAnnotatedString {
                 append("Showing stats for ")
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = flowColor)) {
-                    append(if (flow == FlowType.INCOME) "income" else "expenses")
+                    append(com.ajesh.syncspend.ui.components.labelFor(flow).lowercase() + if (flow == FlowType.EXPENSE) "s" else "")
                 }
                 append(dateClause?.let { " $it" } ?: " of all time")
             },

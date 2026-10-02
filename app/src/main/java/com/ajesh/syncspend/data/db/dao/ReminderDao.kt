@@ -27,4 +27,7 @@ interface ReminderDao {
 
     @Query("SELECT * FROM reminders WHERE active = 1 ORDER BY nextTriggerDate ASC")
     suspend fun getActiveOnce(): List<ReminderEntity>
+
+    @Query("SELECT * FROM reminders")
+    suspend fun getAllOnce(): List<ReminderEntity>
 }

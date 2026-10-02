@@ -47,16 +47,18 @@ import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
 @Composable
-fun CategoriesScreen() {
+fun CategoriesScreen(initialFlow: FlowType? = null) {
     val container = LocalAppContainer.current
     val viewModel: CategoriesViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { CategoriesViewModel(container.categoryRepository, container.transactionRepository) }
+            initializer {
+                CategoriesViewModel(container.categoryRepository, container.transactionRepository, initialFlow ?: FlowType.EXPENSE)
+            }
         },
     )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val colors = SyncSpendTheme.colors
-    val flowWord = if (state.type == FlowType.INCOME) "income" else "expense"
+    val flowWord = com.ajesh.syncspend.ui.components.labelFor(state.type).lowercase()
 
     var showAdd by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<CategoryEntity?>(null) }
@@ -131,7 +133,7 @@ fun CategoriesScreen() {
             initialName = "",
             initialIconKey = null,
             iconKind = IconKind.CATEGORY,
-            namePlaceholder = if (state.type == FlowType.INCOME) "New Income ${state.categories.size + 1}" else "New Expense ${state.categories.size + 1}",
+            namePlaceholder = "New ${com.ajesh.syncspend.ui.components.labelFor(state.type)} ${state.categories.size + 1}",
             onConfirm = { name, icon ->
                 viewModel.add(name, icon)
                 showAdd = false

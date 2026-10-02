@@ -71,7 +71,8 @@ object CsvImporter {
                     byKey[key] = category
                 }
 
-                val signed = if (row.type == FlowType.INCOME) row.amount else -row.amount
+                // Income and Savings contributions are both stored positive; only Expense is negative.
+                val signed = if (row.type == FlowType.EXPENSE) -row.amount else row.amount
                 // The description is the entry's optional note: blank stays blank (the row shows its category).
                 val description = row.description
                 if (existing.consumeIfDuplicate(row.date, signed, category.id, description)) {
@@ -83,6 +84,8 @@ object CsvImporter {
                         categoryId = category.id,
                         date = row.date,
                         createdAt = now + index,
+                        // Explicit: the default (sign-derived) would misread a Savings row as Income.
+                        type = row.type,
                     )
                 }
             }

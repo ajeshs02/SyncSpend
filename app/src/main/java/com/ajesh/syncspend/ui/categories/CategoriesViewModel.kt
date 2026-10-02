@@ -24,9 +24,10 @@ data class CategoriesUiState(
 class CategoriesViewModel(
     private val categoryRepository: CategoryRepository,
     private val transactionRepository: TransactionRepository,
+    initialType: FlowType = FlowType.EXPENSE,
 ) : ViewModel() {
 
-    private val type = MutableStateFlow(FlowType.EXPENSE)
+    private val type = MutableStateFlow(initialType)
 
     val uiState: StateFlow<CategoriesUiState> = combine(
         type,

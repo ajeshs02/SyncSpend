@@ -8,19 +8,28 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import com.ajesh.syncspend.data.db.AppDatabase
 import com.ajesh.syncspend.data.db.MIGRATION_3_4
+import com.ajesh.syncspend.data.db.MIGRATION_4_5
+import com.ajesh.syncspend.data.db.MIGRATION_5_6
+import com.ajesh.syncspend.data.db.MIGRATION_6_7
+import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.domain.model.BillingCycle
+import com.ajesh.syncspend.domain.model.FlowType
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+
+/** Every migration from the hand-built v3 fixture up to the current schema — the real path any installed app takes. */
+private val ALL_MIGRATIONS = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 
 /**
  * The real user database is at v3 and holds real entries, so the v3 -> v4 migration is tested against a
@@ -45,6 +54,27 @@ class MigrationTest {
                         db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_date` ON `transactions` (`date`)")
                         db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_categoryId` ON `transactions` (`categoryId`)")
                         db.execSQL("CREATE TABLE IF NOT EXISTS `subscriptions` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `iconKey` TEXT NOT NULL, `amount` REAL NOT NULL, `billingCycle` TEXT NOT NULL, `nextDueDate` INTEGER NOT NULL, `categoryId` INTEGER, `active` INTEGER NOT NULL)")
+                        db.execSQL("CREATE TABLE IF NOT EXISTS `reminders` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `label` TEXT NOT NULL, `iconKey` TEXT NOT NULL, `schedule` TEXT NOT NULL, `timeMinuteOfDay` INTEGER NOT NULL, `nextTriggerDate` INTEGER NOT NULL, `active` INTEGER NOT NULL)")
+                    }
+
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                },
+            ).build(),
+        )
+        helper.writableDatabase.also(fill)
+        helper.close()
+    }
+
+    private fun createV5(name: String, fill: (SupportSQLiteDatabase) -> Unit) {
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context).name(name).callback(
+                object : SupportSQLiteOpenHelper.Callback(5) {
+                    override fun onCreate(db: SupportSQLiteDatabase) {
+                        db.execSQL("CREATE TABLE IF NOT EXISTS `categories` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `iconKey` TEXT NOT NULL, `type` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, `archived` INTEGER NOT NULL)")
+                        db.execSQL("CREATE TABLE IF NOT EXISTS `transactions` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `amount` REAL NOT NULL, `description` TEXT NOT NULL, `categoryId` INTEGER NOT NULL, `date` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `timeMinuteOfDay` INTEGER)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_date` ON `transactions` (`date`)")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_categoryId` ON `transactions` (`categoryId`)")
+                        db.execSQL("CREATE TABLE IF NOT EXISTS `subscriptions` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `iconKey` TEXT NOT NULL, `amount` REAL NOT NULL, `billingCycle` TEXT NOT NULL, `nextDueDate` INTEGER NOT NULL, `categoryId` INTEGER, `active` INTEGER NOT NULL, `remindDaysBefore` TEXT NOT NULL DEFAULT '1,3', `remindMinuteOfDay` INTEGER NOT NULL DEFAULT 540)")
                         db.execSQL("CREATE TABLE IF NOT EXISTS `reminders` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `label` TEXT NOT NULL, `iconKey` TEXT NOT NULL, `schedule` TEXT NOT NULL, `timeMinuteOfDay` INTEGER NOT NULL, `nextTriggerDate` INTEGER NOT NULL, `active` INTEGER NOT NULL)")
                     }
 
@@ -83,7 +113,7 @@ class MigrationTest {
         }
 
         val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(MIGRATION_3_4).allowMainThreadQueries().build()
+            .addMigrations(*ALL_MIGRATIONS).allowMainThreadQueries().build()
         try {
             val rows = db.transactionDao().getAllOnce().associateBy { it.id }
             assertEquals("", rows.getValue(1).description)
@@ -113,12 +143,94 @@ class MigrationTest {
         val name = "migration-empty.db"
         createV3(name) { }
         val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(MIGRATION_3_4).allowMainThreadQueries().build()
+            .addMigrations(*ALL_MIGRATIONS).allowMainThreadQueries().build()
         try {
             assertEquals(0, db.transactionDao().getAllOnce().size)
         } finally {
             db.close()
             context.deleteDatabase(name)
+        }
+    }
+
+    @Test fun migration5to6BackfillsTypeAndAddsSavingsCategoriesWithoutTouchingTheExistingOne() = runBlocking {
+        val name = "migration-savings.db"
+        val day = LocalDate.of(2026, 9, 20)
+        createV5(name) { db ->
+            db.execSQL("INSERT INTO categories VALUES (1, 'Food', 'utensils', 'EXPENSE', 0, 0)")
+            db.execSQL("INSERT INTO categories VALUES (2, 'Salary', 'bank', 'INCOME', 0, 0)")
+            // The pre-existing Expense category literally named "Savings" — must survive untouched.
+            db.execSQL("INSERT INTO categories VALUES (3, 'Savings', 'coin', 'EXPENSE', 6, 0)")
+            db.execSQL("INSERT INTO transactions (id, amount, description, categoryId, date, createdAt, timeMinuteOfDay) VALUES (1, -250.0, '', 1, ${day.toEpochDay()}, 1, NULL)")
+            db.execSQL("INSERT INTO transactions (id, amount, description, categoryId, date, createdAt, timeMinuteOfDay) VALUES (2, 50000.0, '', 2, ${day.toEpochDay()}, 2, NULL)")
+        }
+
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
+            .addMigrations(MIGRATION_5_6, MIGRATION_6_7).allowMainThreadQueries().build()
+        try {
+            val rows = db.transactionDao().getAllOnce().associateBy { it.id }
+            assertEquals(FlowType.EXPENSE, rows.getValue(1).type)
+            assertEquals(FlowType.INCOME, rows.getValue(2).type)
+            assertNull(rows.getValue(1).fundingSource)
+            assertNull(rows.getValue(2).contributionKind)
+
+            val categories = db.categoryDao().getAllOnce()
+            val oldSavings = categories.single { it.name == "Savings" }
+            assertEquals(FlowType.EXPENSE, oldSavings.type) // untouched, not renamed or migrated
+            assertEquals("coin", oldSavings.iconKey)
+
+            val newSavingsCategories = categories.filter { it.type == FlowType.SAVINGS }
+            assertEquals(setOf("Savings Goals", "Emergency Fund", "Investments"), newSavingsCategories.map { it.name }.toSet())
+            assertTrue(newSavingsCategories.all { !it.archived })
+
+            // MIGRATION_6_7 created the forecasts table in the same upgrade chain — usable immediately.
+            val forecastId = db.forecastDao().insert(com.ajesh.syncspend.data.db.entity.ForecastEntity(note = "Rent", amount = 12000.0, date = null))
+            assertEquals(1, db.forecastDao().getAllOnce().filter { it.id == forecastId }.size)
+        } finally {
+            db.close()
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test fun migration5to6OnAnEmptyDatabaseStillAddsTheThreeSavingsDefaults() = runBlocking {
+        val name = "migration-savings-empty.db"
+        createV5(name) { }
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
+            .addMigrations(MIGRATION_5_6, MIGRATION_6_7).allowMainThreadQueries().build()
+        try {
+            assertEquals(0, db.transactionDao().getAllOnce().size)
+            assertEquals(3, db.categoryDao().getAllOnce().count { it.type == FlowType.SAVINGS })
+        } finally {
+            db.close()
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test fun v6EntitiesRoundTripSavingsAndForecasts() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build()
+        try {
+            val day = LocalDate.of(2026, 9, 27)
+            val savingsCat = CategoryEntity(name = "Goals", iconKey = "coin", type = FlowType.SAVINGS, sortOrder = 0)
+            val catId = db.categoryDao().insert(savingsCat)
+
+            db.transactionDao().insert(
+                TransactionEntity(
+                    amount = 5000.0, description = "", categoryId = catId, date = day, createdAt = 1L,
+                    type = FlowType.SAVINGS, contributionKind = com.ajesh.syncspend.domain.model.ContributionKind.TRANSFER,
+                ),
+            )
+            val savedTx = db.transactionDao().getAllOnce().single()
+            assertEquals(FlowType.SAVINGS, savedTx.type)
+            assertEquals(com.ajesh.syncspend.domain.model.ContributionKind.TRANSFER, savedTx.contributionKind)
+            assertNull(savedTx.fundingSource)
+
+            db.forecastDao().insert(com.ajesh.syncspend.data.db.entity.ForecastEntity(note = "Rent", amount = 12000.0, date = null))
+            db.forecastDao().insert(com.ajesh.syncspend.data.db.entity.ForecastEntity(note = "Trip", amount = 8000.0, date = day))
+            val forecasts = db.forecastDao().getAllOnce()
+            assertEquals(2, forecasts.size)
+            assertNull(forecasts.single { it.note == "Rent" }.date)
+            assertEquals(day, forecasts.single { it.note == "Trip" }.date)
+        } finally {
+            db.close()
         }
     }
 

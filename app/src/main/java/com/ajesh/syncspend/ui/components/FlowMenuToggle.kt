@@ -41,10 +41,30 @@ import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
+/** The flow's label, lowercase variant available via `.lowercase()` where a screen needs it mid-sentence. */
+fun labelFor(flow: FlowType): String = when (flow) {
+    FlowType.EXPENSE -> "Expense"
+    FlowType.INCOME -> "Income"
+    FlowType.SAVINGS -> "Savings"
+}
+
+/** The flow's accent colour, for the handful of screens (Stats, Transactions) that tint a word to match it. */
+fun flowColor(flow: FlowType, colors: com.ajesh.syncspend.ui.theme.SyncSpendColors): Color = when (flow) {
+    FlowType.EXPENSE -> colors.neg
+    FlowType.INCOME -> colors.pos
+    FlowType.SAVINGS -> colors.brand
+}
+
+private fun iconFor(flow: FlowType) = when (flow) {
+    FlowType.EXPENSE -> SyncSpendIcons.ArrowOut
+    FlowType.INCOME -> SyncSpendIcons.ArrowIn
+    FlowType.SAVINGS -> SyncSpendIcons.Coin
+}
+
 /**
- * The compact Expense/Income pill used in a screen's title row (Transactions, Stats): tap to open
- * a small dropdown with the other option, rather than [FlowToggle]'s full-width segmented control
- * (used where there's room for it, e.g. Add/Edit Entry).
+ * The compact Expense/Income/Savings pill used in a screen's title row (Transactions, Stats): tap
+ * to open a small dropdown with the other options, rather than [FlowToggle]'s full-width segmented
+ * control (used where there's room for it, e.g. Add/Edit Entry).
  */
 @Composable
 fun FlowMenuToggle(flow: FlowType, onPick: (FlowType) -> Unit) {
@@ -53,7 +73,7 @@ fun FlowMenuToggle(flow: FlowType, onPick: (FlowType) -> Unit) {
     Box {
         Row(
             modifier = Modifier
-                // Same selected colours as the Expense/Income toggle, so it reads in dark mode too.
+                // Same selected colours as the Expense/Income/Savings toggle, so it reads in dark mode too.
                 .background(colors.selectedBrush, RoundedCornerShape(14.dp))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -64,17 +84,13 @@ fun FlowMenuToggle(flow: FlowType, onPick: (FlowType) -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                if (flow == FlowType.INCOME) SyncSpendIcons.ArrowIn else SyncSpendIcons.ArrowOut,
+                iconFor(flow),
                 null,
-                tint = if (flow == FlowType.INCOME) colors.brand else colors.expenseOnSelected,
+                tint = if (flow == FlowType.EXPENSE) colors.expenseOnSelected else colors.brand,
                 modifier = Modifier.size(15.dp),
             )
             Box(Modifier.width(5.dp))
-            Text(
-                if (flow == FlowType.INCOME) "Income" else "Expense",
-                style = MaterialTheme.typography.labelLarge,
-                color = colors.onSelected,
-            )
+            Text(labelFor(flow), style = MaterialTheme.typography.labelLarge, color = colors.onSelected)
         }
         if (open) {
             FlowMenuPopup(
@@ -116,6 +132,7 @@ private fun FlowMenuPopup(current: FlowType, onPick: (FlowType) -> Unit, onDismi
             ) {
                 FlowMenuItem("Expense", FlowType.EXPENSE, current, onPick)
                 FlowMenuItem("Income", FlowType.INCOME, current, onPick)
+                FlowMenuItem("Savings", FlowType.SAVINGS, current, onPick)
             }
         }
     }
@@ -135,9 +152,13 @@ private fun FlowMenuItem(label: String, value: FlowType, current: FlowType, onPi
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Icon(
-            if (value == FlowType.INCOME) SyncSpendIcons.ArrowIn else SyncSpendIcons.ArrowOut,
+            iconFor(value),
             null,
-            tint = if (value == FlowType.INCOME) colors.brand else if (selected) colors.expenseOnSelected else colors.neg,
+            tint = when {
+                value != FlowType.EXPENSE -> colors.brand
+                selected -> colors.expenseOnSelected
+                else -> colors.neg
+            },
             modifier = Modifier.size(14.dp),
         )
         Text(label, style = MaterialTheme.typography.labelLarge, color = if (selected) colors.onSelected else colors.ink)

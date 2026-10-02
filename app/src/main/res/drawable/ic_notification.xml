@@ -1,14 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  A simplified, monochrome version of the app's own wallet mark (see ic_launcher_foreground.xml) —
+  a rounded-rect body with a clasp nub on the right edge — instead of the previous unrelated
+  4-point sparkle glyph, so the status-bar icon reads as the same mark as the rest of the app.
+  Android status-bar icons must be a plain white silhouette on transparent (the system tints it),
+  so both shapes are solid white, not a stroke outline.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.8"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M12,3.5l1.9,5.3 5.3,1.9 -5.3,1.9L12,18l-1.9,-5.4 -5.3,-1.9 5.3,-1.9z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M5.5,7 L15.5,7 A2.5,2.5 0 0,1 18,9.5 L18,15.5 A2.5,2.5 0 0,1 15.5,18 L5.5,18 A2.5,2.5 0 0,1 3,15.5 L3,9.5 A2.5,2.5 0 0,1 5.5,7 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M18.8,10.5 L19.7,10.5 A1.3,1.3 0 0,1 21,11.8 L21,13.2 A1.3,1.3 0 0,1 19.7,14.5 L18.8,14.5 A1.3,1.3 0 0,1 17.5,13.2 L17.5,11.8 A1.3,1.3 0 0,1 18.8,10.5 Z" />
 </vector>

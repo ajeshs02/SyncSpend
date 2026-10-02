@@ -60,7 +60,7 @@ object TipsEngine {
             )
         }
 
-        val rate = s.savingsRatePercent
+        val rate = s.netSavingsRatePercent
         if (rate != null) {
             val income = s.otherFlowTotal
             when {

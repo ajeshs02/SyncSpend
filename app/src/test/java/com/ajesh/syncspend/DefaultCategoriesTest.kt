@@ -13,11 +13,15 @@ class DefaultCategoriesTest {
     private fun cat(name: String, type: FlowType, archived: Boolean = false) =
         CategoryEntity(name = name, iconKey = "tag", type = type, sortOrder = 0, archived = archived)
 
-    @Test fun shipsTheElevenStarterCategories() {
+    @Test fun shipsTheFourteenStarterCategories() {
         val all = DefaultCategories.all
-        assertEquals(11, all.size)
+        assertEquals(14, all.size)
         assertEquals(8, all.count { it.type == FlowType.EXPENSE })
         assertEquals(listOf("Salary", "Freelance", "Gift"), all.filter { it.type == FlowType.INCOME }.map { it.name })
+        assertEquals(
+            listOf("Savings Goals", "Emergency Fund", "Investments"),
+            all.filter { it.type == FlowType.SAVINGS }.map { it.name },
+        )
         assertEquals(all.map { it.name to it.type }.distinct().size, all.size)
     }
 
@@ -35,7 +39,7 @@ class DefaultCategoriesTest {
     @Test fun existingCategoriesAreNotDuplicatedCaseInsensitively() {
         val existing = listOf(cat("food", FlowType.EXPENSE), cat("SALARY", FlowType.INCOME), cat("Gift ", FlowType.INCOME))
         val missing = DefaultCategories.missingFrom(existing).map { it.name }
-        assertEquals(8, missing.size)
+        assertEquals(11, missing.size)
         assertTrue("Food" !in missing && "Salary" !in missing && "Gift" !in missing)
     }
 

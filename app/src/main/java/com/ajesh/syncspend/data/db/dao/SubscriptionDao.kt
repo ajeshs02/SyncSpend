@@ -27,4 +27,7 @@ interface SubscriptionDao {
 
     @Query("SELECT * FROM subscriptions WHERE active = 1 ORDER BY nextDueDate ASC")
     suspend fun getActiveOnce(): List<SubscriptionEntity>
+
+    @Query("SELECT * FROM subscriptions")
+    suspend fun getAllOnce(): List<SubscriptionEntity>
 }

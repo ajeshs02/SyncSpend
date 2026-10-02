@@ -45,9 +45,18 @@ fun CategoryPickerSheet(
     selectedId: Long?,
     onPick: (CategoryEntity?) -> Unit,
     onDismiss: () -> Unit,
+    onAddCategory: (() -> Unit)? = null,
 ) {
     DesignSheet(onDismiss = onDismiss) { close ->
-        SheetHeader(title = "Choose category", onClose = close)
+        SheetHeader(
+            title = "Choose category",
+            onClose = close,
+            actions = {
+                if (onAddCategory != null) {
+                    SquareIconButton(SyncSpendIcons.Plus, onClick = { close(); onAddCategory() }, size = 30.dp)
+                }
+            },
+        )
 
         if (categories.isEmpty()) {
             Column(
@@ -55,7 +64,7 @@ fun CategoryPickerSheet(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    "No ${if (flow == FlowType.INCOME) "income" else "expense"} categories yet.",
+                    "No ${labelFor(flow).lowercase()} categories yet.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = SyncSpendTheme.colors.ink,
                 )

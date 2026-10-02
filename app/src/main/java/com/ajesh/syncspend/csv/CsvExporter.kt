@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
-import com.ajesh.syncspend.data.db.entity.type
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -29,7 +28,7 @@ object CsvExporter {
                             t.type.name,
                             names[t.categoryId]?.name ?: "Uncategorized",
                             t.description,
-                            Math.round(abs(t.amount)).toString(),
+                            formatAmountCell(t.amount),
                         ),
                     ),
                 )
@@ -37,5 +36,19 @@ object CsvExporter {
             }
         } ?: error("Could not open the file for writing")
         sorted.size
+    }
+
+    /**
+     * Preserves the real stored precision rather than rounding to a whole unit (unlike
+     * [com.ajesh.syncspend.util.CurrencyFormatter], there's no thousands separator here — this is a
+     * CSV cell, not a display string) — a round-trip export then re-import must never lose cents.
+     * Still writes a bare integer for a whole-unit amount, so every pre-paise export this app has
+     * ever produced stays byte-identical.
+     */
+    private fun formatAmountCell(amount: Double): String {
+        val totalCents = Math.round(abs(amount) * 100)
+        val whole = totalCents / 100
+        val cents = totalCents % 100
+        return if (cents == 0L) whole.toString() else "$whole.${cents.toString().padStart(2, '0')}"
     }
 }

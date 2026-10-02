@@ -4,9 +4,11 @@ import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
 import com.ajesh.syncspend.domain.model.CategoryRollup
+import com.ajesh.syncspend.domain.model.ContributionKind
 import com.ajesh.syncspend.domain.model.DateRange
 import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.FlowType
+import com.ajesh.syncspend.domain.model.FundingSource
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.model.StatsRange
 import java.time.LocalDate
@@ -120,7 +122,7 @@ class AnalyticsEngineTest {
         assertEquals(550.0 / 3, s.dailyAverage, 1e-9)
         assertEquals(-63, s.trendPercent)
         assertEquals(10000.0, s.otherFlowTotal, 0.0)
-        assertTrue(s.savingsRatePercent!! in 94..95) // (10000 - 550) / 10000 = 94.5%
+        assertTrue(s.netSavingsRatePercent!! in 94..95) // (10000 - 550) / 10000 = 94.5%
         assertNotNull(s.topCategory)
         assertEquals(250.0, kotlin.math.abs(s.biggestEntry!!.amount), 0.0)
         assertNull(AnalyticsEngine.stats(data, listOf(food), sept, null, FlowType.EXPENSE, today).trendPercent)
@@ -222,5 +224,58 @@ class AnalyticsEngineTest {
     @Test fun busiestDayTieGoesToTheEarlierDate() {
         val list = listOf(tx(-100.0, LocalDate.of(2026, 9, 9)), tx(-100.0, LocalDate.of(2026, 9, 3)))
         assertEquals(LocalDate.of(2026, 9, 3), AnalyticsEngine.busiestDay(list)!!.date)
+    }
+
+    // --- Savings accounting (Part C1a) ---
+
+    private fun savingsTx(amount: Double, kind: ContributionKind? = null, date: LocalDate = today) = TransactionEntity(
+        id = nextId++, amount = amount, description = "", categoryId = 1, date = date, createdAt = nextId,
+        type = FlowType.SAVINGS, contributionKind = kind,
+    )
+
+    private fun expenseTx(amount: Double, source: FundingSource? = null, date: LocalDate = today) = TransactionEntity(
+        id = nextId++, amount = -amount, description = "", categoryId = 1, date = date, createdAt = nextId,
+        type = FlowType.EXPENSE, fundingSource = source,
+    )
+
+    private fun incomeTx(amount: Double, date: LocalDate = today) = TransactionEntity(
+        id = nextId++, amount = amount, description = "", categoryId = 1, date = date, createdAt = nextId, type = FlowType.INCOME,
+    )
+
+    @Test fun savingsFundedExpenseCountsAsExpenseAndDebitsTheSavingsPool() {
+        val all = listOf(incomeTx(10000.0), expenseTx(3000.0, FundingSource.SAVINGS), savingsTx(10000.0, ContributionKind.NEW_INCOME))
+        assertEquals(3000.0, AnalyticsEngine.totalExpense(all), 0.0) // still a plain expense
+        assertEquals(7000.0, AnalyticsEngine.savingsBalance(all), 0.0) // 10000 contributed - 3000 spent from it
+    }
+
+    @Test fun transferNeverCountsAsIncomeAndLeavesTotalFundsUnchanged() {
+        val all = listOf(incomeTx(10000.0), savingsTx(4000.0, ContributionKind.TRANSFER))
+        assertEquals(10000.0, AnalyticsEngine.totalIncome(all), 0.0) // the transfer is not new income
+        assertEquals(6000.0, AnalyticsEngine.regularFundsBalance(all), 0.0) // 10000 - 4000 moved out
+        assertEquals(4000.0, AnalyticsEngine.savingsBalance(all), 0.0) // 4000 moved in
+        // Total funds (regular + savings) is unaffected by a transfer — only which pool holds the money changes.
+        assertEquals(10000.0, AnalyticsEngine.regularFundsBalance(all) + AnalyticsEngine.savingsBalance(all), 0.0)
+    }
+
+    @Test fun newIncomeContributionCountsAsIncomeAndAddsToSavings() {
+        val all = listOf(incomeTx(10000.0), savingsTx(2000.0, ContributionKind.NEW_INCOME))
+        assertEquals(12000.0, AnalyticsEngine.totalIncome(all), 0.0) // genuinely new money
+        assertEquals(2000.0, AnalyticsEngine.savingsBalance(all), 0.0)
+        assertEquals(10000.0, AnalyticsEngine.regularFundsBalance(all), 0.0) // never touched Regular funds
+    }
+
+    @Test fun totalFundsIdentityHoldsOverAMixedSample() {
+        val all = listOf(
+            incomeTx(20000.0),
+            expenseTx(5000.0), // regular-funded (default)
+            expenseTx(1000.0, FundingSource.SAVINGS),
+            savingsTx(6000.0, ContributionKind.NEW_INCOME),
+            savingsTx(3000.0, ContributionKind.TRANSFER),
+        )
+        val totalFunds = AnalyticsEngine.regularFundsBalance(all) + AnalyticsEngine.savingsBalance(all)
+        val expected = AnalyticsEngine.totalIncome(all) - AnalyticsEngine.totalExpense(all)
+        assertEquals(expected, totalFunds, 1e-9)
+        // 20000 + 6000 (new income) - 6000 (5000 regular + 1000 savings-funded expense) = 20000
+        assertEquals(20000.0, totalFunds, 0.0)
     }
 }

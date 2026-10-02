@@ -15,8 +15,10 @@ import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.ui.addentry.AddEntryScreen
 import com.ajesh.syncspend.ui.categories.CategoriesScreen
+import com.ajesh.syncspend.ui.forecast.ForecastScreen
 import com.ajesh.syncspend.ui.home.HomeScreen
 import com.ajesh.syncspend.ui.settings.SettingsScreen
 import com.ajesh.syncspend.ui.subsreminders.SubsRemindersScreen
@@ -52,17 +54,26 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
                 onViewAllTransactions = { navController.navigateToTab(Routes.TRANSACTIONS) },
                 onOpenSubscriptions = { navController.navigate(Routes.subsReminders("subs")) },
                 onOpenReminders = { navController.navigate(Routes.subsReminders("alerts")) },
+                onOpenForecast = { navController.navigate(Routes.FORECAST) },
                 onOpenStats = { navController.navigateToTab(Routes.STATS) },
             )
         }
         composable(Routes.TRANSACTIONS) { TransactionsScreen() }
+        composable(Routes.FORECAST) { ForecastScreen(onBack = { navController.popBackStack() }) }
         composable(Routes.ADD_ENTRY) {
             AddEntryScreen(
                 onBack = { navController.navigateToTab(Routes.HOME) },
                 onSaved = { navController.navigateToTab(Routes.HOME) },
+                onAddCategory = { flow -> navController.navigateToCategories(flow) },
             )
         }
-        composable(Routes.CATEGORIES) { CategoriesScreen() }
+        composable(
+            route = Routes.CATEGORIES,
+            arguments = listOf(navArgument("flow") { type = NavType.StringType; nullable = true; defaultValue = null }),
+        ) { entry ->
+            val initialFlow = entry.arguments?.getString("flow")?.let { runCatching { FlowType.valueOf(it) }.getOrNull() }
+            CategoriesScreen(initialFlow = initialFlow)
+        }
         composable(Routes.STATS) { StatsScreen() }
         composable(Routes.SETTINGS) { SettingsScreen(onOpenCategories = { navController.navigateToCategories() }) }
         composable(
@@ -113,13 +124,13 @@ fun NavHostController.navigateToTab(route: String) {
 }
 
 /**
- * Categories is only ever reached by pushing it from Settings. It intentionally keeps no saved
- * state of its own (see [navigateToTab]'s note) — every visit is a plain fresh push, exactly like
- * navigating between any other two screens (e.g. Home to Transactions), just not part of the tab
- * back-stack.
+ * Categories is reached by pushing it from Settings, or from Add Entry's "+ add category" shortcut
+ * (pre-selected to [flow] there). It intentionally keeps no saved state of its own (see
+ * [navigateToTab]'s note) — every visit is a plain fresh push, exactly like navigating between any
+ * other two screens (e.g. Home to Transactions), just not part of the tab back-stack.
  */
-fun NavHostController.navigateToCategories() {
-    navigate(Routes.CATEGORIES) { launchSingleTop = true }
+fun NavHostController.navigateToCategories(flow: FlowType? = null) {
+    navigate(Routes.categories(flow)) { launchSingleTop = true }
 }
 
 /** The other half of [navigateToCategories]: Settings sits directly beneath, so this is a plain pop back to it. */

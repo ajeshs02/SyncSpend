@@ -74,7 +74,11 @@ fun buildStatsUi(
     subsMonthlyTotal: Double,
     subsCount: Int,
 ): StatsUi {
-    val income = s.flow == FlowType.INCOME
+    // Savings reuses the "income" wording/direction throughout this builder (more saved is good, same as
+    // more earned) rather than a bespoke Savings-specific dashboard — a deliberate scope call for this
+    // round, not an oversight. A dedicated Savings breakdown (balance, contributions vs. savings-funded
+    // expenses) is a reasonable follow-up once this shape is proven out.
+    val income = s.flow != FlowType.EXPENSE
     val label = kind.describe(s.range)
     val prevLabel = s.previousRange?.let { kind.describe(it) } ?: "-"
     fun money(v: Double) = cur + CurrencyFormatter.amount(v)
@@ -102,7 +106,7 @@ fun buildStatsUi(
             StatTileUi(
                 if (income) "Spending logged" else "Income logged",
                 money(s.otherFlowTotal),
-                if (!income && s.savingsRatePercent != null) "You kept ${s.savingsRatePercent}%" else "Net " + money(abs(s.otherFlowTotal - s.total)) + if (income) " spent" else " left",
+                if (!income && s.netSavingsRatePercent != null) "You kept ${s.netSavingsRatePercent}%" else "Net " + money(abs(s.otherFlowTotal - s.total)) + if (income) " spent" else " left",
                 StatTone.POSITIVE,
             ),
         )

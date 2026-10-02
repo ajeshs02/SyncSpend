@@ -67,6 +67,7 @@ import com.ajesh.syncspend.domain.model.CalendarBounds
 import com.ajesh.syncspend.MainActivity
 import com.ajesh.syncspend.SyncSpendApp
 import com.ajesh.syncspend.di.AppContainer
+import com.ajesh.syncspend.domain.model.AppLink
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ThemeMode
 import com.ajesh.syncspend.ui.addentry.AddEntryViewModel
@@ -80,6 +81,7 @@ import com.ajesh.syncspend.ui.components.SquareIconButton
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendCorners
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
+import com.ajesh.syncspend.util.CurrencyFormatter
 import com.ajesh.syncspend.util.DateUtils
 import kotlin.coroutines.cancellation.CancellationException
 import java.time.YearMonth
@@ -114,7 +116,12 @@ class QuickAddActivity : ComponentActivity() {
                 onDispose {}
             }
             SyncSpendTheme(themeMode = ThemeMode.SYSTEM) {
-                QuickAddPanel(container = container, onFinished = ::finishWithoutTransition, onOpenApp = ::openApp)
+                QuickAddPanel(
+                    container = container,
+                    onFinished = ::finishWithoutTransition,
+                    onOpenApp = ::openApp,
+                    onAddCategory = ::openCategories,
+                )
             }
         }
     }
@@ -132,10 +139,25 @@ class QuickAddActivity : ComponentActivity() {
     private fun openApp() {
         startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP))
     }
+
+    /** This panel runs in its own Activity, so "+ add category" opens the main app via [AppLink] instead of a local nav push. */
+    private fun openCategories(flow: FlowType) {
+        startActivity(
+            Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .putExtra(AppLink.EXTRA_KIND, AppLink.KIND_CATEGORIES)
+                .putExtra(AppLink.EXTRA_ID, flow.ordinal.toLong()),
+        )
+    }
 }
 
 @Composable
-private fun QuickAddPanel(container: AppContainer, onFinished: () -> Unit, onOpenApp: () -> Unit) {
+private fun QuickAddPanel(
+    container: AppContainer,
+    onFinished: () -> Unit,
+    onOpenApp: () -> Unit,
+    onAddCategory: (FlowType) -> Unit,
+) {
     val viewModel: AddEntryViewModel = viewModel(
         factory = viewModelFactory {
             initializer {
@@ -252,7 +274,13 @@ private fun QuickAddPanel(container: AppContainer, onFinished: () -> Unit, onOpe
                 Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(state.currencySymbol, fontSize = 22.sp, color = negative)
-                        Text(state.amountText, fontSize = 42.sp, fontWeight = FontWeight.Medium, letterSpacing = (-1.2).sp, color = colors.ink)
+                        Text(
+                            CurrencyFormatter.groupTyped(state.amountText),
+                            fontSize = 42.sp,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = (-1.2).sp,
+                            color = colors.ink,
+                        )
                     }
                     Box(Modifier.padding(top = 10.dp).width(80.dp).height(2.dp).background(negative.copy(alpha = 0.5f), RoundedCornerShape(2.dp)))
                     Text(DateUtils.longDate(state.date), style = MaterialTheme.typography.bodySmall, color = colors.sub, modifier = Modifier.padding(top = 9.dp))
@@ -278,6 +306,7 @@ private fun QuickAddPanel(container: AppContainer, onFinished: () -> Unit, onOpe
                     },
                     onBackspace = viewModel::pressBackspace,
                     onDateClick = { showDatePicker = true },
+                    showDecimalKey = state.allowDecimalInput,
                 )
                 PrimaryButton(
                     text = if (saved) "Saved" else "Save Entry",
@@ -293,11 +322,9 @@ private fun QuickAddPanel(container: AppContainer, onFinished: () -> Unit, onOpe
                     },
                     onClick = {
                         when {
-                            state.selectedCategory == null -> {
-                                hint = "Pick a category first."
-                                viewModel.openCategoryPicker()
-                            }
-                            (state.amountText.toDoubleOrNull() ?: 0.0) == 0.0 -> hint = "Enter an amount."
+                            // No warning needed here — the picker popping open is the feedback.
+                            state.selectedCategory == null -> viewModel.openCategoryPicker()
+                            (state.amountText.toDoubleOrNull() ?: 0.0) <= 0.0 -> hint = "Enter an amount."
                             else -> viewModel.save(note = "") {
                                 saved = true
                                 scope.launch {
@@ -319,6 +346,7 @@ private fun QuickAddPanel(container: AppContainer, onFinished: () -> Unit, onOpe
             selectedId = state.selectedCategory?.id,
             onPick = { cat -> if (cat == null) viewModel.clearCategory() else viewModel.selectCategory(cat) },
             onDismiss = viewModel::closeCategoryPicker,
+            onAddCategory = { onAddCategory(FlowType.EXPENSE) },
         )
     }
     if (showDatePicker) {

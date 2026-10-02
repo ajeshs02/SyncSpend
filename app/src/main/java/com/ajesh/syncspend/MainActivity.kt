@@ -29,6 +29,7 @@ import com.ajesh.syncspend.domain.model.AppLink
 import com.ajesh.syncspend.domain.model.ThemeMode
 import com.ajesh.syncspend.navigation.Routes
 import com.ajesh.syncspend.navigation.SyncSpendNavHost
+import com.ajesh.syncspend.navigation.navigateToCategories
 import com.ajesh.syncspend.navigation.navigateToTab
 import com.ajesh.syncspend.navigation.openSubsReminders
 import com.ajesh.syncspend.ui.components.BottomFadeAndNav
@@ -114,6 +115,7 @@ private fun SyncSpendAppRoot() {
             AppLink.AddEntry -> navController.navigateToTab(Routes.ADD_ENTRY)
             is AppLink.Subscriptions -> navController.openSubsReminders("subs", target.highlightId)
             is AppLink.Reminders -> navController.openSubsReminders("alerts", target.highlightId)
+            is AppLink.Categories -> navController.navigateToCategories(target.flow)
         }
         container.selectionState.pendingLink.value = null
     }

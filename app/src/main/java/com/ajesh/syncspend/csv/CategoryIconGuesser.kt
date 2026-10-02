@@ -45,7 +45,7 @@ object CategoryIconGuesser {
         listOf("gym", "fitness", "sport") to "dumbbell",
         listOf("book") to "book",
         listOf("educat", "school", "course", "tuition", "college") to "school",
-        listOf("insurance") to "shield",
+        listOf("insurance", "emergency") to "shield",
         listOf("invest", "stock", "mutual", "sip", "interest", "dividend") to "trend",
         listOf("saving", "deposit") to "coin",
         listOf("debt", "loan", "emi", "credit", "liabilit") to "card",

@@ -32,9 +32,10 @@ import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
 /**
- * The design's 3x4 keypad: digits 1-9, then [date key] 0 [backspace]. There is
- * deliberately no decimal key — the design puts the date key where "." would
- * normally sit. Shared by the Add Entry screen and the widget quick-add panel.
+ * The design's 3x4 keypad: digits 1-9, then [date key] 0 [backspace]. The design puts the date key
+ * where "." would normally sit, so a decimal key only appears as a 4th bottom-row key — and only
+ * when [showDecimalKey] is true (Settings' "allow paise/cents" toggle) — rather than displacing the
+ * date key. Shared by the Add Entry screen and the widget quick-add panel.
  */
 @Composable
 fun AmountEntryPad(
@@ -44,6 +45,7 @@ fun AmountEntryPad(
     onDateClick: () -> Unit,
     modifier: Modifier = Modifier,
     showDateKey: Boolean = true,
+    showDecimalKey: Boolean = false,
 ) {
     val haptic = LocalHapticFeedback.current
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -69,6 +71,12 @@ fun AmountEntryPad(
                 haptic.performHapticFeedback(HapticFeedbackType.KeyboardTap)
                 onDigit("0")
             }) { Text("0", fontSize = 19.sp, fontWeight = FontWeight.Medium, color = SyncSpendTheme.colors.ink) }
+            if (showDecimalKey) {
+                PadKey(Modifier.weight(1f), SyncSpendTheme.colors.card, onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.KeyboardTap)
+                    onDigit(".")
+                }) { Text(".", fontSize = 19.sp, fontWeight = FontWeight.Medium, color = SyncSpendTheme.colors.ink) }
+            }
             PadKey(Modifier.weight(1f), SyncSpendTheme.colors.pill, onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.KeyboardTap)
                 onBackspace()
