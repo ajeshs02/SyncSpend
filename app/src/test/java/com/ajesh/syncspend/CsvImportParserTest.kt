@@ -51,7 +51,7 @@ class CsvImportParserTest {
         val out = CsvImportParser.parse("\uFEFF AMOUNT ,note,TYPE,Date,Category\n99.5,tea,expense,2026-01-02,Snacks\n")
         assertNull(out.headerError)
         val r = out.rows.single()
-        assertEquals(100.0, r.amount, 0.0) // no paise: fractions round to the nearest rupee
+        assertEquals(99.5, r.amount, 0.0) // cents are preserved, rounded only to the nearest cent
         assertEquals("tea", r.description)
         assertEquals(FlowType.EXPENSE, r.type)
         assertEquals("Snacks", r.categoryName)
@@ -66,7 +66,7 @@ class CsvImportParserTest {
     @Test fun toleratesAmountFormattingAndOtherDateStyles() {
         val out = CsvImportParser.parse("date,type,category,amount\n03/09/2026,EXPENSE,Food,\"₹1,250.50\"\n2026-09-04,INCOME,Salary,-300\n")
         assertEquals(LocalDate.of(2026, 9, 3), out.rows[0].date)
-        assertEquals(1251.0, out.rows[0].amount, 0.0)
+        assertEquals(1250.5, out.rows[0].amount, 0.0) // the ".50" is preserved, not rounded away
         assertEquals(300.0, out.rows[1].amount, 0.0)
     }
 

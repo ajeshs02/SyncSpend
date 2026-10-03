@@ -89,12 +89,8 @@ class HomeViewModel(
     private fun compute(sources: Sources, scope: ScopePeriod, flowType: FlowType): HomeUiState {
         val flowTx = AnalyticsEngine.flowFilter(sources.tx, flowType)
         val scopeTx = AnalyticsEngine.scopeFilter(flowTx, scope)
-        // "Total Income" also pulls in Savings contributions that are newly received money (not a
-        // transfer of income already counted) — see AnalyticsEngine.totalIncome's own doc. Expense and
-        // Savings totals are plain per-type sums; funding source/contribution kind don't change them.
         fun periodTotal(period: ScopePeriod) =
-            if (flowType == FlowType.INCOME) AnalyticsEngine.totalIncome(AnalyticsEngine.scopeFilter(sources.tx, period))
-            else AnalyticsEngine.scopeFilter(flowTx, period).sumOf { kotlin.math.abs(it.amount) }
+            AnalyticsEngine.scopeFilter(flowTx, period).sumOf { if (flowType == FlowType.INCOME) it.amount else kotlin.math.abs(it.amount) }
         val total = periodTotal(scope)
 
         val prevScope = AnalyticsEngine.previousScope(scope)
@@ -113,7 +109,6 @@ class HomeViewModel(
             scopeLabel = AnalyticsEngine.scopeLabel(scope),
             scopeSubLabel = "${scopeTx.size} " + when (flowType) {
                 FlowType.INCOME -> "income entries logged"
-                FlowType.SAVINGS -> "savings entries logged"
                 FlowType.EXPENSE -> "expenses logged"
             },
             total = total,

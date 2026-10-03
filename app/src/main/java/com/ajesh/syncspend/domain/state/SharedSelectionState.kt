@@ -25,6 +25,9 @@ class SharedSelectionState {
      */
     val editingTransactionId = MutableStateFlow<Long?>(null)
 
+    /** Which transfer the Edit Transfer sheet is open for (null = closed) — the Transactions page's Savings filter sets this, never [editingTransactionId], since a transfer is not a [com.ajesh.syncspend.data.db.entity.TransactionEntity]. */
+    val editingTransferId = MutableStateFlow<Long?>(null)
+
     /**
      * A page a tapped notification asked for. MainActivity sets it (also on a cold start, before anything
      * is composed); the navigation root follows it once and clears it.

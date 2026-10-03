@@ -120,10 +120,14 @@ internal fun PeriodPickerBody(
             )
         }
 
-        // Three rolling/whole-year shortcuts in one row (same 3-column rhythm as the month grid below).
+        // Quick shortcuts (round 11): Last 2/3/6 months, then the current year and the one before it
+        // (always the real current year — not tied to the stepper, and not duplicated with it). "This
+        // month"/"Last month"/"This year" were dropped — Transactions and Savings now expose This
+        // Month/Last Month as their own top-level chips, and the month grid below already reaches the
+        // current month directly, so those three were redundant with other UI.
         Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                listOf(3, 6).forEach { n ->
+                listOf(2, 3, 6).forEach { n ->
                     PickerChip(
                         label = "Last $n months",
                         selected = (draft as? ScopePeriod.LastMonths)?.months == n,
@@ -134,23 +138,30 @@ internal fun PeriodPickerBody(
                         singleLine = true,
                     ) { onDraftChange(ScopePeriod.LastMonths(n, upperBound)) }
                 }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 PickerChip(
-                    label = "Year $pickerYear",
-                    selected = draft is ScopePeriod.Year && draft.year == pickerYear,
+                    label = "Year ${upperBound.year}",
+                    selected = draft is ScopePeriod.Year && draft.year == upperBound.year,
                     modifier = Modifier.weight(1f),
                     vertical = 10.dp,
                     radius = 12.dp,
                     singleLine = true,
-                ) { onDraftChange(ScopePeriod.Year(pickerYear)) }
-            }
-            if (showAllTime) {
+                ) {
+                    onYearChange(upperBound.year)
+                    onDraftChange(ScopePeriod.Year(upperBound.year))
+                }
                 PickerChip(
-                    label = "All Time",
-                    selected = draft is ScopePeriod.AllTime,
-                    modifier = Modifier.fillMaxWidth(),
+                    label = "Year ${upperBound.year - 1}",
+                    selected = draft is ScopePeriod.Year && draft.year == upperBound.year - 1,
+                    modifier = Modifier.weight(1f),
                     vertical = 10.dp,
                     radius = 12.dp,
-                ) { onDraftChange(ScopePeriod.AllTime) }
+                    singleLine = true,
+                ) {
+                    onYearChange(upperBound.year - 1)
+                    onDraftChange(ScopePeriod.Year(upperBound.year - 1))
+                }
             }
         }
 
@@ -171,6 +182,18 @@ internal fun PeriodPickerBody(
                     }
                 }
             }
+        }
+
+        // All Time sits on its own below the month grid now — a deliberate last option, not one more
+        // shortcut mixed in with the rolling-window/year chips above.
+        if (showAllTime) {
+            PickerChip(
+                label = "All Time",
+                selected = draft is ScopePeriod.AllTime,
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                vertical = 10.dp,
+                radius = 12.dp,
+            ) { onDraftChange(ScopePeriod.AllTime) }
         }
 
         Row(modifier = Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {

@@ -48,6 +48,7 @@ import com.ajesh.syncspend.ui.components.FlowToggle
 import com.ajesh.syncspend.ui.components.CategoryField
 import com.ajesh.syncspend.ui.components.CategoryPickerSheet
 import com.ajesh.syncspend.ui.components.PrimaryButton
+import com.ajesh.syncspend.ui.components.rememberDismissKeyboardThen
 import com.ajesh.syncspend.ui.components.SheetDeleteButton
 import com.ajesh.syncspend.ui.components.SheetHeader
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
@@ -66,14 +67,20 @@ import kotlinx.coroutines.launch
  * Hosted once at the app root so it paints above the floating bottom nav.
  */
 @Composable
-fun EditEntryHost() {
+fun EditEntryHost(onAddCategory: (FlowType) -> Unit = {}) {
     val container = LocalAppContainer.current
     val id by container.selectionState.editingTransactionId.collectAsStateWithLifecycle()
-    id?.let { EditEntrySheet(it, onDismiss = { container.selectionState.editingTransactionId.value = null }) }
+    id?.let {
+        EditEntrySheet(
+            it,
+            onDismiss = { container.selectionState.editingTransactionId.value = null },
+            onAddCategory = onAddCategory,
+        )
+    }
 }
 
 @Composable
-private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
+private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit, onAddCategory: (FlowType) -> Unit = {}) {
     val container = LocalAppContainer.current
     val scope = rememberCoroutineScope()
 
@@ -100,8 +107,9 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
     var showDate by remember { mutableStateOf(false) }
     var showDelete by remember { mutableStateOf(false) }
     var showPicker by remember { mutableStateOf(false) }
+    val dismissKeyboardThen = rememberDismissKeyboardThen()
 
-    // Expense categories never overlap with Income's or Savings'. An archived category still shows
+    // Expense categories never overlap with Income's. An archived category still shows
     // while it is this entry's own, so the entry's current label stays visible and selected.
     val flowCategories = categories.filter { it.type == type && (!it.archived || it.id == loaded.categoryId) }
     val parsedAmount = amountText.toDoubleOrNull()
@@ -124,9 +132,9 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
             allowDecimalInput = prefs.allowDecimalInput,
             currencySymbol = prefs.currencyCode.symbol,
             dateLabel = "${DateUtils.shortDate(date)} ${date.year}",
-            onDateClick = { showDate = true },
+            onDateClick = { dismissKeyboardThen { showDate = true } },
             category = categories.find { it.id == categoryId },
-            onCategoryClick = { showPicker = true },
+            onCategoryClick = { dismissKeyboardThen { showPicker = true } },
             canSave = canSave,
             onSave = {
                 val v = parsedAmount ?: return@EditEntryBody
@@ -141,12 +149,8 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
                             // The time was of the original day: it no longer applies once the entry moves to another day.
                             timeMinuteOfDay = if (date == loaded.date) loaded.timeMinuteOfDay else null,
                             // type is a stored column now (not sign-derived) — must be written explicitly, or
-                            // switching to/from Savings here would silently fail to persist. fundingSource/
-                            // contributionKind only mean something for their own type, so they're dropped
-                            // when the entry no longer has that type, rather than left stale.
+                            // switching Expense/Income here would silently fail to persist.
                             type = type,
-                            fundingSource = loaded.fundingSource.takeIf { type == FlowType.EXPENSE },
-                            contributionKind = loaded.contributionKind.takeIf { type == FlowType.SAVINGS },
                         ),
                     )
                     close()
@@ -171,6 +175,7 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit) {
                 selectedId = categoryId,
                 onPick = { categoryId = it?.id },
                 onDismiss = { showPicker = false },
+                onAddCategory = { onAddCategory(type) },
             )
         }
         if (showDelete) {

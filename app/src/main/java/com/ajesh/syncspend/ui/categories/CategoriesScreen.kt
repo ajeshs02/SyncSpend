@@ -52,7 +52,12 @@ fun CategoriesScreen(initialFlow: FlowType? = null) {
     val viewModel: CategoriesViewModel = viewModel(
         factory = viewModelFactory {
             initializer {
-                CategoriesViewModel(container.categoryRepository, container.transactionRepository, initialFlow ?: FlowType.EXPENSE)
+                CategoriesViewModel(
+                    container.categoryRepository,
+                    container.transactionRepository,
+                    container.transferRepository,
+                    initialFlow ?: FlowType.EXPENSE,
+                )
             }
         },
     )

@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,7 +23,7 @@ import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
 /** The "+ New" / "+ Add" pill in screen headers, in the same selected colours as the Expense/Income toggle (readable in both themes). */
 @Composable
-fun HeaderAddButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun HeaderAddButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector = SyncSpendIcons.Plus) {
     val colors = SyncSpendTheme.colors
     Row(
         modifier = modifier
@@ -32,7 +33,7 @@ fun HeaderAddButton(label: String, onClick: () -> Unit, modifier: Modifier = Mod
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Icon(SyncSpendIcons.Plus, null, tint = colors.onSelected, modifier = Modifier.size(13.dp))
+        Icon(icon, null, tint = colors.onSelected, modifier = Modifier.size(13.dp))
         Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = colors.onSelected)
     }
 }

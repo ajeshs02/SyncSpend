@@ -1,13 +1,10 @@
 package com.ajesh.syncspend.domain.model
 
 /**
- * Only meaningful for [FlowType.SAVINGS] rows (via
- * [com.ajesh.syncspend.data.db.entity.TransactionEntity.contributionKind]):
- * - [NEW_INCOME]: money just received and allocated straight to savings. It counts toward "Total
- *   Income" (it's genuinely new money) *and* increases the savings balance.
- * - [TRANSFER]: moving already-recorded income into savings. It must NOT count toward Income again
- *   (it was already counted when first recorded) — it only moves money from the regular-funds pool
- *   to the savings pool. See [com.ajesh.syncspend.domain.analytics.AnalyticsEngine] for the exact
- *   accounting formulas this distinction feeds into.
+ * Legacy: part of the Savings-as-a-third-[FlowType] design this app no longer uses — every Savings
+ * contribution is now unconditionally a transfer (see [com.ajesh.syncspend.data.db.entity.TransferEntity]),
+ * never optionally "new income". Kept only so
+ * [com.ajesh.syncspend.data.db.entity.TransactionEntity.contributionKind] — a dead, always-null-going-forward
+ * column left in place to avoid a destructive table rebuild — still has a type to deserialize against.
  */
 enum class ContributionKind { NEW_INCOME, TRANSFER }

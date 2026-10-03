@@ -24,6 +24,7 @@ import com.ajesh.syncspend.ui.settings.SettingsScreen
 import com.ajesh.syncspend.ui.subsreminders.SubsRemindersScreen
 import com.ajesh.syncspend.ui.transactions.StatsScreen
 import com.ajesh.syncspend.ui.transactions.TransactionsScreen
+import com.ajesh.syncspend.ui.transfer.TransferScreen
 
 /**
  * The floating bottom nav lives outside this NavHost (see MainActivity) so it
@@ -55,11 +56,23 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
                 onOpenSubscriptions = { navController.navigate(Routes.subsReminders("subs")) },
                 onOpenReminders = { navController.navigate(Routes.subsReminders("alerts")) },
                 onOpenForecast = { navController.navigate(Routes.FORECAST) },
+                onOpenTransfer = { navController.navigate(Routes.TRANSFER) },
                 onOpenStats = { navController.navigateToTab(Routes.STATS) },
             )
         }
         composable(Routes.TRANSACTIONS) { TransactionsScreen() }
-        composable(Routes.FORECAST) { ForecastScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.FORECAST) {
+            ForecastScreen(
+                onBack = { navController.popBackStack() },
+                onAddCategory = { flow -> navController.navigateToCategories(flow) },
+            )
+        }
+        composable(Routes.TRANSFER) {
+            TransferScreen(
+                onBack = { navController.popBackStack() },
+                onAddCategory = { flow -> navController.navigateToCategories(flow) },
+            )
+        }
         composable(Routes.ADD_ENTRY) {
             AddEntryScreen(
                 onBack = { navController.navigateToTab(Routes.HOME) },
@@ -105,12 +118,17 @@ fun SyncSpendNavHost(navController: NavHostController, modifier: Modifier = Modi
 
 /**
  * Standard single-stack bottom-nav navigation: no back-stack pileup between
- * tabs. A pushed detail screen (Subscriptions / Reminders, opened from Home) is
- * popped first, otherwise `popUpTo{saveState}` would save it as part of Home's
- * state and `restoreState` would bring it back the next time Home is tapped.
+ * tabs. A pushed detail screen (Subscriptions / Reminders, Forecast, or
+ * Transfer — all opened from Home) is popped first, otherwise
+ * `popUpTo{saveState}` would save it as part of Home's state and
+ * `restoreState` would bring it back the next time Home is tapped — this was
+ * a real, confirmed bug for Forecast (tapping the bottom nav's Home icon from
+ * Forecast did nothing) before Forecast was added to this list.
  */
 fun NavHostController.navigateToTab(route: String) {
     if (currentDestination?.route?.startsWith(Routes.SUBS_REMINDERS_PREFIX) == true) popBackStack()
+    if (currentDestination?.route == Routes.FORECAST) popBackStack()
+    if (currentDestination?.route == Routes.TRANSFER) popBackStack()
     // Categories sits on top of Settings outside the tab system (see navigateToCategories below)
     // with no saved state of its own, so it must be dropped before the popUpTo/saveState sweep
     // below: leaving it in would fold it into Settings' own saved back-stack chain, and the next

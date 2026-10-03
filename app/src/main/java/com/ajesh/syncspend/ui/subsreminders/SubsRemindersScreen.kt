@@ -94,6 +94,12 @@ fun SubsRemindersScreen(listMode: String, highlightId: Long?, onBack: () -> Unit
             )
             HeaderAddButton("Add", onClick = { if (isSubs) showAddSub = true else showAddReminder = true })
         }
+        Text(
+            if (isSubs) "Keep track of recurring payments and EMIs" else "Never miss an important payment or financial task",
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+            color = colors.sub,
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 2.dp),
+        )
 
         Column(
             modifier = Modifier

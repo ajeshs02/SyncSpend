@@ -3,12 +3,15 @@ package com.ajesh.syncspend
 import com.ajesh.syncspend.data.datastore.UserPreferences
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
+import com.ajesh.syncspend.data.db.entity.TransferEntity
 import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.FlowType
-import com.ajesh.syncspend.domain.model.StatsRange
+import com.ajesh.syncspend.domain.model.ScopePeriod
+import com.ajesh.syncspend.domain.model.TransferDirection
 import com.ajesh.syncspend.ui.transactions.Ledger
 import com.ajesh.syncspend.ui.transactions.TransactionsCompute
 import java.time.LocalDate
+import java.time.YearMonth
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -64,17 +67,26 @@ class TransactionsComputeTest {
         assertEquals(0, TransactionsCompute.entries(ledger, FlowType.INCOME, EntryFilter.LAST_MONTH, null, today).groups.sumOf { it.items.size })
     }
 
-    @Test fun statsBuildForEveryRange() {
-        StatsRange.entries.forEach { range ->
-            val stats = TransactionsCompute.stats(ledger, emptyList(), FlowType.EXPENSE, range, today)
+    // Round 10: Stats moved from StatsRange to the same ScopePeriod Home uses — these exercise the
+    // four variants (Month/Year/LastMonths/AllTime) through TransactionsCompute.stats directly.
+    @Test fun statsBuildForEveryScopeVariant() {
+        val thisMonth = YearMonth.from(today)
+        val scopes = listOf(
+            ScopePeriod.Month(thisMonth),
+            ScopePeriod.Year(today.year),
+            ScopePeriod.LastMonths(3, thisMonth),
+            ScopePeriod.AllTime,
+        )
+        scopes.forEach { scope ->
+            val stats = TransactionsCompute.stats(ledger, emptyList(), emptyList(), FlowType.EXPENSE, scope, today)
             assertNotNull(stats)
-            assertEquals(range, stats.range)
+            assertEquals(scope, stats.scope)
         }
     }
 
     @Test fun statsNameEntriesByCategoryEvenWithoutANote() {
         val noNotes = ledger.copy(tx = ledger.tx.map { it.copy(description = "") })
-        val stats = TransactionsCompute.stats(noNotes, emptyList(), FlowType.EXPENSE, StatsRange.THIS_MONTH, today)
+        val stats = TransactionsCompute.stats(noNotes, emptyList(), emptyList(), FlowType.EXPENSE, ScopePeriod.Month(YearMonth.from(today)), today)
         assertTrue(stats.topEntries.isNotEmpty())
         assertTrue(stats.topEntries.all { it.title == "Food" })
         assertTrue(stats.topEntries.all { it.subtitle.matches(Regex("""\d+ [A-Z][a-z]{2}""")) }) // just the date, no dangling separator
@@ -82,10 +94,32 @@ class TransactionsComputeTest {
     }
 
     @Test fun aNoteLeadsTheDateLineAndJoinsTheSentence() {
-        val stats = TransactionsCompute.stats(ledger, emptyList(), FlowType.EXPENSE, StatsRange.THIS_MONTH, today)
+        val stats = TransactionsCompute.stats(ledger, emptyList(), emptyList(), FlowType.EXPENSE, ScopePeriod.Month(YearMonth.from(today)), today)
         val top = stats.topEntries.first()
         assertEquals("Food", top.title)
         assertEquals("Groceries · 27 Sep", top.subtitle) // the ₹1,241 entry, note "Groceries"
         assertTrue(stats.findings.any { it.startsWith("Largest single entry was Food (Groceries) at") })
+    }
+
+    // Stats stacks both flows (round 8, no more Expense/Income toggle) — the Savings card must read
+    // identically off either build, since it's flow-independent by construction.
+    @Test fun savingsSummaryIsIdenticalWhetherReadFromTheExpenseOrIncomeBuild() {
+        val transfers = listOf(
+            TransferEntity(id = 1, amount = 5000.0, direction = TransferDirection.TO_SAVINGS, date = today, createdAt = 1),
+            TransferEntity(id = 2, amount = 1000.0, direction = TransferDirection.FROM_SAVINGS, date = today, createdAt = 2),
+        )
+        val (expense, income) = TransactionsCompute.statsBoth(ledger, emptyList(), transfers, ScopePeriod.Month(YearMonth.from(today)), today)
+        assertEquals(expense.savingsSummary, income.savingsSummary)
+        assertEquals("₹5,000", expense.savingsSummary.contributionsFormatted)
+        assertEquals("₹1,000", expense.savingsSummary.withdrawalsFormatted)
+    }
+
+    // The picked scope drives the window, not today's date (round 10: ScopePeriod replaces the round-9
+    // Custom-DateRange mechanism, but the same guarantee applies to any explicitly-picked month).
+    @Test fun statsUsesThePickedScopeNotTodaysMonth() {
+        val stats = TransactionsCompute.stats(ledger, emptyList(), emptyList(), FlowType.EXPENSE, ScopePeriod.Month(YearMonth.of(2026, 1)), today)
+        assertEquals(ScopePeriod.Month(YearMonth.of(2026, 1)), stats.scope)
+        // None of the January-less fixture rows fall in January 2026, so the window is honored as empty.
+        assertEquals("₹0", stats.tiles.first().value)
     }
 }

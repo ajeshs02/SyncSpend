@@ -10,4 +10,6 @@ class ForecastRepository(private val dao: ForecastDao) {
     suspend fun insert(forecast: ForecastEntity): Long = dao.insert(forecast)
     suspend fun update(forecast: ForecastEntity) = dao.update(forecast)
     suspend fun delete(forecast: ForecastEntity) = dao.delete(forecast)
+    suspend fun clearCompletedLink(transactionId: Long) = dao.clearCompletedLink(transactionId)
+    suspend fun markCompleted(ids: List<Long>) = dao.markCompleted(ids)
 }

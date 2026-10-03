@@ -41,7 +41,7 @@
             android:taskAffinity=""
             android:excludeFromRecents="true"
             android:launchMode="singleTask"
-            android:windowSoftInputMode="stateAlwaysHidden" />
+            android:windowSoftInputMode="adjustResize" />
 
         <receiver
             android:name=".widget.SyncSpendWidgetProvider"

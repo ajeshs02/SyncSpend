@@ -11,11 +11,16 @@ import com.ajesh.syncspend.data.db.MIGRATION_3_4
 import com.ajesh.syncspend.data.db.MIGRATION_4_5
 import com.ajesh.syncspend.data.db.MIGRATION_5_6
 import com.ajesh.syncspend.data.db.MIGRATION_6_7
+import com.ajesh.syncspend.data.db.MIGRATION_7_8
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
+import com.ajesh.syncspend.data.db.entity.ForecastEntity
 import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
+import com.ajesh.syncspend.data.db.entity.TransferEntity
 import com.ajesh.syncspend.domain.model.BillingCycle
 import com.ajesh.syncspend.domain.model.FlowType
+import kotlinx.coroutines.flow.first
+import com.ajesh.syncspend.domain.model.TransferDirection
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -29,7 +34,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /** Every migration from the hand-built v3 fixture up to the current schema — the real path any installed app takes. */
-private val ALL_MIGRATIONS = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+private val ALL_MIGRATIONS = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
 
 /**
  * The real user database is at v3 and holds real entries, so the v3 -> v4 migration is tested against a
@@ -152,7 +157,14 @@ class MigrationTest {
         }
     }
 
-    @Test fun migration5to6BackfillsTypeAndAddsSavingsCategoriesWithoutTouchingTheExistingOne() = runBlocking {
+    /**
+     * Covers the full v5 -> v8 chain: MIGRATION_5_6's type backfill and its (now-historical) 3
+     * Savings categories, which MIGRATION_7_8 deletes again in the same upgrade run — so a fresh
+     * install or an upgrader both land on the same end state: no trace of "Savings Goals" / "Emergency
+     * Fund" / "Investments", the pre-existing Expense category literally named "Savings" untouched,
+     * and the new suggested transfer-source Income categories seeded.
+     */
+    @Test fun migration5to8BackfillsTypesPreservesOldSavingsCategoryAndSeedsIncomeSources() = runBlocking {
         val name = "migration-savings.db"
         val day = LocalDate.of(2026, 9, 20)
         createV5(name) { db ->
@@ -165,70 +177,137 @@ class MigrationTest {
         }
 
         val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(MIGRATION_5_6, MIGRATION_6_7).allowMainThreadQueries().build()
+            .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).allowMainThreadQueries().build()
         try {
             val rows = db.transactionDao().getAllOnce().associateBy { it.id }
             assertEquals(FlowType.EXPENSE, rows.getValue(1).type)
             assertEquals(FlowType.INCOME, rows.getValue(2).type)
-            assertNull(rows.getValue(1).fundingSource)
-            assertNull(rows.getValue(2).contributionKind)
 
             val categories = db.categoryDao().getAllOnce()
             val oldSavings = categories.single { it.name == "Savings" }
             assertEquals(FlowType.EXPENSE, oldSavings.type) // untouched, not renamed or migrated
             assertEquals("coin", oldSavings.iconKey)
 
-            val newSavingsCategories = categories.filter { it.type == FlowType.SAVINGS }
-            assertEquals(setOf("Savings Goals", "Emergency Fund", "Investments"), newSavingsCategories.map { it.name }.toSet())
-            assertTrue(newSavingsCategories.all { !it.archived })
+            // The 3 categories MIGRATION_5_6 inserted for the now-removed Savings FlowType are gone —
+            // MIGRATION_7_8 deletes them in the same upgrade chain.
+            assertTrue(categories.none { it.name in setOf("Savings Goals", "Emergency Fund", "Investments") })
 
-            // MIGRATION_6_7 created the forecasts table in the same upgrade chain — usable immediately.
-            val forecastId = db.forecastDao().insert(com.ajesh.syncspend.data.db.entity.ForecastEntity(note = "Rent", amount = 12000.0, date = null))
+            // The new suggested transfer-source Income categories were seeded (this fixture had no
+            // Freelance/Gift/etc. to begin with — only the 4 new ones MIGRATION_7_8 itself inserts).
+            val incomeNames = categories.filter { it.type == FlowType.INCOME }.map { it.name }.toSet()
+            assertEquals(setOf("Salary", "PF", "Reward", "Previous Savings", "Other"), incomeNames)
+
+            // MIGRATION_6_7/7_8 created the forecasts/transfers tables in the same upgrade chain — usable immediately.
+            val forecastId = db.forecastDao().insert(ForecastEntity(note = "Rent", amount = 12000.0, date = null))
             assertEquals(1, db.forecastDao().getAllOnce().filter { it.id == forecastId }.size)
+            db.transferDao().insert(TransferEntity(amount = 500.0, direction = TransferDirection.TO_SAVINGS, date = day, createdAt = 1L))
+            assertEquals(1, db.transferDao().getAllOnce().size)
         } finally {
             db.close()
             context.deleteDatabase(name)
         }
     }
 
-    @Test fun migration5to6OnAnEmptyDatabaseStillAddsTheThreeSavingsDefaults() = runBlocking {
+    @Test fun migration5to8OnAnEmptyDatabaseSeedsIncomeSourcesAndNoSavingsCategories() = runBlocking {
         val name = "migration-savings-empty.db"
         createV5(name) { }
         val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(MIGRATION_5_6, MIGRATION_6_7).allowMainThreadQueries().build()
+            .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).allowMainThreadQueries().build()
         try {
             assertEquals(0, db.transactionDao().getAllOnce().size)
-            assertEquals(3, db.categoryDao().getAllOnce().count { it.type == FlowType.SAVINGS })
+            val categories = db.categoryDao().getAllOnce()
+            assertTrue(categories.none { it.name in setOf("Savings Goals", "Emergency Fund", "Investments") })
+            assertEquals(setOf("PF", "Reward", "Previous Savings", "Other"), categories.filter { it.type == FlowType.INCOME }.map { it.name }.toSet())
         } finally {
             db.close()
             context.deleteDatabase(name)
         }
     }
 
-    @Test fun v6EntitiesRoundTripSavingsAndForecasts() = runBlocking {
+    @Test fun v8EntitiesRoundTripTransfersAndForecasts() = runBlocking {
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build()
         try {
             val day = LocalDate.of(2026, 9, 27)
-            val savingsCat = CategoryEntity(name = "Goals", iconKey = "coin", type = FlowType.SAVINGS, sortOrder = 0)
-            val catId = db.categoryDao().insert(savingsCat)
+            val incomeCat = CategoryEntity(name = "Freelance", iconKey = "brief", type = FlowType.INCOME, sortOrder = 0)
+            val catId = db.categoryDao().insert(incomeCat)
 
-            db.transactionDao().insert(
-                TransactionEntity(
-                    amount = 5000.0, description = "", categoryId = catId, date = day, createdAt = 1L,
-                    type = FlowType.SAVINGS, contributionKind = com.ajesh.syncspend.domain.model.ContributionKind.TRANSFER,
-                ),
-            )
-            val savedTx = db.transactionDao().getAllOnce().single()
-            assertEquals(FlowType.SAVINGS, savedTx.type)
-            assertEquals(com.ajesh.syncspend.domain.model.ContributionKind.TRANSFER, savedTx.contributionKind)
-            assertNull(savedTx.fundingSource)
+            db.transferDao().insert(TransferEntity(amount = 5000.0, direction = TransferDirection.TO_SAVINGS, date = day, categoryId = catId, createdAt = 1L))
+            val savedTransfer = db.transferDao().getAllOnce().single()
+            assertEquals(TransferDirection.TO_SAVINGS, savedTransfer.direction)
+            assertEquals(catId, savedTransfer.categoryId)
 
-            db.forecastDao().insert(com.ajesh.syncspend.data.db.entity.ForecastEntity(note = "Rent", amount = 12000.0, date = null))
-            db.forecastDao().insert(com.ajesh.syncspend.data.db.entity.ForecastEntity(note = "Trip", amount = 8000.0, date = day))
+            val forecastId = db.forecastDao().insert(ForecastEntity(note = "Rent", amount = 12000.0, date = null))
+            db.forecastDao().insert(ForecastEntity(note = "Trip", amount = 8000.0, date = day))
             val forecasts = db.forecastDao().getAllOnce()
             assertEquals(2, forecasts.size)
             assertNull(forecasts.single { it.note == "Rent" }.date)
             assertEquals(day, forecasts.single { it.note == "Trip" }.date)
+
+            // Mark-done-and-add-expense's completedTransactionId link, and its clearing on delete.
+            val expenseCat = db.categoryDao().insert(CategoryEntity(name = "Food", iconKey = "utensils", type = FlowType.EXPENSE, sortOrder = 0))
+            val txId = db.transactionDao().insert(TransactionEntity(amount = -8000.0, description = "", categoryId = expenseCat, date = day, createdAt = 2L, type = FlowType.EXPENSE))
+            db.forecastDao().update(forecasts.single { it.note == "Trip" }.copy(completed = true, completedTransactionId = txId))
+            assertEquals(txId, db.forecastDao().getAllOnce().single { it.note == "Trip" }.completedTransactionId)
+            db.forecastDao().clearCompletedLink(txId)
+            val afterClear = db.forecastDao().getAllOnce().single { it.note == "Trip" }
+            assertNull(afterClear.completedTransactionId)
+            assertTrue(afterClear.completed) // completed stays true even though the link is gone
+        } finally {
+            db.close()
+        }
+    }
+
+    /**
+     * Round 8's Forecast refinements at the DAO level (no ViewModel/coroutine risk — see this
+     * project's documented Robolectric main-dispatcher hang for why ViewModel-level tests are
+     * avoided here): Mark Done / Mark Undone toggle the flag with no transaction created either way;
+     * the past-month review's bulk "Mark completed" preserves every row (never deletes); and a
+     * forecast linked to a real expense keeps that link (and `completed`) independent of edits to
+     * its own note/amount/category/date fields.
+     */
+    @Test fun forecastMarkDoneUndoAndBulkReviewPreserveRows() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build()
+        try {
+            val day = LocalDate.of(2026, 9, 27)
+            val id = db.forecastDao().insert(ForecastEntity(note = "Rent", amount = 12000.0, date = day))
+            var row = db.forecastDao().getAllOnce().single { it.id == id }
+            assertTrue(!row.completed)
+
+            // Mark Done (no linked expense): completed flips true, no transaction, no link.
+            db.forecastDao().update(row.copy(completed = true))
+            row = db.forecastDao().getAllOnce().single { it.id == id }
+            assertTrue(row.completed)
+            assertNull(row.completedTransactionId)
+
+            // Mark Undone reverses it — only ever offered when there's no link, exactly this state.
+            db.forecastDao().update(row.copy(completed = false))
+            row = db.forecastDao().getAllOnce().single { it.id == id }
+            assertTrue(!row.completed)
+
+            // Editing the forecast's own fields never touches a linked expense (there is none here) —
+            // and, separately, a stale last-month pending forecast reviewed via "Mark completed" is
+            // updated in place, never deleted.
+            val staleId = db.forecastDao().insert(ForecastEntity(note = "Old plan", amount = 500.0, date = day.minusMonths(1)))
+            db.forecastDao().markCompleted(listOf(staleId))
+            val stale = db.forecastDao().getAllOnce().single { it.id == staleId }
+            assertTrue(stale.completed)
+            assertEquals("Old plan", stale.note) // untouched — only `completed` changed
+            assertEquals(2, db.forecastDao().getAllOnce().size) // both rows preserved, nothing deleted
+        } finally {
+            db.close()
+        }
+    }
+
+    /** Round 8: the Savings screen dropped its date-grouped list for one flat "most recently added" feed. */
+    @Test fun transferDaoOrdersByCreationTimeNotDate() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build()
+        try {
+            val day = LocalDate.of(2026, 9, 27)
+            // Added third but dated earliest — a date-primary sort would put it last; createdAt-primary puts it first.
+            db.transferDao().insert(TransferEntity(amount = 100.0, direction = TransferDirection.TO_SAVINGS, date = day.minusDays(10), createdAt = 3L))
+            db.transferDao().insert(TransferEntity(amount = 200.0, direction = TransferDirection.TO_SAVINGS, date = day, createdAt = 1L))
+            db.transferDao().insert(TransferEntity(amount = 300.0, direction = TransferDirection.FROM_SAVINGS, date = day.minusDays(1), createdAt = 2L))
+            assertEquals(listOf(100.0, 300.0, 200.0), db.transferDao().getAll().first().map { it.amount })
         } finally {
             db.close()
         }

@@ -55,8 +55,32 @@ fun EntriesTab(groups: List<DayGroupUi>, onRowClick: (Long) -> Unit, modifier: M
     }
 }
 
+/** Like [EntriesTab] but without day-header grouping — for lists ordered by something other than date (e.g. the Savings screen's "most recently added" order). */
 @Composable
-private fun TxRowCard(row: TxRow, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun FlatTxList(rows: List<TxRow>, onRowClick: (Long) -> Unit, modifier: Modifier = Modifier) {
+    if (rows.isEmpty()) {
+        Box(modifier = modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+            Text(
+                "No transactions in this range.",
+                style = MaterialTheme.typography.bodySmall,
+                color = SyncSpendTheme.colors.sub,
+            )
+        }
+        return
+    }
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(bottom = SyncSpendChrome.screenBottomContentPadding),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(rows, key = { it.id }, contentType = { "row" }) { row ->
+            TxRowCard(row = row, onClick = { onRowClick(row.id) }, modifier = Modifier.animateItem())
+        }
+    }
+}
+
+@Composable
+internal fun TxRowCard(row: TxRow, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()

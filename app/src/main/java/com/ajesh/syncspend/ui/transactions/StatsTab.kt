@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -39,7 +40,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ajesh.syncspend.domain.model.StatsRange
 import com.ajesh.syncspend.domain.model.TipTone
 import com.ajesh.syncspend.ui.components.ChipsRow
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
@@ -57,165 +57,204 @@ import com.ajesh.syncspend.ui.theme.SyncSpendTheme
  */
 @Composable
 fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
-    val colors = SyncSpendTheme.colors
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(top = 2.dp, bottom = SyncSpendChrome.screenBottomContentPadding),
         verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
-        item(key = "top", contentType = "top") {
+        statsItems(stats, keyPrefix = "s", includeSavingsCard = true)
+    }
+}
+
+/**
+ * [StatsTab]'s content as a [LazyListScope] extension, so [StatsScreen] can stack an Expense build and
+ * an Income build inside one shared `LazyColumn` (no more Expense/Income toggle) without nesting two
+ * scrollable lists. [keyPrefix] keeps item keys unique across both builds; [includeSavingsCard] renders
+ * the flow-independent Savings summary card for only one of the two stacked sections, since its figures
+ * are identical either way.
+ */
+internal fun LazyListScope.statsItems(stats: StatsUi, keyPrefix: String, includeSavingsCard: Boolean) {
+    item(key = "$keyPrefix-top", contentType = "top") {
+        val colors = SyncSpendTheme.colors
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(colors.mintGradient, RoundedCornerShape(22.dp))
+                .padding(17.dp),
+        ) {
+            // This card's background is colors.mintGradient, the flat accent (same as chartFill,
+            // same as everywhere else it's used) — colors.mink is the established "text on the
+            // accent fill" token, not colors.pos (tuned for plain card/sheet backgrounds).
+            Text(stats.kicker, fontSize = 11.sp, color = colors.mink.copy(alpha = 0.7f))
+            Row(
+                modifier = Modifier.padding(top = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Box(
+                    modifier = Modifier.size(36.dp).background(Color.White.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(SyncSpendIcons.iconFor(stats.topIconKey), null, tint = colors.mink, modifier = Modifier.size(18.dp)) }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stats.topName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colors.mink, maxLines = 1)
+                    Text(stats.topShareLine, fontSize = 11.sp, color = colors.mink.copy(alpha = 0.7f), modifier = Modifier.padding(top = 2.dp))
+                }
+                Text(stats.topTotal, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.19).sp, color = colors.mink)
+            }
+        }
+    }
+
+    itemsIndexed(stats.tiles.chunked(2), key = { index, _ -> "$keyPrefix-tiles-$index" }, contentType = { _, _ -> "tiles" }) { _, pair ->
+        val colors = SyncSpendTheme.colors
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            pair.forEach { tile ->
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(colors.card, RoundedCornerShape(18.dp))
+                        .border(1.dp, colors.line, RoundedCornerShape(18.dp))
+                        .padding(14.dp),
+                ) {
+                    Text(tile.label, fontSize = 10.5.sp, lineHeight = 13.sp, color = colors.sub, maxLines = 2)
+                    // A good figure is dark text on the same mint gradient as the Top spending card
+                    // (plain green text never matched the theme); a bad one stays red.
+                    Text(
+                        tile.value,
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = (-0.19).sp,
+                        color = when (tile.tone) {
+                            StatTone.NEUTRAL -> colors.ink
+                            StatTone.POSITIVE -> colors.mink
+                            StatTone.NEGATIVE -> colors.neg
+                        },
+                        // Every value carries the chip's vertical padding, so tiles stay level whether or not one has a chip.
+                        modifier = Modifier.padding(top = 5.dp).then(
+                            if (tile.tone == StatTone.POSITIVE) Modifier.mintChip() else Modifier.padding(vertical = 2.dp),
+                        ),
+                    )
+                    Text(tile.note, fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 3.dp))
+                }
+            }
+        }
+    }
+
+    // Compact, flow-independent (shown the same for Expense and Income) — period-scoped Savings
+    // *movement*, never the all-time cumulative Savings Balance the Transfer screen shows (see
+    // SavingsSummaryUi's doc). Kept as its own small card, never folded into the tiles above, and
+    // rendered only once across the stacked Expense/Income sections (see [includeSavingsCard]).
+    if (includeSavingsCard) {
+        item(key = "$keyPrefix-savings", contentType = "card") {
+            val colors = SyncSpendTheme.colors
+            StatsCard(title = "Savings · ${stats.savingsSummary.periodLabel}") {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SavingsSummaryStat("Added", stats.savingsSummary.contributionsFormatted, colors.mink, Modifier.weight(1f))
+                    SavingsSummaryStat("Withdrawn", stats.savingsSummary.withdrawalsFormatted, colors.neg, Modifier.weight(1f))
+                    SavingsSummaryStat(
+                        "Net",
+                        stats.savingsSummary.netFormatted,
+                        if (stats.savingsSummary.netPositive) colors.mink else colors.neg,
+                        Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+
+    stats.pace?.let { pace ->
+        item(key = "$keyPrefix-pace", contentType = "card") { StatsCard(title = "Month pace") { PaceBar(pace) } }
+    }
+
+    item(key = "$keyPrefix-monthly", contentType = "card") {
+        val colors = SyncSpendTheme.colors
+        StatsCard(title = "Last 6 months") {
+            BarChart(stats.monthlyBars, height = 112.dp, averageFraction = stats.monthlyAverageFraction)
+            Text(stats.monthlyCaption, fontSize = 10.5.sp, lineHeight = 15.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
+        }
+    }
+
+    if (stats.categoryBars.isNotEmpty()) {
+        item(key = "$keyPrefix-where", contentType = "card") {
+            StatsCard(title = "Where it goes") {
+                Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+                    stats.categoryBars.forEach { CategoryBar(it) }
+                }
+            }
+        }
+    }
+
+    if (stats.movers.isNotEmpty()) {
+        item(key = "$keyPrefix-movers", contentType = "card") {
+            val colors = SyncSpendTheme.colors
+            StatsCard(title = "Biggest changes") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    stats.movers.forEach { MoverRow(it) }
+                }
+                Text("Compared with the previous period.", fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
+            }
+        }
+    }
+
+    if (stats.topEntries.isNotEmpty()) {
+        item(key = "$keyPrefix-top-entries", contentType = "card") {
+            StatsCard(title = "Top entries") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    stats.topEntries.forEachIndexed { index, entry -> TopEntryRow(index + 1, entry) }
+                }
+            }
+        }
+    }
+
+    if (stats.weekdayCaption.isNotEmpty()) {
+        item(key = "$keyPrefix-weekday", contentType = "card") {
+            val colors = SyncSpendTheme.colors
+            StatsCard(title = "By weekday") {
+                BarChart(stats.weekdayBars, height = 80.dp, averageFraction = null)
+                Text(stats.weekdayCaption, fontSize = 10.5.sp, lineHeight = 15.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
+            }
+        }
+    }
+
+    item(key = "$keyPrefix-tips", contentType = "card") {
+        StatsCard(title = "Tips & suggestions", gradient = true) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                stats.tips.forEach { TipRow(it) }
+            }
+        }
+    }
+
+    item(key = "$keyPrefix-findings", contentType = "card") {
+        val colors = SyncSpendTheme.colors
+        StatsCard(title = "Findings", gradient = true) {
+            Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                stats.findings.forEach { line ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(Modifier.padding(top = 5.dp).size(6.dp).background(colors.chartFill, RoundedCornerShape(50)))
+                        Text(line, fontSize = 11.5.sp, lineHeight = 16.7.sp, color = colors.mink)
+                    }
+                }
+            }
+        }
+    }
+
+    if (stats.showComparison) {
+        item(key = "$keyPrefix-versus", contentType = "versus") {
+            val colors = SyncSpendTheme.colors
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(colors.mintGradient, RoundedCornerShape(22.dp))
-                    .padding(17.dp),
+                    .background(colors.darkGradient, RoundedCornerShape(20.dp))
+                    .padding(16.dp),
             ) {
-                // This card's background is colors.mintGradient, the flat accent (same as chartFill,
-                // same as everywhere else it's used) — colors.mink is the established "text on the
-                // accent fill" token, not colors.pos (tuned for plain card/sheet backgrounds).
-                Text(stats.kicker, fontSize = 11.sp, color = colors.mink.copy(alpha = 0.7f))
-                Row(
-                    modifier = Modifier.padding(top = 9.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Box(
-                        modifier = Modifier.size(36.dp).background(Color.White.copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) { Icon(SyncSpendIcons.iconFor(stats.topIconKey), null, tint = colors.mink, modifier = Modifier.size(18.dp)) }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(stats.topName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colors.mink, maxLines = 1)
-                        Text(stats.topShareLine, fontSize = 11.sp, color = colors.mink.copy(alpha = 0.7f), modifier = Modifier.padding(top = 2.dp))
+                Text("Versus the previous period", fontSize = 11.sp, color = Color.White.copy(alpha = 0.65f))
+                Row(modifier = Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.Bottom) {
+                    Column {
+                        Text(stats.currentLabel, fontSize = 10.5.sp, color = Color.White.copy(alpha = 0.6f))
+                        Text(stats.currentValue, fontSize = 21.sp, fontWeight = FontWeight.SemiBold, color = Color.White, modifier = Modifier.padding(top = 3.dp))
                     }
-                    Text(stats.topTotal, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.19).sp, color = colors.mink)
-                }
-            }
-        }
-
-        itemsIndexed(stats.tiles.chunked(2), key = { index, _ -> "tiles-$index" }, contentType = { _, _ -> "tiles" }) { _, pair ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                pair.forEach { tile ->
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(colors.card, RoundedCornerShape(18.dp))
-                            .border(1.dp, colors.line, RoundedCornerShape(18.dp))
-                            .padding(14.dp),
-                    ) {
-                        Text(tile.label, fontSize = 10.5.sp, lineHeight = 13.sp, color = colors.sub, maxLines = 2)
-                        // A good figure is dark text on the same mint gradient as the Top spending card
-                        // (plain green text never matched the theme); a bad one stays red.
-                        Text(
-                            tile.value,
-                            fontSize = 19.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = (-0.19).sp,
-                            color = when (tile.tone) {
-                                StatTone.NEUTRAL -> colors.ink
-                                StatTone.POSITIVE -> colors.mink
-                                StatTone.NEGATIVE -> colors.neg
-                            },
-                            // Every value carries the chip's vertical padding, so tiles stay level whether or not one has a chip.
-                            modifier = Modifier.padding(top = 5.dp).then(
-                                if (tile.tone == StatTone.POSITIVE) Modifier.mintChip() else Modifier.padding(vertical = 2.dp),
-                            ),
-                        )
-                        Text(tile.note, fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 3.dp))
-                    }
-                }
-            }
-        }
-
-        stats.pace?.let { pace ->
-            item(key = "pace", contentType = "card") { StatsCard(title = "Month pace") { PaceBar(pace) } }
-        }
-
-        item(key = "monthly", contentType = "card") {
-            StatsCard(title = "Last 6 months") {
-                BarChart(stats.monthlyBars, height = 112.dp, averageFraction = stats.monthlyAverageFraction)
-                Text(stats.monthlyCaption, fontSize = 10.5.sp, lineHeight = 15.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
-            }
-        }
-
-        if (stats.categoryBars.isNotEmpty()) {
-            item(key = "where", contentType = "card") {
-                StatsCard(title = "Where it goes") {
-                    Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
-                        stats.categoryBars.forEach { CategoryBar(it) }
-                    }
-                }
-            }
-        }
-
-        if (stats.movers.isNotEmpty()) {
-            item(key = "movers", contentType = "card") {
-                StatsCard(title = "Biggest changes") {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        stats.movers.forEach { MoverRow(it) }
-                    }
-                    Text("Compared with the previous period.", fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
-                }
-            }
-        }
-
-        if (stats.topEntries.isNotEmpty()) {
-            item(key = "top-entries", contentType = "card") {
-                StatsCard(title = "Top entries") {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        stats.topEntries.forEachIndexed { index, entry -> TopEntryRow(index + 1, entry) }
-                    }
-                }
-            }
-        }
-
-        if (stats.weekdayCaption.isNotEmpty()) {
-            item(key = "weekday", contentType = "card") {
-                StatsCard(title = "By weekday") {
-                    BarChart(stats.weekdayBars, height = 80.dp, averageFraction = null)
-                    Text(stats.weekdayCaption, fontSize = 10.5.sp, lineHeight = 15.sp, color = colors.sub, modifier = Modifier.padding(top = 10.dp))
-                }
-            }
-        }
-
-        item(key = "tips", contentType = "card") {
-            StatsCard(title = "Tips & suggestions", gradient = true) {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    stats.tips.forEach { TipRow(it) }
-                }
-            }
-        }
-
-        item(key = "findings", contentType = "card") {
-            StatsCard(title = "Findings", gradient = true) {
-                Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
-                    stats.findings.forEach { line ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Box(Modifier.padding(top = 5.dp).size(6.dp).background(colors.chartFill, RoundedCornerShape(50)))
-                            Text(line, fontSize = 11.5.sp, lineHeight = 16.7.sp, color = colors.mink)
-                        }
-                    }
-                }
-            }
-        }
-
-        if (stats.showComparison) {
-            item(key = "versus", contentType = "versus") {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(colors.darkGradient, RoundedCornerShape(20.dp))
-                        .padding(16.dp),
-                ) {
-                    Text("Versus the previous period", fontSize = 11.sp, color = Color.White.copy(alpha = 0.65f))
-                    Row(modifier = Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.Bottom) {
-                        Column {
-                            Text(stats.currentLabel, fontSize = 10.5.sp, color = Color.White.copy(alpha = 0.6f))
-                            Text(stats.currentValue, fontSize = 21.sp, fontWeight = FontWeight.SemiBold, color = Color.White, modifier = Modifier.padding(top = 3.dp))
-                        }
-                        Column {
-                            Text(stats.previousLabel, fontSize = 10.5.sp, color = Color.White.copy(alpha = 0.6f))
-                            Text(stats.previousValue, fontSize = 21.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.55f), modifier = Modifier.padding(top = 3.dp))
-                        }
+                    Column {
+                        Text(stats.previousLabel, fontSize = 10.5.sp, color = Color.White.copy(alpha = 0.6f))
+                        Text(stats.previousValue, fontSize = 21.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.55f), modifier = Modifier.padding(top = 3.dp))
                     }
                 }
             }
@@ -240,6 +279,22 @@ private fun StatsCard(title: String, gradient: Boolean = false, content: @Compos
             color = if (gradient) colors.mink else colors.ink,
         )
         Column(modifier = Modifier.padding(top = 12.dp)) { content() }
+    }
+}
+
+/** One of the three figures in the Savings summary card — a label, then a bold value in [valueColor]. */
+@Composable
+private fun SavingsSummaryStat(label: String, value: String, valueColor: Color, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(label, fontSize = 10.5.sp, color = SyncSpendTheme.colors.sub)
+        Text(
+            value,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = (-0.15).sp,
+            color = valueColor,
+            modifier = Modifier.padding(top = 3.dp),
+        )
     }
 }
 

@@ -3,9 +3,8 @@ package com.ajesh.syncspend
 import com.ajesh.syncspend.domain.model.CalendarBounds
 import com.ajesh.syncspend.domain.model.DateRange
 import com.ajesh.syncspend.domain.model.EntryFilter
-import com.ajesh.syncspend.domain.model.StatsRange
 import com.ajesh.syncspend.ui.transactions.headerDateClause
-import com.ajesh.syncspend.ui.transactions.statsDateClause
+import com.ajesh.syncspend.util.DateUtils
 import java.time.LocalDate
 import java.time.YearMonth
 import org.junit.Assert.assertEquals
@@ -55,11 +54,16 @@ class CalendarBoundsTest {
         assertNull(headerDateClause(EntryFilter.CUSTOM, null, thursday))
     }
 
-    @Test fun theStatsPageShowsItsOwnRangeUpToToday() {
-        val thursday = LocalDate.of(2026, 9, 17)
-        assertEquals("from 1 Sep to 17 Sep", statsDateClause(StatsRange.THIS_MONTH, thursday))
-        assertEquals("from 1 Aug to 31 Aug", statsDateClause(StatsRange.LAST_MONTH, thursday))
-        assertEquals("from 1 Jul to 17 Sep", statsDateClause(StatsRange.LAST_3_MONTHS, thursday))
-        assertNull(statsDateClause(StatsRange.ALL_TIME, thursday))
+    // Round 11: Stats/Transactions' applied-range subheading — always both full dates, never abbreviated.
+    @Test fun appliedRangeLabelAlwaysShowsBothFullDates() {
+        assertEquals(
+            "From 1 Sep 2026 - To 30 Sep 2026",
+            DateUtils.appliedRangeLabel(DateRange(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30))),
+        )
+        // Crosses a year boundary — still both full dates, same format either way.
+        assertEquals(
+            "From 3 Mar 2025 - To 17 Sep 2026",
+            DateUtils.appliedRangeLabel(DateRange(LocalDate.of(2025, 3, 3), LocalDate.of(2026, 9, 17))),
+        )
     }
 }

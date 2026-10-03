@@ -101,7 +101,6 @@ object CsvImportParser {
             val type = when (r[typeCol].trim().uppercase()) {
                 "EXPENSE" -> FlowType.EXPENSE
                 "INCOME" -> FlowType.INCOME
-                "SAVINGS" -> FlowType.SAVINGS
                 else -> return@forEachIndexed skip("bad type \"${r[typeCol].trim()}\"")
             }
             val amount = parseAmount(r[amountCol]) ?: return@forEachIndexed skip("bad amount \"${r[amountCol].trim()}\"")

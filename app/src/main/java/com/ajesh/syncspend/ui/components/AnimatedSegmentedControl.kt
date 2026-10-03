@@ -161,14 +161,12 @@ private fun SegmentGlyph(icon: SegmentIcon, index: Int, position: Animatable<Flo
     }
 }
 
-/** Declaration order is the toggle's left-to-right order (Expense, Income, Savings). */
-private val FLOW_ORDER = listOf(FlowType.EXPENSE, FlowType.INCOME, FlowType.SAVINGS)
+/** Declaration order is the toggle's left-to-right order (Expense, Income). */
+private val FLOW_ORDER = listOf(FlowType.EXPENSE, FlowType.INCOME)
 
 /**
- * The Expense / Income / Savings toggle used on Home, Add Entry, Categories and Edit Entry: taller
- * than the app's other segmented controls (it's the most-used control). The underlying
- * [AnimatedSegmentedControl] is already generic over the option count, so adding Savings as a third
- * [FlowType] only needed a third entry here, not a new control.
+ * The Expense / Income toggle used on Home, Add Entry, Categories and Edit Entry: taller than the
+ * app's other segmented controls (it's the most-used control).
  */
 @Composable
 fun FlowToggle(
@@ -177,7 +175,7 @@ fun FlowToggle(
     modifier: Modifier = Modifier,
 ) {
     AnimatedSegmentedControl(
-        options = listOf("Expense", "Income", "Savings"),
+        options = listOf("Expense", "Income"),
         selectedIndex = FLOW_ORDER.indexOf(type),
         onSelect = { onSelect(FLOW_ORDER[it]) },
         icons = flowSegmentIcons(),
@@ -188,7 +186,7 @@ fun FlowToggle(
     )
 }
 
-/** The design's Expense / Income / Savings icon triplet, tinted so each reads on either indicator theme. */
+/** The design's Expense / Income icon pair, tinted so each reads on either indicator theme. */
 @Composable
 fun flowSegmentIcons(): List<SegmentIcon> {
     val c = SyncSpendTheme.colors
@@ -196,7 +194,6 @@ fun flowSegmentIcons(): List<SegmentIcon> {
         listOf(
             SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.ArrowOut, c.expenseOnSelected, c.neg),
             SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.ArrowIn, SyncSpendPalette.BrandGreen, SyncSpendPalette.BrandGreen),
-            SegmentIcon(com.ajesh.syncspend.ui.icons.SyncSpendIcons.Coin, c.expenseOnSelected, SyncSpendPalette.BrandGreen),
         )
     }
 }

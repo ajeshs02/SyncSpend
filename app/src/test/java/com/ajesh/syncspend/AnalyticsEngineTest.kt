@@ -2,15 +2,14 @@ package com.ajesh.syncspend
 
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
+import com.ajesh.syncspend.data.db.entity.TransferEntity
 import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
 import com.ajesh.syncspend.domain.model.CategoryRollup
-import com.ajesh.syncspend.domain.model.ContributionKind
 import com.ajesh.syncspend.domain.model.DateRange
 import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.FlowType
-import com.ajesh.syncspend.domain.model.FundingSource
 import com.ajesh.syncspend.domain.model.ScopePeriod
-import com.ajesh.syncspend.domain.model.StatsRange
+import com.ajesh.syncspend.domain.model.TransferDirection
 import java.time.LocalDate
 import java.time.YearMonth
 import org.junit.Assert.assertEquals
@@ -64,8 +63,8 @@ class AnalyticsEngineTest {
         assertEquals(2, AnalyticsEngine.applyEntryFilter(later, EntryFilter.THIS_MONTH, null, thursday).size)
     }
 
-    @Test fun expenseGetsAllFourDateChipsIncomeSkipsThisWeek() {
-        assertEquals(listOf("THIS_WEEK", "THIS_MONTH", "LAST_MONTH", "CUSTOM"), AnalyticsEngine.entryFilterOptions(FlowType.EXPENSE).map { it.name })
+    @Test fun expenseGetsAllFiveDateChipsIncomeSkipsThisWeekAndLastWeek() {
+        assertEquals(listOf("THIS_WEEK", "LAST_WEEK", "THIS_MONTH", "LAST_MONTH", "CUSTOM"), AnalyticsEngine.entryFilterOptions(FlowType.EXPENSE).map { it.name })
         assertEquals(listOf("THIS_MONTH", "LAST_MONTH", "CUSTOM"), AnalyticsEngine.entryFilterOptions(FlowType.INCOME).map { it.name })
     }
 
@@ -128,20 +127,49 @@ class AnalyticsEngineTest {
         assertNull(AnalyticsEngine.stats(data, listOf(food), sept, null, FlowType.EXPENSE, today).trendPercent)
     }
 
-    @Test fun statsRangesAreCalendarAlignedWithAMatchingPreviousWindow() {
-        val thisMonth = StatsRange.THIS_MONTH.resolve(today, null)
-        assertEquals(DateRange(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)), thisMonth)
-        assertEquals(DateRange(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31)), StatsRange.THIS_MONTH.previous(thisMonth))
-        val three = StatsRange.LAST_3_MONTHS.resolve(today, null)
-        assertEquals(DateRange(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 9, 30)), three)
-        assertEquals(DateRange(LocalDate.of(2026, 4, 1), LocalDate.of(2026, 6, 30)), StatsRange.LAST_3_MONTHS.previous(three))
-        val year = StatsRange.THIS_YEAR.resolve(today, null)
-        assertEquals(DateRange(LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31)), StatsRange.THIS_YEAR.previous(year))
-        val all = StatsRange.ALL_TIME.resolve(today, LocalDate.of(2025, 3, 3))
-        assertEquals(DateRange(LocalDate.of(2025, 3, 3), today), all)
-        assertNull(StatsRange.ALL_TIME.previous(all))
-        assertEquals("Jul - Sep 2026", StatsRange.LAST_3_MONTHS.describe(three))
-        assertEquals("September 2026", StatsRange.THIS_MONTH.describe(thisMonth))
+    // Round 10: Stats/Transactions moved off StatsRange onto ScopePeriod + AnalyticsEngine.scopeRange
+    // (the one new adapter this round added) + the already-existing previousScope/scopeLabel Home
+    // itself relies on. These replace the old direct StatsRange.resolve/previous/describe tests.
+    @Test fun scopeRangeIsCalendarAlignedForEveryVariant() {
+        val month = ScopePeriod.Month(YearMonth.of(2026, 9))
+        assertEquals(DateRange(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30)), AnalyticsEngine.scopeRange(month, today, null))
+
+        val year = ScopePeriod.Year(2026)
+        assertEquals(DateRange(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31)), AnalyticsEngine.scopeRange(year, today, null))
+
+        val lastThree = ScopePeriod.LastMonths(3, YearMonth.of(2026, 9))
+        assertEquals(DateRange(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 9, 30)), AnalyticsEngine.scopeRange(lastThree, today, null))
+
+        // All Time boundaries: a known earliest date, none yet (falls back to today), and earliest == today.
+        assertEquals(DateRange(LocalDate.of(2025, 3, 3), today), AnalyticsEngine.scopeRange(ScopePeriod.AllTime, today, LocalDate.of(2025, 3, 3)))
+        assertEquals(DateRange(today, today), AnalyticsEngine.scopeRange(ScopePeriod.AllTime, today, null))
+        assertEquals(DateRange(today, today), AnalyticsEngine.scopeRange(ScopePeriod.AllTime, today, today))
+    }
+
+    @Test fun previousScopeResolvesToTheImmediatelyPrecedingWindowOfTheSameShape() {
+        val month = ScopePeriod.Month(YearMonth.of(2026, 9))
+        val prevMonth = AnalyticsEngine.previousScope(month)
+        assertEquals(DateRange(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31)), AnalyticsEngine.scopeRange(prevMonth!!, today, null))
+
+        val year = ScopePeriod.Year(2026)
+        val prevYear = AnalyticsEngine.previousScope(year)
+        assertEquals(DateRange(LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31)), AnalyticsEngine.scopeRange(prevYear!!, today, null))
+
+        val lastThree = ScopePeriod.LastMonths(3, YearMonth.of(2026, 9))
+        val prevThree = AnalyticsEngine.previousScope(lastThree)
+        assertEquals(DateRange(LocalDate.of(2026, 4, 1), LocalDate.of(2026, 6, 30)), AnalyticsEngine.scopeRange(prevThree!!, today, null))
+
+        // No previous period for All Time — nothing to compare an open-ended window against.
+        assertNull(AnalyticsEngine.previousScope(ScopePeriod.AllTime))
+    }
+
+    @Test fun scopeLabelReadsLastNMonthsOnlyWhileTheWindowIsTheCurrentOne() {
+        val lastThree = ScopePeriod.LastMonths(3, YearMonth.of(2026, 9))
+        // The window still ends at "now" — reads as the rolling shortcut.
+        assertEquals("Last 3 months", AnalyticsEngine.scopeLabel(lastThree, now = YearMonth.of(2026, 9)))
+        // A month has passed since — no longer "current", so it reads as its fixed span instead.
+        assertEquals("Jul - Sep 2026", AnalyticsEngine.scopeLabel(lastThree, now = YearMonth.of(2026, 10)))
+        assertEquals("September 2026", AnalyticsEngine.scopeLabel(ScopePeriod.Month(YearMonth.of(2026, 9))))
     }
 
     @Test fun monthlySeriesCoversSixMonthsIncludingEmptyOnes() {
@@ -226,56 +254,81 @@ class AnalyticsEngineTest {
         assertEquals(LocalDate.of(2026, 9, 3), AnalyticsEngine.busiestDay(list)!!.date)
     }
 
-    // --- Savings accounting (Part C1a) ---
+    // --- Transfer accounting (Part D.3) ---
 
-    private fun savingsTx(amount: Double, kind: ContributionKind? = null, date: LocalDate = today) = TransactionEntity(
-        id = nextId++, amount = amount, description = "", categoryId = 1, date = date, createdAt = nextId,
-        type = FlowType.SAVINGS, contributionKind = kind,
-    )
-
-    private fun expenseTx(amount: Double, source: FundingSource? = null, date: LocalDate = today) = TransactionEntity(
-        id = nextId++, amount = -amount, description = "", categoryId = 1, date = date, createdAt = nextId,
-        type = FlowType.EXPENSE, fundingSource = source,
+    private fun expenseTx(amount: Double, date: LocalDate = today) = TransactionEntity(
+        id = nextId++, amount = -amount, description = "", categoryId = 1, date = date, createdAt = nextId, type = FlowType.EXPENSE,
     )
 
     private fun incomeTx(amount: Double, date: LocalDate = today) = TransactionEntity(
         id = nextId++, amount = amount, description = "", categoryId = 1, date = date, createdAt = nextId, type = FlowType.INCOME,
     )
 
-    @Test fun savingsFundedExpenseCountsAsExpenseAndDebitsTheSavingsPool() {
-        val all = listOf(incomeTx(10000.0), expenseTx(3000.0, FundingSource.SAVINGS), savingsTx(10000.0, ContributionKind.NEW_INCOME))
-        assertEquals(3000.0, AnalyticsEngine.totalExpense(all), 0.0) // still a plain expense
-        assertEquals(7000.0, AnalyticsEngine.savingsBalance(all), 0.0) // 10000 contributed - 3000 spent from it
-    }
+    private fun transfer(amount: Double, direction: TransferDirection, date: LocalDate = today) =
+        TransferEntity(id = nextId++, amount = amount, direction = direction, date = date, createdAt = nextId)
 
-    @Test fun transferNeverCountsAsIncomeAndLeavesTotalFundsUnchanged() {
-        val all = listOf(incomeTx(10000.0), savingsTx(4000.0, ContributionKind.TRANSFER))
-        assertEquals(10000.0, AnalyticsEngine.totalIncome(all), 0.0) // the transfer is not new income
-        assertEquals(6000.0, AnalyticsEngine.regularFundsBalance(all), 0.0) // 10000 - 4000 moved out
-        assertEquals(4000.0, AnalyticsEngine.savingsBalance(all), 0.0) // 4000 moved in
-        // Total funds (regular + savings) is unaffected by a transfer — only which pool holds the money changes.
-        assertEquals(10000.0, AnalyticsEngine.regularFundsBalance(all) + AnalyticsEngine.savingsBalance(all), 0.0)
-    }
-
-    @Test fun newIncomeContributionCountsAsIncomeAndAddsToSavings() {
-        val all = listOf(incomeTx(10000.0), savingsTx(2000.0, ContributionKind.NEW_INCOME))
-        assertEquals(12000.0, AnalyticsEngine.totalIncome(all), 0.0) // genuinely new money
-        assertEquals(2000.0, AnalyticsEngine.savingsBalance(all), 0.0)
-        assertEquals(10000.0, AnalyticsEngine.regularFundsBalance(all), 0.0) // never touched Regular funds
-    }
-
-    @Test fun totalFundsIdentityHoldsOverAMixedSample() {
-        val all = listOf(
-            incomeTx(20000.0),
-            expenseTx(5000.0), // regular-funded (default)
-            expenseTx(1000.0, FundingSource.SAVINGS),
-            savingsTx(6000.0, ContributionKind.NEW_INCOME),
-            savingsTx(3000.0, ContributionKind.TRANSFER),
+    @Test fun savingsBalanceIsContributionsMinusWithdrawals() {
+        val transfers = listOf(
+            transfer(8000.0, TransferDirection.TO_SAVINGS),
+            transfer(3000.0, TransferDirection.FROM_SAVINGS),
         )
-        val totalFunds = AnalyticsEngine.regularFundsBalance(all) + AnalyticsEngine.savingsBalance(all)
-        val expected = AnalyticsEngine.totalIncome(all) - AnalyticsEngine.totalExpense(all)
-        assertEquals(expected, totalFunds, 1e-9)
-        // 20000 + 6000 (new income) - 6000 (5000 regular + 1000 savings-funded expense) = 20000
-        assertEquals(20000.0, totalFunds, 0.0)
+        assertEquals(5000.0, AnalyticsEngine.savingsBalance(transfers), 0.0)
+    }
+
+    /** The spec's own worked example: Income 50,000 / Expenses 42,000 / contributions 8,000 / withdrawals 3,000. */
+    @Test fun availableAmountMatchesTheSpecsWorkedExample() {
+        val tx = listOf(incomeTx(50000.0), expenseTx(40000.0), expenseTx(2000.0))
+        val transfers = listOf(transfer(8000.0, TransferDirection.TO_SAVINGS), transfer(3000.0, TransferDirection.FROM_SAVINGS))
+        assertEquals(50000.0, AnalyticsEngine.totalIncome(tx), 0.0)
+        assertEquals(42000.0, AnalyticsEngine.totalExpense(tx), 0.0)
+        assertEquals(5000.0, AnalyticsEngine.savingsBalance(transfers), 0.0)
+        assertEquals(3000.0, AnalyticsEngine.availableAmount(tx, transfers), 0.0)
+    }
+
+    @Test fun aWithdrawalIncreasesAvailableAmountByExactlyWhatItRemovesFromSavingsBalance() {
+        val tx = listOf(incomeTx(10000.0))
+        val before = AnalyticsEngine.availableAmount(tx, listOf(transfer(4000.0, TransferDirection.TO_SAVINGS)))
+        val after = AnalyticsEngine.availableAmount(tx, listOf(transfer(4000.0, TransferDirection.TO_SAVINGS), transfer(1000.0, TransferDirection.FROM_SAVINGS)))
+        assertEquals(1000.0, after - before, 0.0)
+    }
+
+    @Test fun transferTotalsOnlyCountsTransfersWithinTheRange() {
+        val range = DateRange(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30))
+        val transfers = listOf(
+            transfer(1000.0, TransferDirection.TO_SAVINGS, LocalDate.of(2026, 9, 1)), // in range (start boundary)
+            transfer(500.0, TransferDirection.FROM_SAVINGS, LocalDate.of(2026, 9, 30)), // in range (end boundary)
+            transfer(2000.0, TransferDirection.TO_SAVINGS, LocalDate.of(2026, 8, 31)), // just before
+            transfer(2000.0, TransferDirection.TO_SAVINGS, LocalDate.of(2026, 10, 1)), // just after
+        )
+        val totals = AnalyticsEngine.transferTotals(transfers, range)
+        assertEquals(1000.0, totals.contributions, 0.0)
+        assertEquals(500.0, totals.withdrawals, 0.0)
+        assertEquals(500.0, totals.net, 0.0)
+    }
+
+    // The Savings screen's "Current Year"/"All time" custom-range presets (round 8).
+    @Test fun currentYearSpansJan1ToDec31OfTodaysYear() {
+        val range = DateRange.currentYear(LocalDate.of(2026, 3, 5))
+        assertEquals(LocalDate.of(2026, 1, 1), range.start)
+        assertEquals(LocalDate.of(2026, 12, 31), range.end)
+    }
+
+    @Test fun allTimeSpansFromTheEarliestKnownDateToToday() {
+        val range = DateRange.allTime(LocalDate.of(2024, 6, 1), today)
+        assertEquals(LocalDate.of(2024, 6, 1), range.start)
+        assertEquals(today, range.end)
+    }
+
+    @Test fun allTimeFallsBackToTodayWhenThereIsNothingYet() {
+        val range = DateRange.allTime(null, today)
+        assertEquals(today, range.start)
+        assertEquals(today, range.end)
+    }
+
+    // The Stats page's "Last year" custom-range preset (round 9).
+    @Test fun lastYearSpansJan1ToDec31OfThePriorYear() {
+        val range = DateRange.lastYear(LocalDate.of(2026, 3, 5))
+        assertEquals(LocalDate.of(2025, 1, 1), range.start)
+        assertEquals(LocalDate.of(2025, 12, 31), range.end)
     }
 }

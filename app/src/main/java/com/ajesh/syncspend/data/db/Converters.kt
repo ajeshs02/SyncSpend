@@ -6,6 +6,7 @@ import com.ajesh.syncspend.domain.model.ContributionKind
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.FundingSource
 import com.ajesh.syncspend.domain.model.ReminderSchedule
+import com.ajesh.syncspend.domain.model.TransferDirection
 import java.time.LocalDate
 
 class Converters {
@@ -44,4 +45,10 @@ class Converters {
 
     @TypeConverter
     fun toContributionKind(kind: ContributionKind?): String? = kind?.name
+
+    @TypeConverter
+    fun fromTransferDirection(value: String): TransferDirection = TransferDirection.valueOf(value)
+
+    @TypeConverter
+    fun toTransferDirection(direction: TransferDirection): String = direction.name
 }

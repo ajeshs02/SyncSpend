@@ -12,12 +12,14 @@ import com.ajesh.syncspend.data.db.MIGRATION_3_4
 import com.ajesh.syncspend.data.db.MIGRATION_4_5
 import com.ajesh.syncspend.data.db.MIGRATION_5_6
 import com.ajesh.syncspend.data.db.MIGRATION_6_7
+import com.ajesh.syncspend.data.db.MIGRATION_7_8
 import com.ajesh.syncspend.data.repository.CategoryRepository
 import com.ajesh.syncspend.data.repository.CategorySeeder
 import com.ajesh.syncspend.data.repository.ForecastRepository
 import com.ajesh.syncspend.data.repository.ReminderRepository
 import com.ajesh.syncspend.data.repository.SubscriptionRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
+import com.ajesh.syncspend.data.repository.TransferRepository
 import com.ajesh.syncspend.domain.state.SharedSelectionState
 import com.ajesh.syncspend.widget.WidgetRefresher
 import kotlinx.coroutines.CoroutineScope
@@ -43,10 +45,18 @@ interface AppContainer {
     val subscriptionRepository: SubscriptionRepository
     val reminderRepository: ReminderRepository
     val forecastRepository: ForecastRepository
+    val transferRepository: TransferRepository
     val preferencesRepository: PreferencesRepository
     val selectionState: SharedSelectionState
     val alarmScheduler: AlarmScheduler
     val dailyReminderManager: DailyReminderManager
+
+    /**
+     * "Not now" on the Forecast past-month review popup — in-memory only, never persisted, so it
+     * resets to false (popup eligible again) on every fresh app launch rather than suppressing the
+     * popup for the rest of the calendar month.
+     */
+    val forecastReviewDismissedThisSession: MutableStateFlow<Boolean>
 
     /** App-lifetime scope for the shared, always-warm data streams. */
     val appScope: CoroutineScope
@@ -57,7 +67,7 @@ interface AppContainer {
     /** Loads the shared streams so the first screen can draw complete data. */
     suspend fun warmUp()
 
-    /** Wipes transactions, categories, subscriptions, reminders and forecasts, then restores the starter categories. */
+    /** Wipes transactions, categories, subscriptions, reminders, forecasts and transfers, then restores the starter categories. */
     suspend fun clearAllData()
 }
 
@@ -80,7 +90,7 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         // Any future schema change needs an explicit Migration (a missing one
         // fails loudly instead of silently wiping the user's entries).
         Room.databaseBuilder(context, AppDatabase::class.java, "syncspend.db")
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             .build()
     }
 
@@ -91,7 +101,7 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     }
 
     override val transactionRepository: TransactionRepository by lazy {
-        TransactionRepository(database.transactionDao(), appScope, context)
+        TransactionRepository(database.transactionDao(), appScope, context, database.forecastDao())
     }
 
     override val subscriptionRepository: SubscriptionRepository by lazy {
@@ -106,11 +116,17 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         ForecastRepository(database.forecastDao())
     }
 
+    override val transferRepository: TransferRepository by lazy {
+        TransferRepository(database.transferDao(), appScope)
+    }
+
     override val preferencesRepository: PreferencesRepository by lazy {
         PreferencesRepository(context, appScope)
     }
 
     override val selectionState: SharedSelectionState by lazy { SharedSelectionState() }
+
+    override val forecastReviewDismissedThisSession = MutableStateFlow(false)
 
     override val alarmScheduler: AlarmScheduler by lazy {
         AlarmSchedulerImpl(context, subscriptionRepository, reminderRepository, preferencesRepository)

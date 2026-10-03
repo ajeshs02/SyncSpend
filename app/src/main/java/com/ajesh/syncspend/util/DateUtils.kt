@@ -1,5 +1,6 @@
 package com.ajesh.syncspend.util
 
+import com.ajesh.syncspend.domain.model.DateRange
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -43,6 +44,17 @@ object DateUtils {
             "${shortDateYear(start)} - ${shortDateYear(end)}"
         }
     }
+
+    /**
+     * The literal applied-range subheading Stats/Transactions show below their period picker:
+     * "From 1 Oct 2026 - To 31 Oct 2026". Always both full dates with the year, regardless of whether
+     * the range falls in the current year — this is a precise "here's exactly what was calculated"
+     * statement, not a compact label, so it's never abbreviated the way [rangeLabel] is.
+     */
+    fun appliedRangeLabel(range: DateRange): String = "From ${shortDateYear(range.start)} - To ${shortDateYear(range.end)}"
+
+    /** "Sep 2026" — a whole month, e.g. a Forecast row's month chip. */
+    fun monthYearLabel(d: LocalDate): String = "${d.month.getDisplayName(TextStyle.SHORT, Locale.US)} ${d.year}"
 
     /** "Jul - Sep 2026", or with both years when the span crosses one ("Nov 2025 - Jan 2026"). */
     fun monthSpanLabel(first: YearMonth, last: YearMonth): String {

@@ -22,13 +22,13 @@ object DefaultCategories {
         DefaultCategory("Salary", FlowType.INCOME, "bank"),
         DefaultCategory("Freelance", FlowType.INCOME, "brief"),
         DefaultCategory("Gift", FlowType.INCOME, "gift"),
-        // Deliberately not named "Savings" — the existing Expense category above already has that
-        // name and is left untouched; these are distinct, new, top-level-Savings-type categories.
-        // Icon keys match CategoryIconGuesser's own keyword guess for each name (verified by
-        // DefaultCategoriesTest) rather than being picked independently.
-        DefaultCategory("Savings Goals", FlowType.SAVINGS, "coin"),
-        DefaultCategory("Emergency Fund", FlowType.SAVINGS, "shield"),
-        DefaultCategory("Investments", FlowType.SAVINGS, "trend"),
+        // Added so "Add to Savings" has a sensible source to pick from (it reuses this Income list
+        // rather than a parallel category system — see TransferEntity's doc). Ordinary Income
+        // categories in every respect; nothing marks them "transfer-only".
+        DefaultCategory("PF", FlowType.INCOME, "shield"),
+        DefaultCategory("Reward", FlowType.INCOME, "spark"),
+        DefaultCategory("Previous Savings", FlowType.INCOME, "wallet"),
+        DefaultCategory("Other", FlowType.INCOME, "tag"),
     )
 
     /**

@@ -18,6 +18,10 @@ object CategoryIconGuesser {
         "salary" to "bank",
         "freelance" to "brief",
         "gift" to "gift",
+        "pf" to "shield",
+        "reward" to "spark",
+        "previous savings" to "wallet",
+        "other" to "tag",
         CsvImportParser.UNCATEGORIZED.lowercase() to "tag",
     )
 

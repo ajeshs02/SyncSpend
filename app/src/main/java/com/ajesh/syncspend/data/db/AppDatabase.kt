@@ -8,16 +8,18 @@ import com.ajesh.syncspend.data.db.dao.ForecastDao
 import com.ajesh.syncspend.data.db.dao.ReminderDao
 import com.ajesh.syncspend.data.db.dao.SubscriptionDao
 import com.ajesh.syncspend.data.db.dao.TransactionDao
+import com.ajesh.syncspend.data.db.dao.TransferDao
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.ForecastEntity
 import com.ajesh.syncspend.data.db.entity.ReminderEntity
 import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
+import com.ajesh.syncspend.data.db.entity.TransferEntity
 
 /**
- * Version 7 (see [MIGRATION_3_4], [MIGRATION_4_5], [MIGRATION_5_6], [MIGRATION_6_7]). There is no
- * destructive-migration fallback (see [com.ajesh.syncspend.di.DefaultAppContainer]) — bumping
- * [Database.version] requires shipping a real `Migration`.
+ * Version 8 (see [MIGRATION_3_4], [MIGRATION_4_5], [MIGRATION_5_6], [MIGRATION_6_7], [MIGRATION_7_8]).
+ * There is no destructive-migration fallback (see [com.ajesh.syncspend.di.DefaultAppContainer]) —
+ * bumping [Database.version] requires shipping a real `Migration`.
  */
 @Database(
     entities = [
@@ -26,8 +28,9 @@ import com.ajesh.syncspend.data.db.entity.TransactionEntity
         SubscriptionEntity::class,
         ReminderEntity::class,
         ForecastEntity::class,
+        TransferEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -37,4 +40,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun subscriptionDao(): SubscriptionDao
     abstract fun reminderDao(): ReminderDao
     abstract fun forecastDao(): ForecastDao
+    abstract fun transferDao(): TransferDao
 }

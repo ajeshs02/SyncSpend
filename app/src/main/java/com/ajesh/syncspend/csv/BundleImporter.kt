@@ -9,11 +9,11 @@ import com.ajesh.syncspend.data.db.entity.ForecastEntity
 import com.ajesh.syncspend.data.db.entity.ReminderEntity
 import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
+import com.ajesh.syncspend.data.db.entity.TransferEntity
 import com.ajesh.syncspend.domain.model.BillingCycle
-import com.ajesh.syncspend.domain.model.ContributionKind
 import com.ajesh.syncspend.domain.model.FlowType
-import com.ajesh.syncspend.domain.model.FundingSource
 import com.ajesh.syncspend.domain.model.ReminderSchedule
+import com.ajesh.syncspend.domain.model.TransferDirection
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,6 +25,7 @@ data class BundleImportResult(
     val importedReminders: Int = 0,
     val importedSubscriptions: Int = 0,
     val importedForecasts: Int = 0,
+    val importedTransfers: Int = 0,
     val createdCategories: Int = 0,
     val error: String? = null,
 )
@@ -38,11 +39,15 @@ data class BundleImportResult(
  *    `db.withTransaction`, so a failure partway through rolls back every table it touched, not just
  *    the one that failed.
  *  - **Backward compatible.** A section key that's absent is left untouched (nothing deleted,
- *    nothing changed) — a bundle exported before Savings existed, with no `fundingSource`/
- *    `contributionKind` fields, still imports cleanly (both read as null via `opt...`).
- *  - **Never reuses source ids.** Every row is inserted fresh; a transaction's category is resolved
- *    by (name, type) — exactly [CsvImporter]'s own rule — never by a numeric id from the file, which
- *    could collide with an unrelated local row.
+ *    nothing changed) — a bundle exported before this round, with `fundingSource`/`contributionKind`
+ *    still present on its transactions or no `transfers` key at all, still imports cleanly (the old
+ *    fields are simply never read; a missing `transfers` key just skips that section).
+ *  - **Never reuses source ids.** Every row is inserted fresh; a transaction's or transfer's category
+ *    is resolved by (name, type) — exactly [CsvImporter]'s own rule — never by a numeric id from the
+ *    file. A Forecast's [ForecastEntity.completedTransactionId] is never round-tripped for the same
+ *    reason (a cross-table id has no portable meaning across an export/import boundary) — an imported
+ *    completed forecast simply has no linked transaction, same as the legitimate "completed, not yet
+ *    linked" state `ForecastViewModel` already supports.
  *  - **Duplicate rule is per-entity and exact-match only** (see each section's block below) — skip an
  *    identical row, otherwise insert as new. There is no overwrite-merge path anywhere here.
  */
@@ -52,18 +57,24 @@ object BundleImporter {
         val transactions: List<ParsedTx>?,
         val reminders: List<ReminderEntity>?,
         val subscriptions: List<ParsedSub>?,
-        val forecasts: List<ForecastEntity>?,
+        val forecasts: List<ParsedForecast>?,
+        val transfers: List<ParsedTransfer>?,
     )
 
     private class ParsedTx(
-        val date: LocalDate, val type: FlowType, val category: String, val description: String,
-        val amount: Double, val fundingSource: FundingSource?, val contributionKind: ContributionKind?,
+        val date: LocalDate, val type: FlowType, val category: String, val description: String, val amount: Double,
     )
 
     private class ParsedSub(
         val name: String, val iconKey: String, val amount: Double, val billingCycle: BillingCycle,
         val nextDueDate: LocalDate, val categoryName: String?, val categoryType: FlowType?,
         val active: Boolean, val remindDaysBefore: String, val remindMinuteOfDay: Int,
+    )
+
+    private class ParsedForecast(val note: String, val amount: Double, val date: LocalDate?, val categoryName: String?, val completed: Boolean)
+
+    private class ParsedTransfer(
+        val date: LocalDate, val direction: TransferDirection, val categoryName: String?, val note: String, val amount: Double,
     )
 
     suspend fun import(context: Context, uri: Uri, db: AppDatabase): BundleImportResult = withContext(Dispatchers.IO) {
@@ -81,15 +92,17 @@ object BundleImporter {
                 reminders = root.optJSONArray("reminders")?.let(::parseReminders),
                 subscriptions = root.optJSONArray("subscriptions")?.let(::parseSubscriptions),
                 forecasts = root.optJSONArray("forecasts")?.let(::parseForecasts),
+                transfers = root.optJSONArray("transfers")?.let(::parseTransfers),
             )
         } catch (e: Exception) {
-            return@withContext BundleImportResult(error = "The backup file is damaged — nothing was imported.")
+            return@withContext BundleImportResult(error = "The backup file is damaged, so nothing was imported.")
         }
 
         var importedTx = 0
         var importedReminders = 0
         var importedSubs = 0
         var importedForecasts = 0
+        var importedTransfers = 0
         var created = 0
 
         db.withTransaction {
@@ -135,8 +148,6 @@ object BundleImporter {
                             date = row.date,
                             createdAt = now + index,
                             type = row.type,
-                            fundingSource = row.fundingSource,
-                            contributionKind = row.contributionKind,
                         )
                     }
                 }
@@ -190,14 +201,39 @@ object BundleImporter {
                 rows.forEach { f ->
                     val key = listOf(f.note.trim().lowercase(), f.amount, f.date)
                     if (key !in existingKeys) {
-                        forecastDao.insert(f)
+                        val categoryId = f.categoryName?.let { name -> resolveCategory(name, FlowType.EXPENSE).id }
+                        forecastDao.insert(ForecastEntity(note = f.note, amount = f.amount, date = f.date, categoryId = categoryId, completed = f.completed))
                         importedForecasts++
+                    }
+                }
+            }
+
+            parsed.transfers?.let { rows ->
+                val transferDao = db.transferDao()
+                val existingKeys = transferDao.getAllOnce()
+                    .mapTo(HashSet()) { listOf(it.date, (it.amount * 100).toLong(), it.direction, it.categoryId, it.note.trim().lowercase()) }
+                val now = System.currentTimeMillis()
+                rows.forEachIndexed { index, row ->
+                    val categoryId = row.categoryName?.let { name -> resolveCategory(name, FlowType.INCOME).id }
+                    val key = listOf(row.date, (row.amount * 100).toLong(), row.direction, categoryId, row.note.trim().lowercase())
+                    if (key !in existingKeys) {
+                        transferDao.insert(
+                            TransferEntity(
+                                amount = row.amount,
+                                direction = row.direction,
+                                date = row.date,
+                                categoryId = categoryId,
+                                note = row.note,
+                                createdAt = now + index,
+                            ),
+                        )
+                        importedTransfers++
                     }
                 }
             }
         }
 
-        BundleImportResult(importedTx, importedReminders, importedSubs, importedForecasts, created)
+        BundleImportResult(importedTx, importedReminders, importedSubs, importedForecasts, importedTransfers, created)
     }
 
     private fun parseTransactions(arr: JSONArray): List<ParsedTx> = (0 until arr.length()).map { i ->
@@ -205,13 +241,13 @@ object BundleImporter {
         ParsedTx(
             date = LocalDate.parse(o.getString("date")),
             // Missing/unknown "type" falls back to the pre-Savings sign rule, so an older export always round-trips.
+            // A legacy "SAVINGS" type string (from a bundle exported during the brief Savings-as-a-third-flow
+            // round) also falls back to this rule, same as an unrecognized value would.
             type = o.optString("type", "").let { t -> runCatching { FlowType.valueOf(t) }.getOrNull() }
                 ?: if (o.getDouble("amount") >= 0) FlowType.INCOME else FlowType.EXPENSE,
             category = o.optString("category", CsvImportParser.UNCATEGORIZED).ifBlank { CsvImportParser.UNCATEGORIZED },
             description = o.optString("description", ""),
             amount = o.getDouble("amount"),
-            fundingSource = o.optString("fundingSource", "").takeIf { it.isNotBlank() }?.let { FundingSource.valueOf(it) },
-            contributionKind = o.optString("contributionKind", "").takeIf { it.isNotBlank() }?.let { ContributionKind.valueOf(it) },
         )
     }
 
@@ -243,12 +279,25 @@ object BundleImporter {
         )
     }
 
-    private fun parseForecasts(arr: JSONArray): List<ForecastEntity> = (0 until arr.length()).map { i ->
+    private fun parseForecasts(arr: JSONArray): List<ParsedForecast> = (0 until arr.length()).map { i ->
         val o = arr.getJSONObject(i)
-        ForecastEntity(
+        ParsedForecast(
             note = o.getString("note"),
             amount = o.getDouble("amount"),
             date = o.optString("date", "").takeIf { it.isNotBlank() }?.let(LocalDate::parse),
+            categoryName = o.optString("category", "").takeIf { it.isNotBlank() },
+            completed = o.optBoolean("completed", false),
+        )
+    }
+
+    private fun parseTransfers(arr: JSONArray): List<ParsedTransfer> = (0 until arr.length()).map { i ->
+        val o = arr.getJSONObject(i)
+        ParsedTransfer(
+            date = LocalDate.parse(o.getString("date")),
+            direction = TransferDirection.valueOf(o.getString("direction")),
+            categoryName = o.optString("category", "").takeIf { it.isNotBlank() },
+            note = o.optString("note", ""),
+            amount = o.getDouble("amount"),
         )
     }
 }

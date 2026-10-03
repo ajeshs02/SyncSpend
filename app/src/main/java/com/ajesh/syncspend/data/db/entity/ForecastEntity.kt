@@ -5,11 +5,16 @@ import androidx.room.PrimaryKey
 import java.time.LocalDate
 
 /**
- * A planned/forecast expense the user jotted down for a month — a plain note-taking feature, not a
- * transaction: it never inserts into `transactions` and has no alarm/notification of its own (unlike
- * [ReminderEntity]). [date] null means "this month," read fresh against the current date rather than
- * materializing a specific day — so it keeps reading as "this month" for as long as the user leaves
- * it there, a deliberate simplification rather than a gap to engineer around.
+ * A planned/forecast expense the user jotted down for a month. [date] is the 1st of the chosen month
+ * (current or next — see `ForecastDialog`'s month chips); `null` only ever appears on rows created
+ * before that chip picker existed, meaning "this month," read fresh against the current date.
+ *
+ * [categoryId] is an Expense category (nullable: forecasts could be created before this field
+ * existed, or left uncategorized). [completed] is an explicit, persistent "done" flag — independent
+ * of whether an actual Expense was ever created for it. [completedTransactionId] is set only once
+ * "Mark Done & Add Expense" actually inserts that [TransactionEntity]; it is the duplicate-prevention
+ * gate (not [completed] alone — see `ForecastViewModel`), and is cleared back to null if that linked
+ * transaction is later deleted, without reverting [completed] (see `TransactionRepository.delete`).
  */
 @Entity(tableName = "forecasts")
 data class ForecastEntity(
@@ -17,4 +22,7 @@ data class ForecastEntity(
     val note: String,
     val amount: Double,
     val date: LocalDate? = null,
+    val categoryId: Long? = null,
+    val completed: Boolean = false,
+    val completedTransactionId: Long? = null,
 )

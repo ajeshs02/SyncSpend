@@ -34,6 +34,7 @@ import com.ajesh.syncspend.navigation.navigateToTab
 import com.ajesh.syncspend.navigation.openSubsReminders
 import com.ajesh.syncspend.ui.components.BottomFadeAndNav
 import com.ajesh.syncspend.ui.editentry.EditEntryHost
+import com.ajesh.syncspend.ui.transfer.EditTransferHost
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
 private const val SPLASH_MAX_MILLIS = 1_500L
@@ -135,6 +136,7 @@ private fun SyncSpendAppRoot() {
                 if (currentRoute != Routes.ADD_ENTRY) navController.navigateToTab(Routes.ADD_ENTRY)
             },
         )
-        EditEntryHost()
+        EditEntryHost(onAddCategory = { flow -> navController.navigateToCategories(flow) })
+        EditTransferHost(onAddCategory = { flow -> navController.navigateToCategories(flow) })
     }
 }

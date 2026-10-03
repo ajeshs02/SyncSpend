@@ -7,14 +7,12 @@ import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.data.repository.CategoryRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
-import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
-import com.ajesh.syncspend.domain.model.ContributionKind
 import com.ajesh.syncspend.domain.model.EntryNote
 import com.ajesh.syncspend.domain.model.FlowType
-import com.ajesh.syncspend.domain.model.FundingSource
 import com.ajesh.syncspend.domain.state.SharedSelectionState
 import java.time.LocalDate
 import java.time.LocalDateTime
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,16 +31,9 @@ data class AddEntryUiState(
     val currencySymbol: String = "₹",
     val categoryPickerOpen: Boolean = false,
     val allowDecimalInput: Boolean = false,
-    /** Only meaningful while [type] is [FlowType.EXPENSE]. */
-    val fundingSource: FundingSource = FundingSource.REGULAR,
-    /** Only meaningful while [type] is [FlowType.SAVINGS]. */
-    val contributionKind: ContributionKind = ContributionKind.NEW_INCOME,
-    /** The savings pool's balance *before* this (unsaved) entry — see [AnalyticsEngine.savingsBalance]. */
-    val savingsBalance: Double = 0.0,
-    /** The regular-funds pool's balance *before* this (unsaved) entry — see [AnalyticsEngine.regularFundsBalance]. */
-    val regularFundsBalance: Double = 0.0,
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class AddEntryViewModel(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
@@ -59,8 +50,6 @@ class AddEntryViewModel(
     private val date = MutableStateFlow(LocalDate.now())
     private val selectedCategory = MutableStateFlow<CategoryEntity?>(null)
     private val categoryPickerOpen = MutableStateFlow(false)
-    private val fundingSource = MutableStateFlow(FundingSource.REGULAR)
-    private val contributionKind = MutableStateFlow(ContributionKind.NEW_INCOME)
 
     private val categoriesForType = type.flatMapLatest { categoryRepository.getAllByType(it) }
 
@@ -70,31 +59,17 @@ class AddEntryViewModel(
         val date: LocalDate,
         val selectedCategory: CategoryEntity?,
         val categoryPickerOpen: Boolean,
-        val fundingSource: FundingSource,
-        val contributionKind: ContributionKind,
     )
 
     private val draft = combine(
-        type, amountText, date, selectedCategory, categoryPickerOpen, fundingSource, contributionKind,
-    ) { values ->
-        @Suppress("UNCHECKED_CAST")
-        Draft(
-            type = values[0] as FlowType,
-            amountText = values[1] as String,
-            date = values[2] as LocalDate,
-            selectedCategory = values[3] as CategoryEntity?,
-            categoryPickerOpen = values[4] as Boolean,
-            fundingSource = values[5] as FundingSource,
-            contributionKind = values[6] as ContributionKind,
-        )
-    }
+        type, amountText, date, selectedCategory, categoryPickerOpen,
+    ) { t, amt, d, cat, pickerOpen -> Draft(t, amt, d, cat, pickerOpen) }
 
     val uiState: StateFlow<AddEntryUiState> = combine(
         draft,
         categoriesForType,
         preferencesRepository.preferences,
-        transactionRepository.getAll(),
-    ) { d, categories, prefs, allTx ->
+    ) { d, categories, prefs ->
         AddEntryUiState(
             type = d.type,
             amountText = d.amountText,
@@ -104,29 +79,12 @@ class AddEntryViewModel(
             currencySymbol = prefs.currencyCode.symbol,
             categoryPickerOpen = d.categoryPickerOpen,
             allowDecimalInput = prefs.allowDecimalInput,
-            fundingSource = d.fundingSource,
-            contributionKind = d.contributionKind,
-            savingsBalance = AnalyticsEngine.savingsBalance(allTx),
-            regularFundsBalance = AnalyticsEngine.regularFundsBalance(allTx),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AddEntryUiState())
 
     fun setType(newType: FlowType) {
         selection.flow.value = newType
         selectedCategory.value = null
-        // The funding-source/contribution-kind pickers are hidden once the flow no longer shows
-        // them, but reset them too so returning to Expense/Savings later doesn't surprise with a
-        // leftover choice from an unrelated earlier visit.
-        fundingSource.value = FundingSource.REGULAR
-        contributionKind.value = ContributionKind.NEW_INCOME
-    }
-
-    fun setFundingSource(source: FundingSource) {
-        fundingSource.value = source
-    }
-
-    fun setContributionKind(kind: ContributionKind) {
-        contributionKind.value = kind
     }
 
     /**
@@ -208,7 +166,7 @@ class AddEntryViewModel(
             val now = LocalDateTime.now()
             transactionRepository.insert(
                 TransactionEntity(
-                    // Expense is negative; Income and Savings contributions are both stored positive.
+                    // Expense is negative; Income is stored positive.
                     amount = if (currentType == FlowType.EXPENSE) -amount else amount,
                     description = EntryNote.normalize(note),
                     categoryId = category.id,
@@ -216,8 +174,6 @@ class AddEntryViewModel(
                     createdAt = System.currentTimeMillis(),
                     timeMinuteOfDay = if (date.value == now.toLocalDate()) now.hour * 60 + now.minute else null,
                     type = currentType,
-                    fundingSource = fundingSource.value.takeIf { currentType == FlowType.EXPENSE },
-                    contributionKind = contributionKind.value.takeIf { currentType == FlowType.SAVINGS },
                 ),
             )
             amountText.value = "0"

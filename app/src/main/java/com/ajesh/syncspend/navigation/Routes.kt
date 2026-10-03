@@ -13,6 +13,7 @@ object Routes {
     const val STATS = "stats"
     const val SETTINGS = "settings"
     const val FORECAST = "forecast"
+    const val TRANSFER = "transfer"
 
     const val SUBS_REMINDERS = "subs_reminders/{listMode}?highlight={highlight}"
     const val SUBS_REMINDERS_PREFIX = "subs_reminders/"

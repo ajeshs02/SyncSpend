@@ -88,14 +88,18 @@ fun CategoryPickerSheet(
                     Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                         rowCats.forEach { cat ->
                             val selected = cat.id == selectedId
+                            // In Light theme, `acc` as a pale 10%-alpha tint with `acc`-colored text was too
+                            // low-contrast to read comfortably, so a selected tile there gets a solid acc fill
+                            // with the dark onAcc foreground instead — the same pairing selected chips already
+                            // use. Dark theme keeps its original tint/foreground, which already reads fine.
+                            val colors = SyncSpendTheme.colors
+                            val selectedBg = if (colors.isDark) colors.acc.copy(alpha = 0.1f) else colors.acc
+                            val selectedFg = if (colors.isDark) colors.acc else colors.onAcc
                             Column(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .background(
-                                        if (selected) SyncSpendTheme.colors.acc.copy(alpha = 0.1f) else SyncSpendTheme.colors.card,
-                                        RoundedCornerShape(16.dp),
-                                    )
-                                    .border(1.dp, if (selected) SyncSpendTheme.colors.acc else SyncSpendTheme.colors.line, RoundedCornerShape(16.dp))
+                                    .background(if (selected) selectedBg else colors.card, RoundedCornerShape(16.dp))
+                                    .border(1.dp, if (selected) colors.acc else colors.line, RoundedCornerShape(16.dp))
                                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                                         if (selected) onPick(null) else {
                                             onPick(cat)
@@ -109,7 +113,7 @@ fun CategoryPickerSheet(
                                 Icon(
                                     SyncSpendIcons.iconFor(cat.iconKey),
                                     null,
-                                    tint = if (selected) SyncSpendTheme.colors.acc else SyncSpendTheme.colors.ink,
+                                    tint = if (selected) selectedFg else colors.ink,
                                     modifier = Modifier.size(17.dp),
                                 )
                                 Text(
@@ -118,7 +122,7 @@ fun CategoryPickerSheet(
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                                         lineHeight = androidx.compose.ui.unit.TextUnit(13f, androidx.compose.ui.unit.TextUnitType.Sp),
                                     ),
-                                    color = if (selected) SyncSpendTheme.colors.acc else SyncSpendTheme.colors.ink,
+                                    color = if (selected) selectedFg else colors.ink,
                                     textAlign = TextAlign.Center,
                                     maxLines = 2,
                                 )

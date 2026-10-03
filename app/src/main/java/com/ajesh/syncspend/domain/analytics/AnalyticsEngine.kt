@@ -2,9 +2,8 @@ package com.ajesh.syncspend.domain.analytics
 
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
+import com.ajesh.syncspend.data.db.entity.TransferEntity
 import com.ajesh.syncspend.domain.model.CategoryMover
-import com.ajesh.syncspend.domain.model.ContributionKind
-import com.ajesh.syncspend.domain.model.FundingSource
 import com.ajesh.syncspend.domain.model.CategoryRollup
 import com.ajesh.syncspend.domain.model.DayTotal
 import com.ajesh.syncspend.domain.model.DateRange
@@ -16,6 +15,7 @@ import com.ajesh.syncspend.domain.model.MonthTotal
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.model.SmallPurchases
 import com.ajesh.syncspend.domain.model.StatsSummary
+import com.ajesh.syncspend.domain.model.TransferDirection
 import com.ajesh.syncspend.domain.model.WeekdayStat
 import com.ajesh.syncspend.util.DateUtils
 import java.time.DayOfWeek
@@ -60,53 +60,67 @@ object AnalyticsEngine {
         return if (last.isBefore(start)) 1 else (last.toEpochDay() - start.toEpochDay()).toInt() + 1
     }
 
+    /**
+     * [scope]'s window as a plain [DateRange] — the one adapter needed to feed a [ScopePeriod]
+     * selection through the existing `DateRange`-shaped Entries/Rollups/Stats machinery, which never
+     * needed to change itself. Same per-variant arithmetic [daysInScope] already uses, just returning
+     * the range instead of a day count.
+     */
+    fun scopeRange(scope: ScopePeriod, today: LocalDate, earliest: LocalDate?): DateRange = when (scope) {
+        is ScopePeriod.Month -> DateRange(scope.yearMonth.atDay(1), scope.yearMonth.atEndOfMonth())
+        is ScopePeriod.Year -> DateRange(LocalDate.of(scope.year, 1, 1), LocalDate.of(scope.year, 12, 31))
+        is ScopePeriod.LastMonths -> DateRange(scope.startMonth.atDay(1), scope.endMonth.atEndOfMonth())
+        ScopePeriod.AllTime -> DateRange.allTime(earliest, today)
+    }
+
     /** Year/month compare without allocating a YearMonth per transaction (this runs over every row). */
     private fun inMonth(date: LocalDate, month: YearMonth): Boolean = date.year == month.year && date.monthValue == month.monthValue
 
     fun scopeFilter(tx: List<TransactionEntity>, scope: ScopePeriod): List<TransactionEntity> =
         tx.filter { inScope(it, scope) }
 
-    /**
-     * [TransactionEntity.type] is a real stored column (not derived from the amount's sign) since
-     * Savings introduced a second positive-amount flow — filtering by sign alone would wrongly pull
-     * Savings contributions into an "Income" filter.
-     */
     fun flowFilter(tx: List<TransactionEntity>, flow: FlowType): List<TransactionEntity> =
         tx.filter { it.type == flow }
 
-    /**
-     * Income actually received over [tx]: ordinary Income rows, plus Savings contributions that are
-     * newly received money ([ContributionKind.NEW_INCOME], the default for a null `contributionKind`)
-     * rather than a transfer of income already counted elsewhere ([ContributionKind.TRANSFER], which
-     * must never be counted as income a second time).
-     */
     fun totalIncome(tx: List<TransactionEntity>): Double =
-        tx.filter { it.type == FlowType.INCOME }.sumOf { it.amount } +
-            tx.filter { it.type == FlowType.SAVINGS && it.contributionKind != ContributionKind.TRANSFER }.sumOf { it.amount }
+        tx.filter { it.type == FlowType.INCOME }.sumOf { it.amount }
 
-    /** Unaffected by [FundingSource] — an expense counts as an expense regardless of which pool paid for it. */
     fun totalExpense(tx: List<TransactionEntity>): Double =
         tx.filter { it.type == FlowType.EXPENSE }.sumOf { abs(it.amount) }
 
     /**
-     * The savings pool's running balance: every Savings contribution (both [ContributionKind]s) minus
-     * every Expense whose [FundingSource] is [FundingSource.SAVINGS]. Always computed over the *whole*
-     * transaction list, never just a range — a balance is a point-in-time total, not a period sum.
+     * The savings pool's running balance: every contribution minus every withdrawal, over the *whole*
+     * transfer history, never just a range — a balance is a point-in-time total, not a period sum (see
+     * [transferTotals] for the period-scoped equivalent used by Stats).
      */
-    fun savingsBalance(all: List<TransactionEntity>): Double =
-        all.filter { it.type == FlowType.SAVINGS }.sumOf { it.amount } -
-            all.filter { it.type == FlowType.EXPENSE && it.fundingSource == FundingSource.SAVINGS }.sumOf { abs(it.amount) }
+    fun savingsBalance(transfers: List<TransferEntity>): Double =
+        transfers.filter { it.direction == TransferDirection.TO_SAVINGS }.sumOf { it.amount } -
+            transfers.filter { it.direction == TransferDirection.FROM_SAVINGS }.sumOf { it.amount }
 
     /**
-     * The regular (non-savings) pool's running balance. A [ContributionKind.TRANSFER] subtracts here
-     * and adds the same amount to [savingsBalance] — never counted as income, never changing the
-     * combined total of the two balances, only which pool the money sits in.
+     * What's left to spend freely: all-time Income minus all-time Expense minus the all-time Savings
+     * Balance (money already set aside). A withdrawal increases this and decreases [savingsBalance] by
+     * the exact same amount — money moves between the two figures, never duplicated or lost.
      */
-    fun regularFundsBalance(all: List<TransactionEntity>): Double =
-        all.filter { it.type == FlowType.INCOME }.sumOf { it.amount } -
-            all.filter { it.type == FlowType.EXPENSE && (it.fundingSource ?: FundingSource.REGULAR) == FundingSource.REGULAR }
-                .sumOf { abs(it.amount) } -
-            all.filter { it.type == FlowType.SAVINGS && it.contributionKind == ContributionKind.TRANSFER }.sumOf { it.amount }
+    fun availableAmount(tx: List<TransactionEntity>, transfers: List<TransferEntity>): Double =
+        totalIncome(tx) - totalExpense(tx) - savingsBalance(transfers)
+
+    data class TransferTotals(val contributions: Double, val withdrawals: Double) {
+        val net: Double get() = contributions - withdrawals
+    }
+
+    /**
+     * Contributions/withdrawals **within [range]** — period-scoped Savings *movement*, never the
+     * cumulative [savingsBalance]. The Transfer screen, the Transactions page's Savings filter and the
+     * Stats summary card all call this one function so the three can never drift apart.
+     */
+    fun transferTotals(transfers: List<TransferEntity>, range: DateRange): TransferTotals {
+        val inRange = transfers.filter { it.date in range }
+        return TransferTotals(
+            contributions = inRange.filter { it.direction == TransferDirection.TO_SAVINGS }.sumOf { it.amount },
+            withdrawals = inRange.filter { it.direction == TransferDirection.FROM_SAVINGS }.sumOf { it.amount },
+        )
+    }
 
     /** null for AllTime — there's no "previous all-time" to compare against. */
     fun previousScope(scope: ScopePeriod): ScopePeriod? = when (scope) {
@@ -147,7 +161,8 @@ object AnalyticsEngine {
 
     /**
      * The chips offered on the Entries and Categories tabs. Income skips "This Week"/"Last Week" —
-     * its chips are This Month, Last Month, Custom. Expense and Savings get the full list.
+     * its chips are This Month, Last Month, Custom. Expense gets the full list. The Transactions
+     * page's Savings filter (not a [FlowType]) always uses the full list too — see `TransactionsViewModel`.
      */
     fun entryFilterOptions(flow: FlowType): List<EntryFilter> =
         if (flow == FlowType.INCOME) listOf(EntryFilter.THIS_MONTH, EntryFilter.LAST_MONTH, EntryFilter.CUSTOM) else EntryFilter.entries
@@ -168,20 +183,27 @@ object AnalyticsEngine {
     fun weekStart(date: LocalDate): LocalDate = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
     /**
-     * The entries a filter keeps. The label above shows the span up to today, but the filter covers the
-     * whole period, so an entry dated later this week or month is never hidden.
+     * The inclusive date window [filter] covers — not just the label's span up to today, the whole
+     * period, so an entry dated later this week or month is never hidden. Date-only (not tied to
+     * [TransactionEntity]), so any date-stamped row can reuse it — see [applyEntryFilter] below and
+     * `TransferViewModel`/the Transactions page's Savings filter.
      */
+    fun entryFilterWindow(filter: EntryFilter, custom: DateRange?, today: LocalDate = LocalDate.now()): DateRange? = when (filter) {
+        EntryFilter.THIS_WEEK -> weekStart(today).let { DateRange(it, it.plusDays(6)) }
+        EntryFilter.LAST_WEEK -> weekStart(today).minusDays(7).let { DateRange(it, it.plusDays(6)) }
+        EntryFilter.THIS_MONTH -> YearMonth.from(today).let { DateRange(it.atDay(1), it.atEndOfMonth()) }
+        EntryFilter.LAST_MONTH -> YearMonth.from(today).minusMonths(1).let { DateRange(it.atDay(1), it.atEndOfMonth()) }
+        EntryFilter.CUSTOM -> custom
+    }
+
     fun applyEntryFilter(
         tx: List<TransactionEntity>,
         filter: EntryFilter,
         custom: DateRange?,
         today: LocalDate = LocalDate.now(),
-    ): List<TransactionEntity> = when (filter) {
-        EntryFilter.THIS_WEEK -> weekStart(today).let { start -> tx.filter { !it.date.isBefore(start) && !it.date.isAfter(start.plusDays(6)) } }
-        EntryFilter.LAST_WEEK -> weekStart(today).minusDays(7).let { start -> tx.filter { !it.date.isBefore(start) && !it.date.isAfter(start.plusDays(6)) } }
-        EntryFilter.THIS_MONTH -> YearMonth.from(today).let { month -> tx.filter { inMonth(it.date, month) } }
-        EntryFilter.LAST_MONTH -> YearMonth.from(today).minusMonths(1).let { month -> tx.filter { inMonth(it.date, month) } }
-        EntryFilter.CUSTOM -> if (custom == null) tx else tx.filter { it.date in custom }
+    ): List<TransactionEntity> {
+        val window = entryFilterWindow(filter, custom, today) ?: return tx
+        return tx.filter { it.date in window }
     }
 
     fun groupByDay(tx: List<TransactionEntity>, today: LocalDate = LocalDate.now()): List<DayGroup> {
@@ -203,7 +225,8 @@ object AnalyticsEngine {
         return groups
     }
 
-    private fun dayLabel(date: LocalDate, today: LocalDate): String = when (date) {
+    /** "Today" / "Yesterday" / "27 Sep 2026" — a day-group header, reused anywhere rows are grouped by day (not just [TransactionEntity] ones; see `TransferViewModel`). */
+    fun dayLabel(date: LocalDate, today: LocalDate): String = when (date) {
         today -> "Today"
         today.minusDays(1) -> "Yesterday"
         else -> "${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.SHORT, Locale.US)} ${date.year}"

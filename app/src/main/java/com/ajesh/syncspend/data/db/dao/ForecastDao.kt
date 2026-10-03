@@ -25,4 +25,12 @@ interface ForecastDao {
 
     @Query("SELECT * FROM forecasts")
     suspend fun getAllOnce(): List<ForecastEntity>
+
+    /** Called right after deleting a transaction, so no forecast is left pointing at a dead row — [ForecastEntity.completed] is deliberately untouched. */
+    @Query("UPDATE forecasts SET completedTransactionId = NULL WHERE completedTransactionId = :transactionId")
+    suspend fun clearCompletedLink(transactionId: Long)
+
+    /** The past-month review popup's "Mark completed" action — rows are kept, only [ForecastEntity.completed] flips. */
+    @Query("UPDATE forecasts SET completed = 1 WHERE id IN (:ids)")
+    suspend fun markCompleted(ids: List<Long>)
 }

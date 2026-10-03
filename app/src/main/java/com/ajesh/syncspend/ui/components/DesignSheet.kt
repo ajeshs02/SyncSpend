@@ -8,9 +8,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -54,6 +60,15 @@ fun DesignSheet(
         scrimColor = Color(0x80080E0A),
         shape = SyncSpendCorners.sheetTop,
         dragHandle = null,
+        // Default is WindowInsets.safeDrawing (system bars + IME + cutout), which makes this sheet's
+        // own content padding reactively chase the keyboard as it closes — a secondary contributor to
+        // the height-jump bug (round 12). The *primary* cause (ModalBottomSheet's own non-overridable
+        // internal imePadding(), which drives its expand-anchor height math) can't be touched from here
+        // — confirmed by reading the library source — so this only removes what's actually in our
+        // control: the content's own insets no longer include the IME.
+        contentWindowInsets = {
+            WindowInsets.systemBars.union(WindowInsets.displayCutout).only(WindowInsetsSides.Bottom + WindowInsetsSides.Top)
+        },
     ) {
         Column(
             modifier = Modifier

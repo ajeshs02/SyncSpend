@@ -1,14 +1,16 @@
 package com.ajesh.syncspend.ui.transactions
 
+import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
 import com.ajesh.syncspend.domain.analytics.TipsEngine
 import com.ajesh.syncspend.domain.model.labelFor
 import com.ajesh.syncspend.domain.model.FlowType
-import com.ajesh.syncspend.domain.model.StatsRange
+import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.model.StatsSummary
 import com.ajesh.syncspend.domain.model.TipTone
 import com.ajesh.syncspend.util.CurrencyFormatter
 import com.ajesh.syncspend.util.DateUtils
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
@@ -30,6 +32,20 @@ data class MoverUi(val name: String, val iconKey: String, val deltaFormatted: St
 
 data class TopEntryUi(val title: String, val subtitle: String, val amount: String)
 
+/**
+ * The compact Savings card on Stats — period-scoped *movement* (this range's contributions minus
+ * withdrawals), never the all-time cumulative Savings Balance shown on the Transfer screen; the two
+ * are never the same number and [periodLabel] makes that explicit. Flow-independent (shown the same
+ * whether Expense or Income is selected), kept structurally separate from [StatsUi.tiles]/[StatsUi.categoryBars].
+ */
+data class SavingsSummaryUi(
+    val periodLabel: String,
+    val contributionsFormatted: String,
+    val withdrawalsFormatted: String,
+    val netFormatted: String,
+    val netPositive: Boolean,
+)
+
 /** The current-month forecast: fractions are of the largest of so-far / projected / last month. */
 data class PaceUi(
     val title: String,
@@ -40,7 +56,7 @@ data class PaceUi(
 )
 
 data class StatsUi(
-    val range: StatsRange,
+    val scope: ScopePeriod,
     val kicker: String,
     val topName: String,
     val topIconKey: String,
@@ -64,23 +80,31 @@ data class StatsUi(
     val currentValue: String,
     val previousLabel: String,
     val previousValue: String,
+    val savingsSummary: SavingsSummaryUi,
 )
 
 /** Turns the computed [StatsSummary] into the exact strings/tiles/bars the Stats tab shows. */
 fun buildStatsUi(
     s: StatsSummary,
-    kind: StatsRange,
+    scope: ScopePeriod,
     cur: String,
     subsMonthlyTotal: Double,
     subsCount: Int,
+    transferTotals: AnalyticsEngine.TransferTotals,
+    today: LocalDate = LocalDate.now(),
 ): StatsUi {
     // Savings reuses the "income" wording/direction throughout this builder (more saved is good, same as
     // more earned) rather than a bespoke Savings-specific dashboard — a deliberate scope call for this
     // round, not an oversight. A dedicated Savings breakdown (balance, contributions vs. savings-funded
     // expenses) is a reasonable follow-up once this shape is proven out.
     val income = s.flow != FlowType.EXPENSE
-    val label = kind.describe(s.range)
-    val prevLabel = s.previousRange?.let { kind.describe(it) } ?: "-"
+    // scopeLabel's own default `now` would read the real wall clock, which is fine in production but
+    // would make a fixed-`today` test's "Last N months" label flip on whatever day it happens to run —
+    // threading `today` through keeps it exactly as deterministic as every other date-aware builder here.
+    val thisMonth = YearMonth.from(today)
+    val previousScope = AnalyticsEngine.previousScope(scope)
+    val label = AnalyticsEngine.scopeLabel(scope, thisMonth)
+    val prevLabel = previousScope?.let { AnalyticsEngine.scopeLabel(it, thisMonth) } ?: "-"
     fun money(v: Double) = cur + CurrencyFormatter.amount(v)
 
     val top = s.topCategory
@@ -209,7 +233,7 @@ fun buildStatsUi(
     }
 
     return StatsUi(
-        range = kind,
+        scope = scope,
         kicker = (if (income) "Top income source · " else "Top spending category · ") + label,
         topName = top?.name ?: "-",
         topIconKey = top?.iconKey ?: "receipt",
@@ -232,5 +256,12 @@ fun buildStatsUi(
         currentValue = money(s.total),
         previousLabel = prevLabel,
         previousValue = money(s.previousTotal),
+        savingsSummary = SavingsSummaryUi(
+            periodLabel = label,
+            contributionsFormatted = money(transferTotals.contributions),
+            withdrawalsFormatted = money(transferTotals.withdrawals),
+            netFormatted = money(kotlin.math.abs(transferTotals.net)),
+            netPositive = transferTotals.net >= 0,
+        ),
     )
 }

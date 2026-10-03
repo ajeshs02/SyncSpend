@@ -74,10 +74,12 @@ class HomeInsightsTest {
         rule.mainClock.advanceTimeByFrame()
         fun visible() = lines.single { l -> rule.onAllNodes(hasText(l)).fetchSemanticsNodes().isNotEmpty() }
         val first = visible()
-        rule.mainClock.advanceTimeBy(HomeInsights.ROTATE_MILLIS + 1_000)
+        // Past the rotation delay AND the Crossfade's own 1200ms transition — otherwise the outgoing
+        // and incoming lines are both still present mid-fade, and `visible()` finds two matches.
+        rule.mainClock.advanceTimeBy(HomeInsights.ROTATE_MILLIS + 1_300)
         val second = visible()
         assertNotEquals(first, second)
-        rule.mainClock.advanceTimeBy(HomeInsights.ROTATE_MILLIS)
+        rule.mainClock.advanceTimeBy(HomeInsights.ROTATE_MILLIS + 1_300)
         assertNotEquals(second, visible())
     }
 }

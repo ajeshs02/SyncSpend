@@ -43,6 +43,20 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 /**
+ * The year- and month-level Prev/Next enablement for [DatePickerSheet]'s two navigation rows, pulled
+ * out as plain functions so the round-9 bug (year arrows following month-granularity availability) is
+ * unit-testable without Compose/Robolectric. The two granularities are intentionally independent: a
+ * year arrow cares only whether a different *year* is reachable, a month arrow only whether a
+ * different *month* within the current browsable span is.
+ */
+internal object DatePickerNav {
+    fun yearPrevEnabled(viewing: YearMonth, lower: YearMonth): Boolean = viewing.year > lower.year
+    fun yearNextEnabled(viewing: YearMonth, upper: YearMonth): Boolean = viewing.year < upper.year
+    fun monthPrevEnabled(viewing: YearMonth, lower: YearMonth): Boolean = viewing.isAfter(lower)
+    fun monthNextEnabled(viewing: YearMonth, upper: YearMonth): Boolean = viewing.isBefore(upper)
+}
+
+/**
  * The design's custom calendar sheet, used for every date pick in the app
  * (Add Entry, Edit Entry, custom ranges, subscription / reminder dates).
  *
@@ -96,10 +110,35 @@ fun DatePickerSheet(
             SquareIconButton(SyncSpendIcons.Close, close, size = 30.dp)
         }
 
+        // Year-level jump above the month-level one, same two-tier navigation Home's own period
+        // picker uses (PeriodPickerSheet) — otherwise reaching a date years back meant tapping
+        // "previous month" dozens of times.
         Row(modifier = Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             SquareIconButton(
+                SyncSpendIcons.Prev, { viewing = maxOf(viewing.minusMonths(12), lower) },
+                // Year-granularity check — independent of the month row below. Comparing full
+                // YearMonths here (as the month row correctly does) was the round-9 bug: it disabled
+                // this button only once the *month* ran out, not the *year*, so e.g. viewing=Jul 2026
+                // with lower=Mar 2026 left this enabled even though there's no earlier year to jump to.
+                size = 32.dp, radius = 11.dp, iconSize = 17.dp, enabled = DatePickerNav.yearPrevEnabled(viewing, lower),
+            )
+            Text(
+                viewing.year.toString(),
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold),
+                color = colors.ink,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
+            )
+            SquareIconButton(
+                SyncSpendIcons.Next, { viewing = minOf(viewing.plusMonths(12), upper) },
+                size = 32.dp, radius = 11.dp, iconSize = 17.dp, enabled = DatePickerNav.yearNextEnabled(viewing, upper),
+            )
+        }
+
+        Row(modifier = Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            SquareIconButton(
                 SyncSpendIcons.Prev, { viewing = viewing.minusMonths(1) },
-                size = 32.dp, radius = 11.dp, iconSize = 17.dp, enabled = viewing.isAfter(lower),
+                size = 32.dp, radius = 11.dp, iconSize = 17.dp, enabled = DatePickerNav.monthPrevEnabled(viewing, lower),
             )
             Text(
                 "${viewing.month.getDisplayName(TextStyle.FULL, Locale.US)} ${viewing.year}",
@@ -110,7 +149,7 @@ fun DatePickerSheet(
             )
             SquareIconButton(
                 SyncSpendIcons.Next, { viewing = viewing.plusMonths(1) },
-                size = 32.dp, radius = 11.dp, iconSize = 17.dp, enabled = viewing.isBefore(upper),
+                size = 32.dp, radius = 11.dp, iconSize = 17.dp, enabled = DatePickerNav.monthNextEnabled(viewing, upper),
             )
         }
 

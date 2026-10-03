@@ -14,7 +14,10 @@ internal object HomeInsights {
      */
     fun build(total: Double, entryCount: Int, days: Int, currencySymbol: String): List<String> {
         if (entryCount <= 0 || days <= 0) return emptyList()
-        fun avg(value: Double) = "Averaging $currencySymbol${CurrencyFormatter.amount(value)}"
+        // Rounded to a whole unit before formatting: these are derived averages (almost never a round
+        // number on their own), not stored amounts, so CurrencyFormatter's "show real precision" rule
+        // doesn't apply here — an approximate hint line reads better as a whole figure.
+        fun avg(value: Double) = "Averaging $currencySymbol${CurrencyFormatter.amount(Math.round(value).toDouble())}"
         val perDay = total / days
         return listOf(
             "${avg(total / entryCount)} per entry",

@@ -1,11 +1,7 @@
 package com.ajesh.syncspend.ui.home
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,6 +11,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,6 +54,7 @@ import com.ajesh.syncspend.ui.components.AppLogo
 import com.ajesh.syncspend.ui.components.DateSeparator
 import com.ajesh.syncspend.ui.components.FlowToggle
 import com.ajesh.syncspend.ui.components.PeriodPickerSheet
+import com.ajesh.syncspend.ui.components.PeriodSelectorPill
 import com.ajesh.syncspend.ui.components.SyncSpendChrome
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendCorners
@@ -70,6 +69,7 @@ fun HomeScreen(
     onOpenSubscriptions: () -> Unit,
     onOpenReminders: () -> Unit,
     onOpenForecast: () -> Unit,
+    onOpenTransfer: () -> Unit,
     onOpenStats: () -> Unit,
 ) {
     val container = LocalAppContainer.current
@@ -112,82 +112,62 @@ fun HomeScreen(
             modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
         )
 
-        Row(
-            modifier = Modifier
-                .padding(start = 22.dp, end = 22.dp, top = 18.dp)
-                .fillMaxWidth()
-                .background(colors.pill, RoundedCornerShape(18.dp))
-                .border(1.dp, colors.line, RoundedCornerShape(18.dp))
-                .padding(horizontal = 8.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            NavArrow(SyncSpendIcons.Prev, "Previous period", state.canGoPrev, viewModel::prevPeriod)
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { periodPickerOpen = true },
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                AnimatedContent(
-                    targetState = state.scopeLabel,
-                    transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(120)) },
-                    label = "scope-label",
-                ) { label ->
-                    Text(label, style = MaterialTheme.typography.titleMedium.copy(letterSpacing = (-0.15).sp), color = colors.ink)
-                }
-                Text(state.scopeSubLabel, fontSize = 10.sp, color = colors.sub, modifier = Modifier.padding(top = 1.dp))
-            }
-            NavArrow(SyncSpendIcons.Next, "Next period", state.canGoNext, viewModel::nextPeriod)
-        }
+        PeriodSelectorPill(
+            label = state.scopeLabel,
+            subLabel = state.scopeSubLabel,
+            canGoPrev = state.canGoPrev,
+            canGoNext = state.canGoNext,
+            onPrev = viewModel::prevPeriod,
+            onNext = viewModel::nextPeriod,
+            onTap = { periodPickerOpen = true },
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 18.dp),
+        )
 
         // Nothing below the header until the first real state exists, so the first frame never flashes
         // a 0 total or the "No transactions yet" text before the rows arrive.
         if (state.loaded) {
-            // Hero card + shortcut tiles + divider are fixed, not part of the scrolling region below —
-            // only "Recent Transactions" scrolls, so the hero/tiles never slide out of view.
-            Column {
-                HeroCard(
-                    state,
-                    onClick = onOpenStats,
-                    modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
-                )
+            // A dedicated, explicit gap below the fixed period-selector — its own element (not folded
+            // into the scroll container's padding) so it's never ambiguous whether it's actually there.
+            Spacer(Modifier.height(18.dp))
 
-                Row(
-                    modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Repeat, "Subscriptions & EMIs", "${state.subsCount} active", onOpenSubscriptions)
-                    ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Bell, "Reminders", "${state.remindersCount} set", onOpenReminders)
-                    ShortcutCard(Modifier.weight(1f), SyncSpendIcons.Cal, "Forecast", "Plan ahead", onOpenForecast)
-                }
-
-                // Breathing room before the scrollable section starts, per the ask for a visible gap here.
-                Box(Modifier.padding(top = 18.dp).fillMaxWidth().height(1.dp).background(colors.line))
-            }
-
+            // Only the title/toggle/period-selector above stay fixed — hero, tiles and Recent
+            // Transactions all scroll together now, so the extra tile row never crowds Recent
+            // Transactions out of view on a short screen.
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = SyncSpendChrome.screenBottomContentPadding),
             ) {
+                HeroCard(
+                    state,
+                    onClick = onOpenStats,
+                    modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
+                )
+
+                // 2x2 grid: each row shares one height (IntrinsicSize.Max) so "Subscriptions & EMIs"
+                // wrapping to a second line doesn't make its card taller than its row-mates.
+                Column(modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(modifier = Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ShortcutCard(Modifier.weight(1f).fillMaxHeight(), SyncSpendIcons.Repeat, "Subscriptions & EMIs", "${state.subsCount} active", onOpenSubscriptions)
+                        ShortcutCard(Modifier.weight(1f).fillMaxHeight(), SyncSpendIcons.Bell, "Reminders", "${state.remindersCount} set", onOpenReminders)
+                    }
+                    Row(modifier = Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ShortcutCard(Modifier.weight(1f).fillMaxHeight(), SyncSpendIcons.Cal, "Forecast", "Plan ahead", onOpenForecast)
+                        ShortcutCard(Modifier.weight(1f).fillMaxHeight(), SyncSpendIcons.Coin, "Savings", "Move to savings", onOpenTransfer)
+                    }
+                }
+
+                // Breathing room before the scrollable section starts, per the ask for a visible gap here.
+                Box(Modifier.padding(top = 18.dp).fillMaxWidth().height(1.dp).background(colors.line))
+
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, top = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("Recent Transactions", style = MaterialTheme.typography.titleSmall, color = colors.ink)
-                    Text(
-                        "View All",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = colors.acc,
-                        modifier = Modifier.clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onViewAllTransactions,
-                        ),
-                    )
+                    ViewAllButton(onClick = onViewAllTransactions)
                 }
 
                 if (state.recentGroups.isEmpty()) {
@@ -215,7 +195,9 @@ fun HomeScreen(
         PeriodPickerSheet(
             currentScope = state.currentScope,
             earliestTransactionDate = state.earliestTransactionDate,
-            showAllTime = false,
+            // Was false — but the shared scope (round 10) means Home can already land on All Time via
+            // Stats/Transactions, just couldn't select it directly. Now it can, consistently.
+            showAllTime = true,
             onApply = viewModel::applyScope,
             onDismiss = { periodPickerOpen = false },
         )
@@ -264,7 +246,6 @@ private fun HeroCard(state: HomeUiState, onClick: () -> Unit, modifier: Modifier
             Text(
                 when (state.flow) {
                     FlowType.INCOME -> "Total Income"
-                    FlowType.SAVINGS -> "Total Savings"
                     FlowType.EXPENSE -> "Total Spending"
                 },
                 fontSize = 12.5.sp,
@@ -362,22 +343,12 @@ internal fun RotatingInsight(lines: List<String>, modifier: Modifier = Modifier)
     }
 }
 
-@Composable
-private fun NavArrow(icon: ImageVector, description: String, enabled: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(32.dp)
-            .background(SyncSpendTheme.colors.card, RoundedCornerShape(11.dp))
-            .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(11.dp))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, description, tint = SyncSpendTheme.colors.ink.copy(alpha = if (enabled) 1f else 0.3f), modifier = Modifier.size(17.dp))
-    }
-}
 
-/** Three of these now share the shortcuts row (was two) — tighter padding/icon size and a 2-line
- * title so a longer label like "Subscriptions & EMIs" still fits at a third of the row's width. */
+/**
+ * Four of these fill a 2x2 grid now — a 2-line title so a longer label like "Subscriptions & EMIs"
+ * still fits at half the row's width. The caller passes `fillMaxHeight()` inside a row sized with
+ * `IntrinsicSize.Max`, so both cards in a row always share one height regardless of which one wraps.
+ */
 @Composable
 private fun ShortcutCard(modifier: Modifier, icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
     Column(
@@ -400,6 +371,39 @@ private fun ShortcutCard(modifier: Modifier, icon: ImageVector, title: String, s
             modifier = Modifier.padding(top = 8.dp),
         )
         Text(subtitle, fontSize = 10.sp, color = SyncSpendTheme.colors.sub, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+/**
+ * In Light theme, `colors.acc` is a pale mint meant for fills, not for small text directly on the
+ * background — as plain text it read as low-contrast, so it becomes a compact green pill with a
+ * dark foreground instead (the same acc-fill/onAcc-text pairing selected chips already use). Dark
+ * theme keeps the original plain-text treatment, which already reads fine there.
+ */
+@Composable
+private fun ViewAllButton(onClick: () -> Unit) {
+    val colors = SyncSpendTheme.colors
+    if (colors.isDark) {
+        Text(
+            "View All",
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.acc,
+            modifier = Modifier.clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
+        )
+    } else {
+        Text(
+            "View All",
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.onAcc,
+            modifier = Modifier
+                .background(colors.acc, RoundedCornerShape(12.dp))
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+        )
     }
 }
 

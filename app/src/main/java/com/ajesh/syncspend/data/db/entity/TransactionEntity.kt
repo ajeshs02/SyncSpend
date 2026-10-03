@@ -9,18 +9,15 @@ import com.ajesh.syncspend.domain.model.FundingSource
 import java.time.LocalDate
 
 /**
- * [amount] is signed (positive = income or a savings contribution, negative = expense) — but sign
- * alone can no longer tell income apart from a savings contribution (both positive), so [type] is a
- * real stored column, the single source of truth for a transaction's flow (back-filled for every
- * pre-Savings row by `MIGRATION_5_6`, from the same sign rule this used to derive on the fly).
+ * [amount] is signed (positive = income, negative = expense); [type] is a real stored column (not
+ * re-derived from the sign) because `MIGRATION_5_6` once needed a Savings flow sign alone couldn't
+ * distinguish from Income — Savings is gone now (see [com.ajesh.syncspend.data.db.entity.TransferEntity]),
+ * but the stored column stays rather than reverting to a derived property, since existing rows already
+ * carry it.
  *
- * [fundingSource] only matters for [FlowType.EXPENSE] rows: null (the common case) means
- * [FundingSource.REGULAR]. [contributionKind] only matters for [FlowType.SAVINGS] rows: null means
- * [ContributionKind.NEW_INCOME] (new money) as opposed to [ContributionKind.TRANSFER] (reallocating
- * already-recorded income, never double-counted as income again). Both are plain nullable columns
- * rather than a nested object, matching Room's simplest shape for "small, optional, type-specific
- * metadata." See [com.ajesh.syncspend.domain.analytics.AnalyticsEngine] for the exact formulas these
- * two fields feed into.
+ * [fundingSource]/[contributionKind] are **legacy and always null going forward** — leftovers from the
+ * Savings-as-a-third-[FlowType] design, kept only so SQLite's `ALTER TABLE` history doesn't need a
+ * destructive table rebuild to drop them. Nothing reads or writes them anymore.
  *
  * [description] is the entry's optional note: blank when there is none. It is never auto-filled
  * with the category name, since the row already shows the (live) category.

@@ -29,9 +29,10 @@ class CurrencyFormatterTest {
     }
 
     @Test fun centsRoundToTheNearestOne() {
-        // 4840.495 rounds to 4840.50 (halves round up), and a carry into the whole part works too.
+        // 4840.495 rounds to 4840.50 (halves round up).
         assertEquals("4,840.50", CurrencyFormatter.amount(4840.495))
-        assertEquals("5.00", CurrencyFormatter.amount(4.999))
+        // A carry into the whole part lands exactly on a whole number, so it shows no decimals at all.
+        assertEquals("5", CurrencyFormatter.amount(4.999))
     }
 
     @Test fun signIsAlwaysDropped() {

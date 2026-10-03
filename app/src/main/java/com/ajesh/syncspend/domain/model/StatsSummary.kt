@@ -44,9 +44,9 @@ data class StatsSummary(
     val trendPercent: Int?,
     val otherFlowTotal: Double,
     /**
-     * (income − expense) / income over the range, null when there is no income. Named distinctly
-     * from the top-level Savings transaction type ([FlowType.SAVINGS]) on purpose — this is the
-     * classic "how much of your income you kept" metric, unrelated to the Savings pool's own balance
+     * (income − expense) / income over the range, null when there is no income. Named distinctly from
+     * the Transfer feature's Savings Balance on purpose — this is the classic "how much of your
+     * income you kept" metric, unrelated to the savings pool's own balance
      * ([com.ajesh.syncspend.domain.analytics.AnalyticsEngine.savingsBalance]).
      */
     val netSavingsRatePercent: Int?,

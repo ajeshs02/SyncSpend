@@ -48,6 +48,8 @@ fun CustomRangeSheet(
     earliestTransactionDate: LocalDate?,
     onApply: (DateRange) -> Unit,
     onDismiss: () -> Unit,
+    /** Opt-in presets appended after the default "Last N months" ones — e.g. the Savings screen's "This year"/"All time". Empty for every other caller, so their behavior is unchanged. */
+    extraPresets: List<RangePreset> = emptyList(),
 ) {
     val today = remember { LocalDate.now() }
     val now = remember { YearMonth.from(today) }
@@ -57,7 +59,7 @@ fun CustomRangeSheet(
     var to by remember { mutableStateOf(initial?.end ?: today) }
     var pickingFrom by remember { mutableStateOf(false) }
     var pickingTo by remember { mutableStateOf(false) }
-    val presets = remember(today, lowerMonth) { rangePresets(today, lowerMonth) }
+    val presets = remember(today, lowerMonth, extraPresets) { rangePresets(today, lowerMonth) + extraPresets }
 
     DesignSheet(onDismiss = onDismiss) { close ->
         CustomRangeBody(
@@ -164,7 +166,7 @@ internal fun CustomRangeBody(
 }
 
 /** A one-tap look-back; [enabled] is false while the entries don't reach back that far. */
-internal data class RangePreset(val label: String, val range: DateRange, val enabled: Boolean)
+data class RangePreset(val label: String, val range: DateRange, val enabled: Boolean)
 
 /**
  * "Last 2 / 3 / 6 months": from the first of the month N-1 back through today (Sep 27: Last 3 months = Jul 1

@@ -28,12 +28,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +49,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,19 +74,25 @@ import com.ajesh.syncspend.di.AppContainer
 import com.ajesh.syncspend.domain.model.AppLink
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ThemeMode
+import com.ajesh.syncspend.domain.model.EntryNote
 import com.ajesh.syncspend.ui.addentry.AddEntryViewModel
 import com.ajesh.syncspend.ui.components.AmountEntryPad
 import com.ajesh.syncspend.ui.components.AppLogo
 import com.ajesh.syncspend.ui.components.CategoryField
 import com.ajesh.syncspend.ui.components.CategoryPickerSheet
 import com.ajesh.syncspend.ui.components.DatePickerSheet
+import com.ajesh.syncspend.ui.components.DesignTextField
 import com.ajesh.syncspend.ui.components.PrimaryButton
+import com.ajesh.syncspend.ui.components.rememberDismissKeyboardThen
 import com.ajesh.syncspend.ui.components.SquareIconButton
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendCorners
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.CurrencyFormatter
 import com.ajesh.syncspend.util.DateUtils
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.platform.LocalFocusManager
 import kotlin.coroutines.cancellation.CancellationException
 import java.time.YearMonth
 import kotlinx.coroutines.delay
@@ -185,6 +195,10 @@ private fun QuickAddPanel(
     var saved by remember { mutableStateOf(false) }
     var hint by remember { mutableStateOf<String?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
+    // Held here (not in the ViewModel), same as Add Entry's own note field — typing is never delayed by a state round-trip.
+    var note by rememberSaveable { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+    val dismissKeyboardThen = rememberDismissKeyboardThen()
 
     LaunchedEffect(Unit) {
         launch { enterAlpha.animateTo(1f, tween(200)) }
@@ -269,7 +283,10 @@ private fun QuickAddPanel(
             Column(
                 modifier = Modifier
                     .weight(1f, fill = false)
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(rememberScrollState())
+                    // The keyboard can now come up for the note field (manifest no longer hides it) —
+                    // this keeps the field in view instead of covered.
+                    .imePadding(),
             ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -286,13 +303,24 @@ private fun QuickAddPanel(
                     Text(DateUtils.longDate(state.date), style = MaterialTheme.typography.bodySmall, color = colors.sub, modifier = Modifier.padding(top = 9.dp))
                 }
 
+                DesignTextField(
+                    value = note,
+                    onValueChange = { if (EntryNote.accepts(note, it)) note = it },
+                    placeholder = "Add a note (optional)",
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                    modifier = Modifier.padding(top = 16.dp),
+                )
+
                 CategoryField(
                     category = state.selectedCategory,
                     onClick = {
-                        hint = null
-                        viewModel.openCategoryPicker()
+                        dismissKeyboardThen {
+                            hint = null
+                            viewModel.openCategoryPicker()
+                        }
                     },
-                    modifier = Modifier.padding(top = 16.dp),
+                    modifier = Modifier.padding(top = 12.dp),
                 )
 
                 hint?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = negative, modifier = Modifier.padding(top = 8.dp)) }
@@ -305,7 +333,7 @@ private fun QuickAddPanel(
                         viewModel.pressDigit(it)
                     },
                     onBackspace = viewModel::pressBackspace,
-                    onDateClick = { showDatePicker = true },
+                    onDateClick = { dismissKeyboardThen { showDatePicker = true } },
                     showDecimalKey = state.allowDecimalInput,
                 )
                 PrimaryButton(
@@ -325,13 +353,13 @@ private fun QuickAddPanel(
                             // No warning needed here — the picker popping open is the feedback.
                             state.selectedCategory == null -> viewModel.openCategoryPicker()
                             (state.amountText.toDoubleOrNull() ?: 0.0) <= 0.0 -> hint = "Enter an amount."
-                            else -> viewModel.save(note = "") {
+                            else -> viewModel.save(note = note, onDone = {
                                 saved = true
                                 scope.launch {
                                     delay(420)
                                     dismiss()
                                 }
-                            }
+                            })
                         }
                     },
                 )
@@ -340,8 +368,7 @@ private fun QuickAddPanel(
     }
 
     if (state.categoryPickerOpen) {
-        CategoryPickerSheet(
-            flow = FlowType.EXPENSE,
+        CategoryPickerSheet(            flow = FlowType.EXPENSE,
             categories = state.categoriesForType,
             selectedId = state.selectedCategory?.id,
             onPick = { cat -> if (cat == null) viewModel.clearCategory() else viewModel.selectCategory(cat) },

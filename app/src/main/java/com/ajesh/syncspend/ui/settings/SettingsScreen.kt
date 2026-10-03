@@ -124,7 +124,8 @@ fun SettingsScreen(onOpenCategories: () -> Unit) {
                 val reminders = if (BundleSection.REMINDERS in selectedSections) container.reminderRepository.getAll().first() else emptyList()
                 val subs = if (BundleSection.SUBSCRIPTIONS in selectedSections) container.subscriptionRepository.getAll().first() else emptyList()
                 val forecasts = if (BundleSection.FORECASTS in selectedSections) container.forecastRepository.getAll().first() else emptyList()
-                BundleExporter.export(context, uri, selectedSections, tx, cats, reminders, subs, forecasts)
+                val transfers = if (BundleSection.TRANSFERS in selectedSections) container.transferRepository.getAll().first() else emptyList()
+                BundleExporter.export(context, uri, selectedSections, tx, cats, reminders, subs, forecasts, transfers)
                 infoDialog = "Export complete" to "Your data was saved."
             } catch (e: Exception) {
                 infoDialog = "Export failed" to (e.message ?: "Something went wrong writing the file.")
@@ -149,9 +150,10 @@ fun SettingsScreen(onOpenCategories: () -> Unit) {
                             if (r.importedReminders > 0) append("\n${r.importedReminders} reminders.")
                             if (r.importedSubscriptions > 0) append("\n${r.importedSubscriptions} subscriptions.")
                             if (r.importedForecasts > 0) append("\n${r.importedForecasts} forecasts.")
+                            if (r.importedTransfers > 0) append("\n${r.importedTransfers} transfers.")
                             if (r.createdCategories > 0) append("\n${r.createdCategories} new categories were created.")
                         }
-                        val total = r.importedTransactions + r.importedReminders + r.importedSubscriptions + r.importedForecasts
+                        val total = r.importedTransactions + r.importedReminders + r.importedSubscriptions + r.importedForecasts + r.importedTransfers
                         infoDialog = (if (total > 0) "Import complete" else "Already up to date") to
                             (if (parts.isEmpty()) "Nothing new to import." else "Imported:$parts")
                     }
@@ -231,7 +233,7 @@ fun SettingsScreen(onOpenCategories: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(11.dp),
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Allow paise / cents on entries", style = MaterialTheme.typography.labelLarge, color = colors.ink)
+                        Text("Use decimal amounts", style = MaterialTheme.typography.labelLarge, color = colors.ink)
                         Text(
                             "Adds a decimal key to the Add Entry keypad. An amount already saved with decimals always shows them.",
                             fontSize = 10.5.sp,
@@ -410,6 +412,7 @@ private fun ExportSectionsDialog(
         BundleSection.REMINDERS to "Reminders",
         BundleSection.SUBSCRIPTIONS to "Subscriptions & EMIs",
         BundleSection.FORECASTS to "Forecast",
+        BundleSection.TRANSFERS to "Savings (Transfers)",
     )
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(

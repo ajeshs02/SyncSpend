@@ -77,6 +77,73 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
     }
 }
 
+/**
+ * v7 -> v8: replaces Savings-as-a-third-[com.ajesh.syncspend.domain.model.FlowType] with the separate
+ * Transfer ledger.
+ *  - `transfers`: the new table (see [com.ajesh.syncspend.data.db.entity.TransferEntity]) — independent
+ *    of `transactions`, so Transfers structurally cannot inflate Income/Expense totals.
+ *  - `forecasts.categoryId` / `completed` / `completedTransactionId`: the Forecast "mark done" flow
+ *    (see [com.ajesh.syncspend.data.db.entity.ForecastEntity]'s doc).
+ *  - The three `FlowType.SAVINGS` categories `MIGRATION_5_6` inserted ("Savings Goals", "Emergency
+ *    Fund", "Investments") are deleted outright, not archived: nothing has ever referenced them (no
+ *    Savings transaction was ever created against this schema), and `FlowType` no longer has a
+ *    `SAVINGS` value for `Converters` to deserialize, so a leftover `type='SAVINGS'` row — archived or
+ *    not — would crash the first time it's read. Deleting is safe and avoids that entirely.
+ *  - Seeds the Income categories "Add to Savings" picks a source from (PF, Reward, Previous Savings,
+ *    Other — "Salary"/"Freelance"/"Gift" already exist), skipping any that already exist by
+ *    (type, lowercase name), the same rule [com.ajesh.syncspend.domain.model.DefaultCategories.missingFrom] uses.
+ *  - `transactions.fundingSource`/`contributionKind` are deliberately left in place, unused — see
+ *    [com.ajesh.syncspend.data.db.entity.TransactionEntity]'s doc.
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `transfers` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`amount` REAL NOT NULL, " +
+                "`direction` TEXT NOT NULL, " +
+                "`date` INTEGER NOT NULL, " +
+                "`categoryId` INTEGER, " +
+                "`note` TEXT NOT NULL DEFAULT '', " +
+                "`createdAt` INTEGER NOT NULL, " +
+                "`timeMinuteOfDay` INTEGER)",
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_transfers_date` ON `transfers` (`date`)")
+
+        db.execSQL("ALTER TABLE `forecasts` ADD COLUMN `categoryId` INTEGER")
+        db.execSQL("ALTER TABLE `forecasts` ADD COLUMN `completed` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `forecasts` ADD COLUMN `completedTransactionId` INTEGER")
+
+        db.execSQL(
+            "DELETE FROM `categories` WHERE `type` = 'SAVINGS' AND `name` IN " +
+                "('Savings Goals', 'Emergency Fund', 'Investments')",
+        )
+
+        val existingIncomeNames = HashSet<String>().apply {
+            db.query("SELECT `name` FROM `categories` WHERE `type` = 'INCOME'").use { c ->
+                val col = c.getColumnIndex("name")
+                while (c.moveToNext()) add(c.getString(col).trim().lowercase())
+            }
+        }
+        var nextOrder = db.query("SELECT COALESCE(MAX(`sortOrder`), -1) + 1 FROM `categories` WHERE `type` = 'INCOME'").use {
+            if (it.moveToFirst()) it.getInt(0) else 0
+        }
+        val insert = db.compileStatement(
+            "INSERT INTO `categories` (`name`, `iconKey`, `type`, `sortOrder`, `archived`) VALUES (?, ?, 'INCOME', ?, 0)",
+        )
+        listOf("PF" to "shield", "Reward" to "spark", "Previous Savings" to "wallet", "Other" to "tag")
+            .filter { (name, _) -> name.lowercase() !in existingIncomeNames }
+            .forEach { (name, icon) ->
+                insert.bindString(1, name)
+                insert.bindString(2, icon)
+                insert.bindLong(3, nextOrder.toLong())
+                insert.executeInsert()
+                nextOrder++
+            }
+        insert.close()
+    }
+}
+
 internal fun migrate3To4(db: SupportSQLiteDatabase, zone: ZoneId) {
     db.execSQL("ALTER TABLE `transactions` ADD COLUMN `timeMinuteOfDay` INTEGER")
     db.execSQL("ALTER TABLE `subscriptions` ADD COLUMN `remindDaysBefore` TEXT NOT NULL DEFAULT '1,3'")

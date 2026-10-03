@@ -45,35 +45,33 @@ import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 fun labelFor(flow: FlowType): String = when (flow) {
     FlowType.EXPENSE -> "Expense"
     FlowType.INCOME -> "Income"
-    FlowType.SAVINGS -> "Savings"
 }
 
 /** The flow's accent colour, for the handful of screens (Stats, Transactions) that tint a word to match it. */
 fun flowColor(flow: FlowType, colors: com.ajesh.syncspend.ui.theme.SyncSpendColors): Color = when (flow) {
     FlowType.EXPENSE -> colors.neg
     FlowType.INCOME -> colors.pos
-    FlowType.SAVINGS -> colors.brand
 }
 
 private fun iconFor(flow: FlowType) = when (flow) {
     FlowType.EXPENSE -> SyncSpendIcons.ArrowOut
     FlowType.INCOME -> SyncSpendIcons.ArrowIn
-    FlowType.SAVINGS -> SyncSpendIcons.Coin
 }
 
 /**
- * The compact Expense/Income/Savings pill used in a screen's title row (Transactions, Stats): tap
- * to open a small dropdown with the other options, rather than [FlowToggle]'s full-width segmented
- * control (used where there's room for it, e.g. Add/Edit Entry).
+ * The compact Expense/Income pill used in a screen's title row (Transactions, Stats): tap to open a
+ * small dropdown with the other option(s), rather than [FlowToggle]'s full-width segmented control
+ * (used where there's room for it, e.g. Add/Edit Entry). [options] defaults to Expense/Income; the
+ * Transactions page passes a third, Savings, entry (not a real [FlowType] — see `TransactionsScreen`).
  */
 @Composable
-fun FlowMenuToggle(flow: FlowType, onPick: (FlowType) -> Unit) {
+fun FlowMenuToggle(flow: FlowType, onPick: (FlowType) -> Unit, options: List<FlowType> = listOf(FlowType.EXPENSE, FlowType.INCOME)) {
     var open by remember { mutableStateOf(false) }
     val colors = SyncSpendTheme.colors
     Box {
         Row(
             modifier = Modifier
-                // Same selected colours as the Expense/Income/Savings toggle, so it reads in dark mode too.
+                // Same selected colours as the Expense/Income toggle, so it reads in dark mode too.
                 .background(colors.selectedBrush, RoundedCornerShape(14.dp))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -95,6 +93,7 @@ fun FlowMenuToggle(flow: FlowType, onPick: (FlowType) -> Unit) {
         if (open) {
             FlowMenuPopup(
                 current = flow,
+                options = options,
                 onPick = {
                     onPick(it)
                     open = false
@@ -106,7 +105,7 @@ fun FlowMenuToggle(flow: FlowType, onPick: (FlowType) -> Unit) {
 }
 
 @Composable
-private fun FlowMenuPopup(current: FlowType, onPick: (FlowType) -> Unit, onDismiss: () -> Unit) {
+private fun FlowMenuPopup(current: FlowType, options: List<FlowType>, onPick: (FlowType) -> Unit, onDismiss: () -> Unit) {
     val density = LocalDensity.current
     val visible = remember { MutableTransitionState(false).apply { targetState = true } }
     Popup(
@@ -130,9 +129,7 @@ private fun FlowMenuPopup(current: FlowType, onPick: (FlowType) -> Unit, onDismi
                     .width(150.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                FlowMenuItem("Expense", FlowType.EXPENSE, current, onPick)
-                FlowMenuItem("Income", FlowType.INCOME, current, onPick)
-                FlowMenuItem("Savings", FlowType.SAVINGS, current, onPick)
+                options.forEach { FlowMenuItem(labelFor(it), it, current, onPick) }
             }
         }
     }
