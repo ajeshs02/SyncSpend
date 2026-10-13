@@ -33,15 +33,14 @@ data class MoverUi(val name: String, val iconKey: String, val deltaFormatted: St
 data class TopEntryUi(val title: String, val subtitle: String, val amount: String)
 
 /**
- * The compact Savings card on Stats — period-scoped *movement* (this range's contributions minus
- * withdrawals), never the all-time cumulative Savings Balance shown on the Transfer screen; the two
- * are never the same number and [periodLabel] makes that explicit. Flow-independent (shown the same
- * whether Expense or Income is selected), kept structurally separate from [StatsUi.tiles]/[StatsUi.categoryBars].
+ * The compact Net card on Stats — Income minus Expense for the period, flow-independent (shown the
+ * same whether Expense or Income is selected), kept structurally separate from
+ * [StatsUi.tiles]/[StatsUi.categoryBars].
  */
-data class SavingsSummaryUi(
+data class NetRemainingUi(
     val periodLabel: String,
-    val contributionsFormatted: String,
-    val withdrawalsFormatted: String,
+    val incomeFormatted: String,
+    val expenseFormatted: String,
     val netFormatted: String,
     val netPositive: Boolean,
 )
@@ -80,7 +79,7 @@ data class StatsUi(
     val currentValue: String,
     val previousLabel: String,
     val previousValue: String,
-    val savingsSummary: SavingsSummaryUi,
+    val netRemaining: NetRemainingUi,
 )
 
 /** Turns the computed [StatsSummary] into the exact strings/tiles/bars the Stats tab shows. */
@@ -90,13 +89,8 @@ fun buildStatsUi(
     cur: String,
     subsMonthlyTotal: Double,
     subsCount: Int,
-    transferTotals: AnalyticsEngine.TransferTotals,
     today: LocalDate = LocalDate.now(),
 ): StatsUi {
-    // Savings reuses the "income" wording/direction throughout this builder (more saved is good, same as
-    // more earned) rather than a bespoke Savings-specific dashboard — a deliberate scope call for this
-    // round, not an oversight. A dedicated Savings breakdown (balance, contributions vs. savings-funded
-    // expenses) is a reasonable follow-up once this shape is proven out.
     val income = s.flow != FlowType.EXPENSE
     // scopeLabel's own default `now` would read the real wall clock, which is fine in production but
     // would make a fixed-`today` test's "Last N months" label flip on whatever day it happens to run —
@@ -256,12 +250,17 @@ fun buildStatsUi(
         currentValue = money(s.total),
         previousLabel = prevLabel,
         previousValue = money(s.previousTotal),
-        savingsSummary = SavingsSummaryUi(
-            periodLabel = label,
-            contributionsFormatted = money(transferTotals.contributions),
-            withdrawalsFormatted = money(transferTotals.withdrawals),
-            netFormatted = money(kotlin.math.abs(transferTotals.net)),
-            netPositive = transferTotals.net >= 0,
-        ),
+        netRemaining = run {
+            val incomeTotal = if (income) s.total else s.otherFlowTotal
+            val expenseTotal = if (income) s.otherFlowTotal else s.total
+            val net = incomeTotal - expenseTotal
+            NetRemainingUi(
+                periodLabel = label,
+                incomeFormatted = money(incomeTotal),
+                expenseFormatted = money(expenseTotal),
+                netFormatted = money(kotlin.math.abs(net)),
+                netPositive = net >= 0,
+            )
+        },
     )
 }

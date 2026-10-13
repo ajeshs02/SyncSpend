@@ -33,7 +33,7 @@ class SettingsViewModel(
     val uiState: StateFlow<SettingsUiState> = combine(
         preferencesRepository.preferences,
         transactionRepository.getAll(),
-        selection.scope,
+        selection.homeScope,
     ) { prefs, tx, scope ->
         val inScope = AnalyticsEngine.scopeFilter(tx, scope).size
         SettingsUiState(prefs, "$inScope entries · ${AnalyticsEngine.scopeLabel(scope)} selected")

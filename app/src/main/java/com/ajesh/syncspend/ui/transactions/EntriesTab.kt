@@ -12,8 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,7 +29,12 @@ import com.ajesh.syncspend.ui.theme.SyncSpendCorners
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
 @Composable
-fun EntriesTab(groups: List<DayGroupUi>, onRowClick: (Long) -> Unit, modifier: Modifier = Modifier) {
+fun EntriesTab(
+    groups: List<DayGroupUi>,
+    onRowClick: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
+) {
     if (groups.isEmpty()) {
         Box(modifier = modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
             Text(
@@ -40,6 +46,7 @@ fun EntriesTab(groups: List<DayGroupUi>, onRowClick: (Long) -> Unit, modifier: M
         return
     }
     LazyColumn(
+        state = listState,
         modifier = modifier,
         contentPadding = PaddingValues(bottom = SyncSpendChrome.screenBottomContentPadding),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -55,9 +62,14 @@ fun EntriesTab(groups: List<DayGroupUi>, onRowClick: (Long) -> Unit, modifier: M
     }
 }
 
-/** Like [EntriesTab] but without day-header grouping — for lists ordered by something other than date (e.g. the Savings screen's "most recently added" order). */
+/** Like [EntriesTab] but without day-header grouping — used for [EntriesSortMode.BY_ENTRY], where rows are ordered by creation time rather than date. */
 @Composable
-fun FlatTxList(rows: List<TxRow>, onRowClick: (Long) -> Unit, modifier: Modifier = Modifier) {
+fun FlatTxList(
+    rows: List<TxRow>,
+    onRowClick: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
+) {
     if (rows.isEmpty()) {
         Box(modifier = modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
             Text(
@@ -69,6 +81,7 @@ fun FlatTxList(rows: List<TxRow>, onRowClick: (Long) -> Unit, modifier: Modifier
         return
     }
     LazyColumn(
+        state = listState,
         modifier = modifier,
         contentPadding = PaddingValues(bottom = SyncSpendChrome.screenBottomContentPadding),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -76,6 +89,24 @@ fun FlatTxList(rows: List<TxRow>, onRowClick: (Long) -> Unit, modifier: Modifier
         items(rows, key = { it.id }, contentType = { "row" }) { row ->
             TxRowCard(row = row, onClick = { onRowClick(row.id) }, modifier = Modifier.animateItem())
         }
+    }
+}
+
+/**
+ * Dispatches an [EntriesUi] to the right renderer for its [EntriesUi.sortMode] — shared by
+ * [TransactionsScreen]'s Entries tab and [CategoryEntriesSheet], so both always render a given
+ * [EntriesUi] identically.
+ */
+@Composable
+fun EntriesList(
+    ui: EntriesUi,
+    onRowClick: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
+) {
+    when (ui.sortMode) {
+        EntriesSortMode.BY_DATE -> EntriesTab(ui.groups, onRowClick, modifier, listState)
+        EntriesSortMode.BY_ENTRY -> FlatTxList(ui.flatRows, onRowClick, modifier, listState)
     }
 }
 
@@ -100,7 +131,13 @@ internal fun TxRowCard(row: TxRow, onClick: () -> Unit, modifier: Modifier = Mod
             Icon(SyncSpendIcons.iconFor(row.iconKey), null, tint = SyncSpendTheme.colors.ink, modifier = Modifier.size(16.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(row.categoryLabel, style = MaterialTheme.typography.bodyMedium, color = SyncSpendTheme.colors.ink)
+            Text(
+                row.categoryLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                color = SyncSpendTheme.colors.ink,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
             // The optional note wraps (the input length cap keeps it to about two lines); never cut off.
             if (row.note.isNotEmpty()) {
                 Text(row.note, style = MaterialTheme.typography.bodySmall, color = SyncSpendTheme.colors.sub)

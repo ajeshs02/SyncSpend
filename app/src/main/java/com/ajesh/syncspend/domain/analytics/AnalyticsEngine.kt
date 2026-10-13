@@ -2,7 +2,6 @@ package com.ajesh.syncspend.domain.analytics
 
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
-import com.ajesh.syncspend.data.db.entity.TransferEntity
 import com.ajesh.syncspend.domain.model.CategoryMover
 import com.ajesh.syncspend.domain.model.CategoryRollup
 import com.ajesh.syncspend.domain.model.DayTotal
@@ -15,7 +14,6 @@ import com.ajesh.syncspend.domain.model.MonthTotal
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.model.SmallPurchases
 import com.ajesh.syncspend.domain.model.StatsSummary
-import com.ajesh.syncspend.domain.model.TransferDirection
 import com.ajesh.syncspend.domain.model.WeekdayStat
 import com.ajesh.syncspend.util.DateUtils
 import java.time.DayOfWeek
@@ -89,37 +87,59 @@ object AnalyticsEngine {
         tx.filter { it.type == FlowType.EXPENSE }.sumOf { abs(it.amount) }
 
     /**
-     * The savings pool's running balance: every contribution minus every withdrawal, over the *whole*
-     * transfer history, never just a range — a balance is a point-in-time total, not a period sum (see
-     * [transferTotals] for the period-scoped equivalent used by Stats).
+     * Scoped: what's left to spend freely within [range] specifically (Income minus Expense, both
+     * scoped to [range]) — used by Add Entry/Edit Entry's insufficient-cash-flow warning, where "the
+     * whole history" isn't the right question, just the entry's own month.
      */
-    fun savingsBalance(transfers: List<TransferEntity>): Double =
-        transfers.filter { it.direction == TransferDirection.TO_SAVINGS }.sumOf { it.amount } -
-            transfers.filter { it.direction == TransferDirection.FROM_SAVINGS }.sumOf { it.amount }
-
-    /**
-     * What's left to spend freely: all-time Income minus all-time Expense minus the all-time Savings
-     * Balance (money already set aside). A withdrawal increases this and decreases [savingsBalance] by
-     * the exact same amount — money moves between the two figures, never duplicated or lost.
-     */
-    fun availableAmount(tx: List<TransactionEntity>, transfers: List<TransferEntity>): Double =
-        totalIncome(tx) - totalExpense(tx) - savingsBalance(transfers)
-
-    data class TransferTotals(val contributions: Double, val withdrawals: Double) {
-        val net: Double get() = contributions - withdrawals
+    fun availableAmount(tx: List<TransactionEntity>, range: DateRange): Double {
+        val inRange = tx.filter { it.date in range }
+        return totalIncome(inRange) - totalExpense(inRange)
     }
 
     /**
-     * Contributions/withdrawals **within [range]** — period-scoped Savings *movement*, never the
-     * cumulative [savingsBalance]. The Transfer screen, the Transactions page's Savings filter and the
-     * Stats summary card all call this one function so the three can never drift apart.
+     * Edit Entry's insufficient-cash-flow warning. True only when the user's PROPOSED change — a
+     * different amount, a different date, or turning a non-expense entry into an expense — would
+     * create or worsen a cash deficit for the relevant month. Never true merely because the entry's
+     * already-saved state already reflects a deficit (that deficit, if any, predates this edit and
+     * isn't this edit's doing). [original] is excluded from every computation below and re-added only
+     * as [proposedAmount]/[proposedDate], so it is never counted twice.
      */
-    fun transferTotals(transfers: List<TransferEntity>, range: DateRange): TransferTotals {
-        val inRange = transfers.filter { it.date in range }
-        return TransferTotals(
-            contributions = inRange.filter { it.direction == TransferDirection.TO_SAVINGS }.sumOf { it.amount },
-            withdrawals = inRange.filter { it.direction == TransferDirection.FROM_SAVINGS }.sumOf { it.amount },
-        )
+    fun editCashFlowWarning(
+        allTransactions: List<TransactionEntity>,
+        original: TransactionEntity,
+        proposedAmount: Double,
+        proposedDate: LocalDate,
+        proposedType: FlowType,
+        today: LocalDate = LocalDate.now(),
+    ): Boolean {
+        if (proposedType != FlowType.EXPENSE || proposedAmount <= 0.0) return false
+
+        val amountChanged = abs(proposedAmount - abs(original.amount)) > 0.004 // half a cent: trimAmount's own precision
+        val dateChanged = proposedDate != original.date
+        val becameExpense = original.type != FlowType.EXPENSE
+        if (!amountChanged && !dateChanged && !becameExpense) return false // nothing actually proposed to change
+
+        val excludingOriginal = allTransactions.filter { it.id != original.id }
+        val originalMonth = YearMonth.from(original.date)
+        val proposedMonth = YearMonth.from(proposedDate)
+
+        return if (originalMonth == proposedMonth) {
+            // Same month: only warn if the proposed value is both negative AND worse than the month's
+            // actual current state (including the original row as it's really saved) — so a decrease
+            // that's still technically negative, purely because of OTHER unrelated expenses in the
+            // month, is correctly not blamed on this edit.
+            val range = scopeRange(ScopePeriod.Month(originalMonth), today, null)
+            val baseline = availableAmount(allTransactions, range)
+            val proposed = availableAmount(excludingOriginal, range) - proposedAmount
+            proposed < 0 && proposed < baseline
+        } else {
+            // Moved to a different month: evaluate purely against that month's own income/expenses,
+            // with the original already removed from its old month (excludingOriginal, above) — there's
+            // no "baseline" in the destination month to compare against, since this entry never
+            // contributed there before.
+            val range = scopeRange(ScopePeriod.Month(proposedMonth), today, null)
+            availableAmount(excludingOriginal, range) - proposedAmount < 0
+        }
     }
 
     /** null for AllTime — there's no "previous all-time" to compare against. */
@@ -161,8 +181,7 @@ object AnalyticsEngine {
 
     /**
      * The chips offered on the Entries and Categories tabs. Income skips "This Week"/"Last Week" —
-     * its chips are This Month, Last Month, Custom. Expense gets the full list. The Transactions
-     * page's Savings filter (not a [FlowType]) always uses the full list too — see `TransactionsViewModel`.
+     * its chips are This Month, Last Month, Custom. Expense gets the full list.
      */
     fun entryFilterOptions(flow: FlowType): List<EntryFilter> =
         if (flow == FlowType.INCOME) listOf(EntryFilter.THIS_MONTH, EntryFilter.LAST_MONTH, EntryFilter.CUSTOM) else EntryFilter.entries
@@ -185,8 +204,7 @@ object AnalyticsEngine {
     /**
      * The inclusive date window [filter] covers — not just the label's span up to today, the whole
      * period, so an entry dated later this week or month is never hidden. Date-only (not tied to
-     * [TransactionEntity]), so any date-stamped row can reuse it — see [applyEntryFilter] below and
-     * `TransferViewModel`/the Transactions page's Savings filter.
+     * [TransactionEntity]), so any date-stamped row can reuse it — see [applyEntryFilter] below.
      */
     fun entryFilterWindow(filter: EntryFilter, custom: DateRange?, today: LocalDate = LocalDate.now()): DateRange? = when (filter) {
         EntryFilter.THIS_WEEK -> weekStart(today).let { DateRange(it, it.plusDays(6)) }
@@ -225,7 +243,7 @@ object AnalyticsEngine {
         return groups
     }
 
-    /** "Today" / "Yesterday" / "27 Sep 2026" — a day-group header, reused anywhere rows are grouped by day (not just [TransactionEntity] ones; see `TransferViewModel`). */
+    /** "Today" / "Yesterday" / "27 Sep 2026" — a day-group header, reused anywhere rows are grouped by day. */
     fun dayLabel(date: LocalDate, today: LocalDate): String = when (date) {
         today -> "Today"
         today.minusDays(1) -> "Yesterday"

@@ -9,11 +9,9 @@ import com.ajesh.syncspend.data.db.entity.ForecastEntity
 import com.ajesh.syncspend.data.db.entity.ReminderEntity
 import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
-import com.ajesh.syncspend.data.db.entity.TransferEntity
 import com.ajesh.syncspend.domain.model.BillingCycle
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ReminderSchedule
-import com.ajesh.syncspend.domain.model.TransferDirection
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,7 +23,6 @@ data class BundleImportResult(
     val importedReminders: Int = 0,
     val importedSubscriptions: Int = 0,
     val importedForecasts: Int = 0,
-    val importedTransfers: Int = 0,
     val createdCategories: Int = 0,
     val error: String? = null,
 )
@@ -40,9 +37,10 @@ data class BundleImportResult(
  *    the one that failed.
  *  - **Backward compatible.** A section key that's absent is left untouched (nothing deleted,
  *    nothing changed) — a bundle exported before this round, with `fundingSource`/`contributionKind`
- *    still present on its transactions or no `transfers` key at all, still imports cleanly (the old
- *    fields are simply never read; a missing `transfers` key just skips that section).
- *  - **Never reuses source ids.** Every row is inserted fresh; a transaction's or transfer's category
+ *    still present on its transactions or a leftover top-level `transfers` key (from the now-removed
+ *    Savings & Investment feature), still imports cleanly: those keys are simply never read by this
+ *    parser, so the rest of the bundle imports normally and nothing crashes.
+ *  - **Never reuses source ids.** Every row is inserted fresh; a transaction's category
  *    is resolved by (name, type) — exactly [CsvImporter]'s own rule — never by a numeric id from the
  *    file. A Forecast's [ForecastEntity.completedTransactionId] is never round-tripped for the same
  *    reason (a cross-table id has no portable meaning across an export/import boundary) — an imported
@@ -58,7 +56,6 @@ object BundleImporter {
         val reminders: List<ReminderEntity>?,
         val subscriptions: List<ParsedSub>?,
         val forecasts: List<ParsedForecast>?,
-        val transfers: List<ParsedTransfer>?,
     )
 
     private class ParsedTx(
@@ -72,10 +69,6 @@ object BundleImporter {
     )
 
     private class ParsedForecast(val note: String, val amount: Double, val date: LocalDate?, val categoryName: String?, val completed: Boolean)
-
-    private class ParsedTransfer(
-        val date: LocalDate, val direction: TransferDirection, val categoryName: String?, val note: String, val amount: Double,
-    )
 
     suspend fun import(context: Context, uri: Uri, db: AppDatabase): BundleImportResult = withContext(Dispatchers.IO) {
         val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
@@ -92,7 +85,6 @@ object BundleImporter {
                 reminders = root.optJSONArray("reminders")?.let(::parseReminders),
                 subscriptions = root.optJSONArray("subscriptions")?.let(::parseSubscriptions),
                 forecasts = root.optJSONArray("forecasts")?.let(::parseForecasts),
-                transfers = root.optJSONArray("transfers")?.let(::parseTransfers),
             )
         } catch (e: Exception) {
             return@withContext BundleImportResult(error = "The backup file is damaged, so nothing was imported.")
@@ -102,7 +94,6 @@ object BundleImporter {
         var importedReminders = 0
         var importedSubs = 0
         var importedForecasts = 0
-        var importedTransfers = 0
         var created = 0
 
         db.withTransaction {
@@ -207,33 +198,9 @@ object BundleImporter {
                     }
                 }
             }
-
-            parsed.transfers?.let { rows ->
-                val transferDao = db.transferDao()
-                val existingKeys = transferDao.getAllOnce()
-                    .mapTo(HashSet()) { listOf(it.date, (it.amount * 100).toLong(), it.direction, it.categoryId, it.note.trim().lowercase()) }
-                val now = System.currentTimeMillis()
-                rows.forEachIndexed { index, row ->
-                    val categoryId = row.categoryName?.let { name -> resolveCategory(name, FlowType.INCOME).id }
-                    val key = listOf(row.date, (row.amount * 100).toLong(), row.direction, categoryId, row.note.trim().lowercase())
-                    if (key !in existingKeys) {
-                        transferDao.insert(
-                            TransferEntity(
-                                amount = row.amount,
-                                direction = row.direction,
-                                date = row.date,
-                                categoryId = categoryId,
-                                note = row.note,
-                                createdAt = now + index,
-                            ),
-                        )
-                        importedTransfers++
-                    }
-                }
-            }
         }
 
-        BundleImportResult(importedTx, importedReminders, importedSubs, importedForecasts, importedTransfers, created)
+        BundleImportResult(importedTx, importedReminders, importedSubs, importedForecasts, created)
     }
 
     private fun parseTransactions(arr: JSONArray): List<ParsedTx> = (0 until arr.length()).map { i ->
@@ -290,14 +257,4 @@ object BundleImporter {
         )
     }
 
-    private fun parseTransfers(arr: JSONArray): List<ParsedTransfer> = (0 until arr.length()).map { i ->
-        val o = arr.getJSONObject(i)
-        ParsedTransfer(
-            date = LocalDate.parse(o.getString("date")),
-            direction = TransferDirection.valueOf(o.getString("direction")),
-            categoryName = o.optString("category", "").takeIf { it.isNotBlank() },
-            note = o.optString("note", ""),
-            amount = o.getDouble("amount"),
-        )
-    }
 }

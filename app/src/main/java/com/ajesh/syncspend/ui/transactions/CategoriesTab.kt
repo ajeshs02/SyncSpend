@@ -2,6 +2,7 @@ package com.ajesh.syncspend.ui.transactions
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,7 +12,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -25,7 +28,12 @@ import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 
 @Composable
-fun CategoriesTab(rollups: List<CategoryRollupUi>, modifier: Modifier = Modifier) {
+fun CategoriesTab(
+    rollups: List<CategoryRollupUi>,
+    onCategoryClick: (categoryId: Long) -> Unit = {},
+    modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
+) {
     if (rollups.isEmpty()) {
         Box(modifier = modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
             Text("No activity in this range.", style = MaterialTheme.typography.bodySmall, color = SyncSpendTheme.colors.sub)
@@ -33,6 +41,7 @@ fun CategoriesTab(rollups: List<CategoryRollupUi>, modifier: Modifier = Modifier
         return
     }
     LazyColumn(
+        state = listState,
         modifier = modifier,
         contentPadding = PaddingValues(bottom = SyncSpendChrome.screenBottomContentPadding),
     ) {
@@ -43,6 +52,7 @@ fun CategoriesTab(rollups: List<CategoryRollupUi>, modifier: Modifier = Modifier
                     .padding(bottom = 9.dp)
                     .background(SyncSpendTheme.colors.card, RoundedCornerShape(18.dp))
                     .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(18.dp))
+                    .clickable { onCategoryClick(rollup.categoryId) }
                     .padding(horizontal = 14.dp, vertical = 13.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

@@ -7,11 +7,9 @@ import com.ajesh.syncspend.data.datastore.UserPreferences
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
-import com.ajesh.syncspend.data.db.entity.TransferEntity
 import com.ajesh.syncspend.data.repository.CategoryRepository
 import com.ajesh.syncspend.data.repository.SubscriptionRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
-import com.ajesh.syncspend.data.repository.TransferRepository
 import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
 import com.ajesh.syncspend.domain.model.CalendarBounds
 import com.ajesh.syncspend.domain.model.DateRange
@@ -20,15 +18,12 @@ import com.ajesh.syncspend.domain.model.BillingCycle
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.model.TransactionsTab
-import com.ajesh.syncspend.domain.model.TransferDirection
 import com.ajesh.syncspend.domain.state.SharedSelectionState
-import com.ajesh.syncspend.ui.transfer.toTransferRow
 import com.ajesh.syncspend.util.CurrencyFormatter
 import com.ajesh.syncspend.util.DateUtils
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,24 +32,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 
-/**
- * The Transactions page's top-right selector: Expense/Income are the real [FlowType]s; Savings is
- * **not** — it's a pure view filter that switches the Entries/Categories tabs to [TransferRepository]
- * data instead of [TransactionRepository] data (see `TransferEntity`'s doc for why Savings stopped
- * being a third [FlowType]). Adding/withdrawing still only ever happens via Home's Transfer action —
- * this filter is for browsing, editing and deleting existing transfers only.
- */
-enum class TransactionsFlowFilter { EXPENSE, INCOME, SAVINGS }
+/** Which field the Entries tab sorts by — see [EntriesUi]'s doc for the rendering split this implies. */
+enum class EntriesSortMode { BY_DATE, BY_ENTRY }
 
-private fun TransactionsFlowFilter.toFlowType(): FlowType = when (this) {
-    TransactionsFlowFilter.EXPENSE -> FlowType.EXPENSE
-    TransactionsFlowFilter.INCOME -> FlowType.INCOME
-    TransactionsFlowFilter.SAVINGS -> error("Savings has no FlowType; check viewFilter before calling this")
-}
-
-/** One entry in a list (Home's recent list and the Entries tab). */
+/** One entry in a list (Home's recent list, the Entries tab, and the category-entries popup). */
 data class TxRow(
     val id: Long,
+    val categoryId: Long,
     /** The category's current name: the row's main text. */
     val categoryLabel: String,
     /** The entry's optional note (blank when there is none), wrapped under the category. */
@@ -71,6 +55,7 @@ internal fun TransactionEntity.toTxRow(categoriesById: Map<Long, CategoryEntity>
     val category = categoriesById[categoryId]
     return TxRow(
         id = id,
+        categoryId = categoryId,
         categoryLabel = category?.name ?: "Deleted category",
         note = description,
         amountFormatted = currencySymbol + CurrencyFormatter.amount(amount),
@@ -91,8 +76,21 @@ data class CategoryRollupUi(
     val sharePercent: Int,
 )
 
-/** The Entries tab's rows. Null (in the flow) until first computed, so the screen never flashes an empty state. */
-data class EntriesUi(val groups: List<DayGroupUi>)
+/**
+ * The Entries tab's rows — also reused by the category-entries popup (same shape, filtered further
+ * to one category). [groups] is populated only for [EntriesSortMode.BY_DATE] (date-grouped, with
+ * per-day totals); [flatRows] only for [EntriesSortMode.BY_ENTRY] (one flat list, newest-created
+ * first — see [TransactionsCompute]'s private `buildEntriesUi` for why a genuinely chronological
+ * creation-time sort can't also be date-grouped). [totalFormatted] is always populated — the Overall
+ * Total shown beside the date-range label — independent of sort mode. Null (in the flow) until first
+ * computed, so the screen never flashes an empty state.
+ */
+data class EntriesUi(
+    val sortMode: EntriesSortMode,
+    val groups: List<DayGroupUi>,
+    val flatRows: List<TxRow>,
+    val totalFormatted: String,
+)
 
 /** The Categories tab's rollups. */
 data class RollupsUi(val rollups: List<CategoryRollupUi>)
@@ -109,19 +107,78 @@ internal data class Ledger(
  * `Dispatchers.Default`. Each tab is built on its own — switching tabs never rebuilds the others.
  */
 internal object TransactionsCompute {
-    fun entries(ledger: Ledger, flow: FlowType, entryFilter: EntryFilter, customRange: DateRange?, today: LocalDate = LocalDate.now()): EntriesUi {
+    fun entries(
+        ledger: Ledger,
+        flow: FlowType,
+        entryFilter: EntryFilter,
+        customRange: DateRange?,
+        sortMode: EntriesSortMode,
+        today: LocalDate = LocalDate.now(),
+    ): EntriesUi {
         val cur = ledger.prefs.currencyCode.symbol
         val categoriesById = ledger.categories.associateBy { it.id }
         val filtered = filtered(ledger, flow, entryFilter, customRange, today)
-        return EntriesUi(
-            AnalyticsEngine.groupByDay(filtered, today).map { g ->
-                DayGroupUi(
-                    label = g.label,
-                    totalFormatted = cur + CurrencyFormatter.amount(g.totalAbs),
-                    items = g.items.map { it.toTxRow(categoriesById, cur) },
-                )
-            },
-        )
+        return buildEntriesUi(filtered, categoriesById, sortMode, cur, today)
+    }
+
+    /**
+     * The category-entries popup's rows: the same filtered pipeline as [entries] (same flow +
+     * date-range filter), additionally restricted to one category. Always transaction-date order
+     * ([EntriesSortMode.BY_DATE]), independent of the main Entries tab's sort selection — the popup
+     * never shows a sort control of its own, so there's no [sortMode] parameter to accidentally wire
+     * up wrong here.
+     */
+    fun entriesForCategory(
+        ledger: Ledger,
+        flow: FlowType,
+        entryFilter: EntryFilter,
+        customRange: DateRange?,
+        categoryId: Long,
+        today: LocalDate = LocalDate.now(),
+    ): EntriesUi {
+        val cur = ledger.prefs.currencyCode.symbol
+        val categoriesById = ledger.categories.associateBy { it.id }
+        val filtered = filtered(ledger, flow, entryFilter, customRange, today).filter { it.categoryId == categoryId }
+        return buildEntriesUi(filtered, categoriesById, EntriesSortMode.BY_DATE, cur, today)
+    }
+
+    /**
+     * Shared by [entries] and [entriesForCategory]: [totalFormatted] is `sum of abs(amount)` over
+     * [rows] — the same convention the per-day group totals already use — computed once here so it's
+     * trivially consistent regardless of sort mode or whether this is the full list or one category's.
+     */
+    private fun buildEntriesUi(
+        rows: List<TransactionEntity>,
+        categoriesById: Map<Long, CategoryEntity>,
+        sortMode: EntriesSortMode,
+        cur: String,
+        today: LocalDate,
+    ): EntriesUi {
+        val totalFormatted = cur + CurrencyFormatter.amount(rows.sumOf { abs(it.amount) })
+        return when (sortMode) {
+            EntriesSortMode.BY_DATE -> EntriesUi(
+                sortMode = sortMode,
+                groups = AnalyticsEngine.groupByDay(rows, today).map { g ->
+                    DayGroupUi(
+                        label = g.label,
+                        totalFormatted = cur + CurrencyFormatter.amount(g.totalAbs),
+                        items = g.items.map { it.toTxRow(categoriesById, cur) },
+                    )
+                },
+                flatRows = emptyList(),
+                totalFormatted = totalFormatted,
+            )
+            EntriesSortMode.BY_ENTRY -> EntriesUi(
+                sortMode = sortMode,
+                groups = emptyList(),
+                // id (autoincrement, always unique) as a deterministic tie-break for rows that happen
+                // to share an identical createdAt millisecond — without it, sortedByDescending's stable
+                // sort would leave ties in whatever arbitrary pre-sort order they arrived in.
+                flatRows = rows.sortedWith(compareByDescending<TransactionEntity> { it.createdAt }.thenByDescending { it.id })
+                    .map { it.toTxRow(categoriesById, cur) },
+                totalFormatted = totalFormatted,
+            )
+        }
     }
 
     fun rollups(ledger: Ledger, flow: FlowType, entryFilter: EntryFilter, customRange: DateRange?, today: LocalDate = LocalDate.now()): RollupsUi {
@@ -137,7 +194,6 @@ internal object TransactionsCompute {
     fun stats(
         ledger: Ledger,
         subscriptions: List<SubscriptionEntity>,
-        transfers: List<TransferEntity>,
         flow: FlowType,
         scope: ScopePeriod,
         today: LocalDate = LocalDate.now(),
@@ -154,149 +210,61 @@ internal object TransactionsCompute {
         val resolved = AnalyticsEngine.scopeRange(scope, today, earliest)
         val previous = AnalyticsEngine.previousScope(scope)?.let { AnalyticsEngine.scopeRange(it, today, earliest) }
         val summary = AnalyticsEngine.stats(ledger.tx, ledger.categories, resolved, previous, flow, today)
-        val transferTotals = AnalyticsEngine.transferTotals(transfers, resolved)
-        return buildStatsUi(summary, scope, ledger.prefs.currencyCode.symbol, monthly, active.size, transferTotals, today)
+        return buildStatsUi(summary, scope, ledger.prefs.currencyCode.symbol, monthly, active.size, today)
     }
 
-    /** The Stats page shows both flows stacked (no more Expense/Income toggle) — one [StatsUi] build per flow, sharing the same ledger/scope/transfer totals. */
+    /** The Stats page shows both flows stacked (no more Expense/Income toggle) — one [StatsUi] build per flow, sharing the same ledger/scope. */
     fun statsBoth(
         ledger: Ledger,
         subscriptions: List<SubscriptionEntity>,
-        transfers: List<TransferEntity>,
         scope: ScopePeriod,
         today: LocalDate = LocalDate.now(),
     ): Pair<StatsUi, StatsUi> =
-        stats(ledger, subscriptions, transfers, FlowType.EXPENSE, scope, today) to
-            stats(ledger, subscriptions, transfers, FlowType.INCOME, scope, today)
+        stats(ledger, subscriptions, FlowType.EXPENSE, scope, today) to
+            stats(ledger, subscriptions, FlowType.INCOME, scope, today)
 
     private fun filtered(ledger: Ledger, flow: FlowType, entryFilter: EntryFilter, customRange: DateRange?, today: LocalDate): List<TransactionEntity> {
         return AnalyticsEngine.applyEntryFilter(AnalyticsEngine.flowFilter(ledger.tx, flow), entryFilter, customRange, today)
     }
-
-    /** The Savings filter's Entries tab: both contributions and withdrawals, reusing the same [TxRow]/[DayGroupUi] shapes as real transactions. */
-    fun transferEntries(ledger: TransferLedger, entryFilter: EntryFilter, customRange: DateRange?, today: LocalDate = LocalDate.now()): EntriesUi {
-        val cur = ledger.prefs.currencyCode.symbol
-        val categoriesById = ledger.incomeCategories.associateBy { it.id }
-        val window = AnalyticsEngine.entryFilterWindow(entryFilter, customRange, today)
-        val filtered = ledger.transfers.filter { window == null || it.date in window }
-        val sorted = filtered.sortedWith(compareByDescending<TransferEntity> { it.date }.thenByDescending { it.createdAt })
-        val groups = ArrayList<DayGroupUi>()
-        var start = 0
-        while (start < sorted.size) {
-            val date = sorted[start].date
-            var end = start
-            var total = 0.0
-            while (end < sorted.size && sorted[end].date == date) {
-                total += sorted[end].amount
-                end++
-            }
-            groups += DayGroupUi(
-                label = AnalyticsEngine.dayLabel(date, today),
-                totalFormatted = cur + CurrencyFormatter.amount(total),
-                items = sorted.subList(start, end).map { it.toTransferRow(categoriesById, cur) },
-            )
-            start = end
-        }
-        return EntriesUi(groups)
-    }
-
-    /**
-     * The Savings filter's Categories tab: contributions grouped by their source Income category,
-     * plus a synthetic "Withdrawals" bucket for withdrawals (which have no category) — kept entirely
-     * separate from real Income/Expense category analytics, never merged into [rollups].
-     */
-    fun transferRollups(ledger: TransferLedger, entryFilter: EntryFilter, customRange: DateRange?, today: LocalDate = LocalDate.now()): RollupsUi {
-        val cur = ledger.prefs.currencyCode.symbol
-        val window = AnalyticsEngine.entryFilterWindow(entryFilter, customRange, today)
-        val filtered = ledger.transfers.filter { window == null || it.date in window }
-        val contributions = filtered.filter { it.direction == TransferDirection.TO_SAVINGS }
-        val withdrawals = filtered.filter { it.direction == TransferDirection.FROM_SAVINGS }
-        val totalAbs = (contributions.sumOf { it.amount } + withdrawals.sumOf { it.amount }).let { if (it == 0.0) 1.0 else it }
-        val byCategory = contributions.groupBy { it.categoryId }.map { (categoryId, items) ->
-            val category = categoryId?.let { id -> ledger.incomeCategories.find { it.id == id } }
-            val sum = items.sumOf { it.amount }
-            CategoryRollupUi(
-                categoryId = categoryId ?: -1L,
-                name = category?.name ?: "Uncategorized",
-                iconKey = category?.iconKey ?: "coin",
-                count = items.size,
-                totalFormatted = cur + CurrencyFormatter.amount(sum),
-                sharePercent = ((sum / totalAbs) * 100).roundToInt(),
-            )
-        }
-        val withdrawalsRollup = if (withdrawals.isEmpty()) {
-            emptyList()
-        } else {
-            val sum = withdrawals.sumOf { it.amount }
-            listOf(
-                CategoryRollupUi(
-                    categoryId = -2L,
-                    name = "Withdrawals",
-                    iconKey = "coin",
-                    count = withdrawals.size,
-                    totalFormatted = cur + CurrencyFormatter.amount(sum),
-                    sharePercent = ((sum / totalAbs) * 100).roundToInt(),
-                ),
-            )
-        }
-        return RollupsUi((byCategory + withdrawalsRollup).sortedByDescending { it.sharePercent })
-    }
 }
 
-/** What the Savings filter's tabs are built from — the Transfer-table equivalent of [Ledger]. */
-internal data class TransferLedger(
-    val transfers: List<TransferEntity>,
-    val incomeCategories: List<CategoryEntity>,
-    val prefs: UserPreferences,
-)
-
 /**
- * The Entries/Categories tabs' and Stats' date-range selection is a single [ScopePeriod] shared with
- * Home itself (round 10) — picking a period anywhere changes it everywhere, via the same
- * [SharedSelectionState.scope] `MutableStateFlow`. Unlike the old per-tab [EntryFilter] chip sets,
- * a [ScopePeriod] is equally valid for every flow/tab combo, so there's no "reset to this combo's
- * default" clamping needed anymore.
+ * The Entries/Categories tabs' and Stats' date-range selection — Transactions' own independent scope
+ * ([SharedSelectionState.transactionsScope]), separate from Home's own ([SharedSelectionState.homeScope]).
  */
 data class PeriodNavUi(val label: String, val canGoPrev: Boolean, val canGoNext: Boolean)
 
 /**
- * UI-only selections (tab, view filter) are plain StateFlows read on the main thread, so a tap moves
- * its pill immediately. Each tab's heavy state is its own flow, computed on `Dispatchers.Default` and
- * only while that tab is on screen (the screen collects just the visible one) — a tab switch no
- * longer rebuilds every row, and a revisited tab still holds its last value.
+ * UI-only selections (tab, view filter, sort mode) are plain StateFlows read on the main thread, so a
+ * tap moves its pill immediately. Each tab's heavy state is its own flow, computed on
+ * `Dispatchers.Default` and only while that tab is on screen (the screen collects just the visible
+ * one) — a tab switch no longer rebuilds every row, and a revisited tab still holds its last value.
  */
 class TransactionsViewModel(
     transactionRepository: TransactionRepository,
     categoryRepository: CategoryRepository,
     preferencesRepository: PreferencesRepository,
     subscriptionRepository: SubscriptionRepository,
-    transferRepository: TransferRepository,
     private val selection: SharedSelectionState,
 ) : ViewModel() {
 
-    // Savings is never written into `selection.flow` (it has no FlowType value for it anyway, and
-    // that field is shared app-wide with Home/Add Entry) — it's purely local UI state here, combined
-    // with the shared flow below into one [TransactionsFlowFilter] for this screen's own use.
-    private val _savingsMode = MutableStateFlow(false)
-    private fun currentViewFilter(savings: Boolean = _savingsMode.value, f: FlowType = selection.flow.value) =
-        if (savings) TransactionsFlowFilter.SAVINGS
-        else if (f == FlowType.EXPENSE) TransactionsFlowFilter.EXPENSE else TransactionsFlowFilter.INCOME
-
     private val _tab = MutableStateFlow(TransactionsTab.ENTRIES)
-
     val tab: StateFlow<TransactionsTab> = _tab
 
-    val viewFilter: StateFlow<TransactionsFlowFilter> = combine(selection.flow, _savingsMode) { f, s -> currentViewFilter(s, f) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), currentViewFilter())
+    private val _sortMode = MutableStateFlow(EntriesSortMode.BY_DATE)
+    val sortMode: StateFlow<EntriesSortMode> = _sortMode
+
+    /** Transactions' own independent Expense/Income toggle — never shared with Home. */
+    val viewFilter: StateFlow<FlowType> = selection.transactionsFlow
 
     val earliestDate: StateFlow<LocalDate?> = transactionRepository.getEarliestDate()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** The period picker's current selection — [SharedSelectionState.scope] directly, shared with Home. */
-    val scope: StateFlow<ScopePeriod> = selection.scope
+    /** The period picker's current selection — Transactions' own independent scope, never shared with Home. */
+    val scope: StateFlow<ScopePeriod> = selection.transactionsScope
 
     /** The period pill's label and prev/next arrow enablement, reactive to both [scope] and [earliestDate]. */
-    val periodNav: StateFlow<PeriodNavUi> = combine(selection.scope, earliestDate) { scope, earliest ->
+    val periodNav: StateFlow<PeriodNavUi> = combine(selection.transactionsScope, earliestDate) { scope, earliest ->
         val now = YearMonth.now()
         val lower = CalendarBounds.dataLowerMonth(now, earliest)
         PeriodNavUi(
@@ -304,7 +272,10 @@ class TransactionsViewModel(
             canGoPrev = AnalyticsEngine.stepScope(scope, -1, now, lower) != null,
             canGoNext = AnalyticsEngine.stepScope(scope, 1, now, lower) != null,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PeriodNavUi(AnalyticsEngine.scopeLabel(selection.scope.value), false, false))
+    }.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5_000),
+        PeriodNavUi(AnalyticsEngine.scopeLabel(selection.transactionsScope.value), false, false),
+    )
 
     private val ledger = combine(
         transactionRepository.getAll(),
@@ -312,55 +283,56 @@ class TransactionsViewModel(
         preferencesRepository.preferences,
     ) { tx, categories, prefs -> Ledger(tx, categories, prefs) }
 
-    private val transferLedger = combine(
-        transferRepository.getAll(),
-        categoryRepository.getAllByType(FlowType.INCOME),
-        preferencesRepository.preferences,
-    ) { transfers, incomeCategories, prefs -> TransferLedger(transfers, incomeCategories, prefs) }
+    private data class ListControls(val viewFilter: FlowType, val scope: ScopePeriod, val earliest: LocalDate?, val sortMode: EntriesSortMode)
 
-    private data class ListControls(val viewFilter: TransactionsFlowFilter, val scope: ScopePeriod, val earliest: LocalDate?)
+    private val listControls = combine(viewFilter, selection.transactionsScope, earliestDate, sortMode, ::ListControls)
 
-    private val listControls = combine(viewFilter, selection.scope, earliestDate, ::ListControls)
-
-    // Grouping/sorting thousands of rows must not happen on the main thread. The shared ScopePeriod is
-    // resolved to a plain DateRange once here, then fed through EntryFilter.CUSTOM into the existing,
-    // unchanged compute functions below — the same adapter CUSTOM itself already used, so none of
-    // those functions (or their tests) needed to change shape for this round's picker swap.
-    val entries: StateFlow<EntriesUi?> = combine(ledger, transferLedger, listControls) { l, tl, c ->
+    // Grouping/sorting thousands of rows must not happen on the main thread. The scope is resolved to
+    // a plain DateRange once here, then fed through EntryFilter.CUSTOM into the compute functions below.
+    val entries: StateFlow<EntriesUi?> = combine(ledger, listControls) { l, c ->
         val range = AnalyticsEngine.scopeRange(c.scope, LocalDate.now(), c.earliest)
-        if (c.viewFilter == TransactionsFlowFilter.SAVINGS) TransactionsCompute.transferEntries(tl, EntryFilter.CUSTOM, range)
-        else TransactionsCompute.entries(l, c.viewFilter.toFlowType(), EntryFilter.CUSTOM, range)
+        TransactionsCompute.entries(l, c.viewFilter, EntryFilter.CUSTOM, range, c.sortMode)
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val rollups: StateFlow<RollupsUi?> = combine(ledger, transferLedger, listControls) { l, tl, c ->
+    val rollups: StateFlow<RollupsUi?> = combine(ledger, listControls) { l, c ->
         val range = AnalyticsEngine.scopeRange(c.scope, LocalDate.now(), c.earliest)
-        if (c.viewFilter == TransactionsFlowFilter.SAVINGS) TransactionsCompute.transferRollups(tl, EntryFilter.CUSTOM, range)
-        else TransactionsCompute.rollups(l, c.viewFilter.toFlowType(), EntryFilter.CUSTOM, range)
+        TransactionsCompute.rollups(l, c.viewFilter, EntryFilter.CUSTOM, range)
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Both flows, stacked on the Stats page (no more Expense/Income toggle there) — expense first, income second. */
     val stats: StateFlow<Pair<StatsUi, StatsUi>?> = combine(
-        ledger, subscriptionRepository.getAll(), transferRepository.getAll(), selection.scope,
-    ) { l, subs, transfers, scope ->
-        TransactionsCompute.statsBoth(l, subs, transfers, scope)
+        ledger, subscriptionRepository.getAll(), selection.transactionsScope,
+    ) { l, subs, scope ->
+        TransactionsCompute.statsBoth(l, subs, scope)
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** The Transactions page's 3-way selector. Picking Savings never touches [selection]'s shared flow (see this class's doc); picking Expense/Income drops Savings mode and writes through as before. */
-    fun pickViewFilter(filterValue: TransactionsFlowFilter) {
-        when (filterValue) {
-            TransactionsFlowFilter.SAVINGS -> _savingsMode.value = true
-            TransactionsFlowFilter.EXPENSE -> { _savingsMode.value = false; selection.flow.value = FlowType.EXPENSE }
-            TransactionsFlowFilter.INCOME -> { _savingsMode.value = false; selection.flow.value = FlowType.INCOME }
-        }
+    /**
+     * The category-entries popup, opened from the Categories tab: a fresh, cheap, short-lived
+     * `StateFlow` per distinct category — driven by the same reactive [ledger]/[listControls] as
+     * [entries], so any edit/delete made through Edit Entry automatically re-flows through here too,
+     * with no manual refresh call needed.
+     */
+    fun entriesForCategory(categoryId: Long): StateFlow<EntriesUi?> =
+        combine(ledger, listControls) { l, c ->
+            val range = AnalyticsEngine.scopeRange(c.scope, LocalDate.now(), c.earliest)
+            TransactionsCompute.entriesForCategory(l, c.viewFilter, EntryFilter.CUSTOM, range, categoryId)
+        }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun pickViewFilter(flowValue: FlowType) {
+        selection.transactionsFlow.value = flowValue
+    }
+
+    fun setSortMode(mode: EntriesSortMode) {
+        _sortMode.value = mode
     }
 
     fun selectTab(newTab: TransactionsTab) {
         _tab.value = newTab
     }
 
-    /** Picked directly from [PeriodPickerSheet] — writes through to the shared [SharedSelectionState.scope]. */
+    /** Picked directly from [PeriodPickerSheet] — writes through to Transactions' own independent scope. */
     fun applyScope(newScope: ScopePeriod) {
-        selection.scope.value = newScope
+        selection.transactionsScope.value = newScope
     }
 
     fun prevPeriod() = stepScope(-1)
@@ -369,6 +341,6 @@ class TransactionsViewModel(
     private fun stepScope(delta: Int) {
         val now = YearMonth.now()
         val lower = CalendarBounds.dataLowerMonth(now, earliestDate.value)
-        AnalyticsEngine.stepScope(selection.scope.value, delta, now, lower)?.let { selection.scope.value = it }
+        AnalyticsEngine.stepScope(selection.transactionsScope.value, delta, now, lower)?.let { selection.transactionsScope.value = it }
     }
 }

@@ -12,15 +12,17 @@ import com.ajesh.syncspend.data.db.MIGRATION_4_5
 import com.ajesh.syncspend.data.db.MIGRATION_5_6
 import com.ajesh.syncspend.data.db.MIGRATION_6_7
 import com.ajesh.syncspend.data.db.MIGRATION_7_8
+import com.ajesh.syncspend.data.db.MIGRATION_8_9
+import com.ajesh.syncspend.data.db.MIGRATION_9_10
+import com.ajesh.syncspend.data.db.MIGRATION_10_11
+import com.ajesh.syncspend.data.db.MIGRATION_11_12
+import com.ajesh.syncspend.data.db.MIGRATION_12_13
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.ForecastEntity
 import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
-import com.ajesh.syncspend.data.db.entity.TransferEntity
 import com.ajesh.syncspend.domain.model.BillingCycle
 import com.ajesh.syncspend.domain.model.FlowType
-import kotlinx.coroutines.flow.first
-import com.ajesh.syncspend.domain.model.TransferDirection
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -34,7 +36,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /** Every migration from the hand-built v3 fixture up to the current schema — the real path any installed app takes. */
-private val ALL_MIGRATIONS = arrayOf(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+private val ALL_MIGRATIONS = arrayOf(
+    MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
+    MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
+)
 
 /**
  * The real user database is at v3 and holds real entries, so the v3 -> v4 migration is tested against a
@@ -158,35 +163,41 @@ class MigrationTest {
     }
 
     /**
-     * Covers the full v5 -> v8 chain: MIGRATION_5_6's type backfill and its (now-historical) 3
-     * Savings categories, which MIGRATION_7_8 deletes again in the same upgrade run — so a fresh
-     * install or an upgrader both land on the same end state: no trace of "Savings Goals" / "Emergency
-     * Fund" / "Investments", the pre-existing Expense category literally named "Savings" untouched,
-     * and the new suggested transfer-source Income categories seeded.
+     * Covers the full v5 -> v10 chain: MIGRATION_5_6's type backfill and its (now-historical) 3
+     * Savings categories, which MIGRATION_7_8 deletes again in the same upgrade run; the pre-existing
+     * Expense category literally named "Savings" (and any transaction filed under it) is now itself
+     * deleted by MIGRATION_8_9 — reversing MIGRATION_7_8's original preservation of that exact category,
+     * per the user's explicit instruction to remove it outright, used or not (see MIGRATION_8_9's doc).
      */
-    @Test fun migration5to8BackfillsTypesPreservesOldSavingsCategoryAndSeedsIncomeSources() = runBlocking {
+    @Test fun migration5to10BackfillsTypesThenDeletesOldSavingsCategoryAndSeedsIncomeSources() = runBlocking {
         val name = "migration-savings.db"
         val day = LocalDate.of(2026, 9, 20)
         createV5(name) { db ->
             db.execSQL("INSERT INTO categories VALUES (1, 'Food', 'utensils', 'EXPENSE', 0, 0)")
             db.execSQL("INSERT INTO categories VALUES (2, 'Salary', 'bank', 'INCOME', 0, 0)")
-            // The pre-existing Expense category literally named "Savings" — must survive untouched.
+            // The pre-existing Expense category literally named "Savings" — and a transaction filed
+            // under it — must both be gone after this chain, not preserved.
             db.execSQL("INSERT INTO categories VALUES (3, 'Savings', 'coin', 'EXPENSE', 6, 0)")
             db.execSQL("INSERT INTO transactions (id, amount, description, categoryId, date, createdAt, timeMinuteOfDay) VALUES (1, -250.0, '', 1, ${day.toEpochDay()}, 1, NULL)")
             db.execSQL("INSERT INTO transactions (id, amount, description, categoryId, date, createdAt, timeMinuteOfDay) VALUES (2, 50000.0, '', 2, ${day.toEpochDay()}, 2, NULL)")
+            db.execSQL("INSERT INTO transactions (id, amount, description, categoryId, date, createdAt, timeMinuteOfDay) VALUES (3, -500.0, '', 3, ${day.toEpochDay()}, 3, NULL)")
         }
 
         val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).allowMainThreadQueries().build()
+            .addMigrations(
+                MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
+                MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
+            ).allowMainThreadQueries().build()
         try {
             val rows = db.transactionDao().getAllOnce().associateBy { it.id }
             assertEquals(FlowType.EXPENSE, rows.getValue(1).type)
             assertEquals(FlowType.INCOME, rows.getValue(2).type)
+            // The transaction filed under the deleted "Savings" Expense category is gone too.
+            assertTrue(3L !in rows.keys)
+            assertEquals(2, rows.size)
 
             val categories = db.categoryDao().getAllOnce()
-            val oldSavings = categories.single { it.name == "Savings" }
-            assertEquals(FlowType.EXPENSE, oldSavings.type) // untouched, not renamed or migrated
-            assertEquals("coin", oldSavings.iconKey)
+            assertTrue(categories.none { it.name == "Savings" && it.type == FlowType.EXPENSE })
 
             // The 3 categories MIGRATION_5_6 inserted for the now-removed Savings FlowType are gone —
             // MIGRATION_7_8 deletes them in the same upgrade chain.
@@ -197,11 +208,166 @@ class MigrationTest {
             val incomeNames = categories.filter { it.type == FlowType.INCOME }.map { it.name }.toSet()
             assertEquals(setOf("Salary", "PF", "Reward", "Previous Savings", "Other"), incomeNames)
 
-            // MIGRATION_6_7/7_8 created the forecasts/transfers tables in the same upgrade chain — usable immediately.
+            // MIGRATION_6_7 created the forecasts table in the same upgrade chain — usable immediately.
+            // (MIGRATION_7_8 also created `transfers`, but MIGRATION_11_12 later in this same chain
+            // drops it again — the Savings & Investment feature's removal — so there's nothing to
+            // exercise here anymore.)
             val forecastId = db.forecastDao().insert(ForecastEntity(note = "Rent", amount = 12000.0, date = null))
             assertEquals(1, db.forecastDao().getAllOnce().filter { it.id == forecastId }.size)
-            db.transferDao().insert(TransferEntity(amount = 500.0, direction = TransferDirection.TO_SAVINGS, date = day, createdAt = 1L))
-            assertEquals(1, db.transferDao().getAllOnce().size)
+        } finally {
+            db.close()
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test fun migration9to10BackfillsPreExistingTransfersAsSavings() = runBlocking {
+        val name = "migration-transfer-kind.db"
+        val day = LocalDate.of(2026, 9, 20)
+        createV5(name) { }
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context).name(name).callback(
+                object : SupportSQLiteOpenHelper.Callback(5) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                },
+            ).build(),
+        )
+        val raw = helper.writableDatabase
+        // Run the chain by hand only up to v8 (raw SQL, bypassing Room's own bookkeeping) so a transfer
+        // can be inserted the way a real pre-Investment row would look — with no `kind` column yet, since
+        // that column doesn't exist until MIGRATION_9_10. The pragma is left at the real intermediate
+        // version (8), not jumped ahead, so Room can still run (and correctly account for) the v8 -> v10
+        // leg itself below.
+        MIGRATION_5_6.migrate(raw)
+        MIGRATION_6_7.migrate(raw)
+        MIGRATION_7_8.migrate(raw)
+        raw.execSQL(
+            "INSERT INTO transfers (id, amount, direction, date, categoryId, note, createdAt, timeMinuteOfDay) " +
+                "VALUES (1, 500.0, 'TO_SAVINGS', ${day.toEpochDay()}, NULL, '', 1, NULL)",
+        )
+        // Run the next leg (the `kind` backfill itself) by hand too, via raw SQL rather than through
+        // TransferDao — the Savings & Investment feature (and TransferDao with it) is removed later in
+        // this same version chain, so this test no longer has a live DAO to read the row back through.
+        MIGRATION_8_9.migrate(raw)
+        MIGRATION_9_10.migrate(raw)
+        raw.query("SELECT kind FROM transfers WHERE id = 1").use { c ->
+            assertTrue(c.moveToFirst())
+            assertEquals("SAVINGS", c.getString(0))
+        }
+        raw.version = 10
+        helper.close()
+
+        // Confirm the rest of the chain — including the Savings & Investment removal two versions
+        // later — still builds cleanly from here.
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
+            .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13).allowMainThreadQueries().build()
+        try {
+            assertEquals(0, db.transactionDao().getAllOnce().size)
+        } finally {
+            db.close()
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test fun migration10to11BackfillsForecastDescriptionAsBlank() = runBlocking {
+        val name = "migration-forecast-description.db"
+        createV5(name) { }
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context).name(name).callback(
+                object : SupportSQLiteOpenHelper.Callback(5) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                },
+            ).build(),
+        )
+        val raw = helper.writableDatabase
+        // Same technique as the transfer-kind backfill test above: run the chain by hand only up to v10
+        // (no `description` column yet), insert a forecast the way a real pre-note row would look, then
+        // let Room run the v10 -> v11 leg itself.
+        MIGRATION_5_6.migrate(raw)
+        MIGRATION_6_7.migrate(raw)
+        MIGRATION_7_8.migrate(raw)
+        MIGRATION_8_9.migrate(raw)
+        MIGRATION_9_10.migrate(raw)
+        raw.execSQL("INSERT INTO forecasts (id, note, amount, date, categoryId, completed, completedTransactionId) VALUES (1, 'Rent', 12000.0, NULL, NULL, 0, NULL)")
+        raw.version = 10
+        helper.close()
+
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
+            .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13).allowMainThreadQueries().build()
+        try {
+            val forecast = db.forecastDao().getAllOnce().single()
+            assertEquals("", forecast.description)
+            assertEquals("Rent", forecast.note)
+        } finally {
+            db.close()
+            context.deleteDatabase(name)
+        }
+    }
+
+    /**
+     * The actual Savings & Investment removal: a populated v11 fixture (a real `transfers` row, plus a
+     * transaction still carrying the legacy `fundingSource`/`contributionKind` values) migrated through
+     * both new versions should end up with the `transfers` table gone, the two legacy columns gone from
+     * `transactions`, and every other column's data on that transaction untouched.
+     */
+    @Test fun migration11to13DropsTransfersAndLegacyColumnsPreservingOtherData() = runBlocking {
+        val name = "migration-drop-transfers-legacy.db"
+        val day = LocalDate.of(2026, 9, 20)
+        createV5(name) { }
+        val helper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context).name(name).callback(
+                object : SupportSQLiteOpenHelper.Callback(5) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                },
+            ).build(),
+        )
+        val raw = helper.writableDatabase
+        MIGRATION_5_6.migrate(raw)
+        MIGRATION_6_7.migrate(raw)
+        MIGRATION_7_8.migrate(raw)
+        MIGRATION_8_9.migrate(raw)
+        MIGRATION_9_10.migrate(raw)
+        MIGRATION_10_11.migrate(raw)
+        raw.execSQL("INSERT INTO categories VALUES (1, 'Food', 'utensils', 'EXPENSE', 0, 0)")
+        raw.execSQL(
+            "INSERT INTO transactions (id, amount, description, categoryId, date, createdAt, timeMinuteOfDay, type, fundingSource, contributionKind) " +
+                "VALUES (1, -100.0, 'Lunch', 1, ${day.toEpochDay()}, 1, NULL, 'EXPENSE', 'SAVINGS', 'TRANSFER')",
+        )
+        raw.execSQL(
+            "INSERT INTO transfers (id, amount, direction, date, categoryId, note, createdAt, timeMinuteOfDay, kind) " +
+                "VALUES (1, 500.0, 'TO_SAVINGS', ${day.toEpochDay()}, NULL, '', 1, NULL, 'SAVINGS')",
+        )
+        raw.version = 11
+        helper.close()
+
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
+            .addMigrations(MIGRATION_11_12, MIGRATION_12_13).allowMainThreadQueries().build()
+        try {
+            // The `transfers` table itself is gone.
+            db.openHelper.writableDatabase.query("SELECT name FROM sqlite_master WHERE type='table' AND name='transfers'").use { c ->
+                assertEquals(0, c.count)
+            }
+
+            // `fundingSource`/`contributionKind` are gone from `transactions`'s own schema.
+            val columnNames = mutableSetOf<String>()
+            db.openHelper.writableDatabase.query("PRAGMA table_info(`transactions`)").use { c ->
+                val nameIdx = c.getColumnIndex("name")
+                while (c.moveToNext()) columnNames += c.getString(nameIdx)
+            }
+            assertTrue("fundingSource" !in columnNames)
+            assertTrue("contributionKind" !in columnNames)
+
+            // Every other column on the surviving transaction is untouched by the rebuild.
+            val row = db.transactionDao().getAllOnce().single()
+            assertEquals(-100.0, row.amount, 0.0)
+            assertEquals("Lunch", row.description)
+            assertEquals(1L, row.categoryId)
+            assertEquals(day, row.date)
+            assertEquals(1L, row.createdAt)
+            assertNull(row.timeMinuteOfDay)
+            assertEquals(FlowType.EXPENSE, row.type)
         } finally {
             db.close()
             context.deleteDatabase(name)
@@ -212,7 +378,10 @@ class MigrationTest {
         val name = "migration-savings-empty.db"
         createV5(name) { }
         val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).allowMainThreadQueries().build()
+            .addMigrations(
+                MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
+                MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
+            ).allowMainThreadQueries().build()
         try {
             assertEquals(0, db.transactionDao().getAllOnce().size)
             val categories = db.categoryDao().getAllOnce()
@@ -224,17 +393,10 @@ class MigrationTest {
         }
     }
 
-    @Test fun v8EntitiesRoundTripTransfersAndForecasts() = runBlocking {
+    @Test fun v8EntitiesRoundTripForecasts() = runBlocking {
         val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build()
         try {
             val day = LocalDate.of(2026, 9, 27)
-            val incomeCat = CategoryEntity(name = "Freelance", iconKey = "brief", type = FlowType.INCOME, sortOrder = 0)
-            val catId = db.categoryDao().insert(incomeCat)
-
-            db.transferDao().insert(TransferEntity(amount = 5000.0, direction = TransferDirection.TO_SAVINGS, date = day, categoryId = catId, createdAt = 1L))
-            val savedTransfer = db.transferDao().getAllOnce().single()
-            assertEquals(TransferDirection.TO_SAVINGS, savedTransfer.direction)
-            assertEquals(catId, savedTransfer.categoryId)
 
             val forecastId = db.forecastDao().insert(ForecastEntity(note = "Rent", amount = 12000.0, date = null))
             db.forecastDao().insert(ForecastEntity(note = "Trip", amount = 8000.0, date = day))
@@ -293,21 +455,6 @@ class MigrationTest {
             assertTrue(stale.completed)
             assertEquals("Old plan", stale.note) // untouched — only `completed` changed
             assertEquals(2, db.forecastDao().getAllOnce().size) // both rows preserved, nothing deleted
-        } finally {
-            db.close()
-        }
-    }
-
-    /** Round 8: the Savings screen dropped its date-grouped list for one flat "most recently added" feed. */
-    @Test fun transferDaoOrdersByCreationTimeNotDate() = runBlocking {
-        val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build()
-        try {
-            val day = LocalDate.of(2026, 9, 27)
-            // Added third but dated earliest — a date-primary sort would put it last; createdAt-primary puts it first.
-            db.transferDao().insert(TransferEntity(amount = 100.0, direction = TransferDirection.TO_SAVINGS, date = day.minusDays(10), createdAt = 3L))
-            db.transferDao().insert(TransferEntity(amount = 200.0, direction = TransferDirection.TO_SAVINGS, date = day, createdAt = 1L))
-            db.transferDao().insert(TransferEntity(amount = 300.0, direction = TransferDirection.FROM_SAVINGS, date = day.minusDays(1), createdAt = 2L))
-            assertEquals(listOf(100.0, 300.0, 200.0), db.transferDao().getAll().first().map { it.amount })
         } finally {
             db.close()
         }

@@ -2,14 +2,12 @@ package com.ajesh.syncspend
 
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
-import com.ajesh.syncspend.data.db.entity.TransferEntity
 import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
 import com.ajesh.syncspend.domain.model.CategoryRollup
 import com.ajesh.syncspend.domain.model.DateRange
 import com.ajesh.syncspend.domain.model.EntryFilter
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.domain.model.ScopePeriod
-import com.ajesh.syncspend.domain.model.TransferDirection
 import java.time.LocalDate
 import java.time.YearMonth
 import org.junit.Assert.assertEquals
@@ -254,7 +252,7 @@ class AnalyticsEngineTest {
         assertEquals(LocalDate.of(2026, 9, 3), AnalyticsEngine.busiestDay(list)!!.date)
     }
 
-    // --- Transfer accounting (Part D.3) ---
+    // --- Available-cash accounting ---
 
     private fun expenseTx(amount: Double, date: LocalDate = today) = TransactionEntity(
         id = nextId++, amount = -amount, description = "", categoryId = 1, date = date, createdAt = nextId, type = FlowType.EXPENSE,
@@ -264,46 +262,119 @@ class AnalyticsEngineTest {
         id = nextId++, amount = amount, description = "", categoryId = 1, date = date, createdAt = nextId, type = FlowType.INCOME,
     )
 
-    private fun transfer(amount: Double, direction: TransferDirection, date: LocalDate = today) =
-        TransferEntity(id = nextId++, amount = amount, direction = direction, date = date, createdAt = nextId)
-
-    @Test fun savingsBalanceIsContributionsMinusWithdrawals() {
-        val transfers = listOf(
-            transfer(8000.0, TransferDirection.TO_SAVINGS),
-            transfer(3000.0, TransferDirection.FROM_SAVINGS),
-        )
-        assertEquals(5000.0, AnalyticsEngine.savingsBalance(transfers), 0.0)
-    }
-
-    /** The spec's own worked example: Income 50,000 / Expenses 42,000 / contributions 8,000 / withdrawals 3,000. */
-    @Test fun availableAmountMatchesTheSpecsWorkedExample() {
-        val tx = listOf(incomeTx(50000.0), expenseTx(40000.0), expenseTx(2000.0))
-        val transfers = listOf(transfer(8000.0, TransferDirection.TO_SAVINGS), transfer(3000.0, TransferDirection.FROM_SAVINGS))
-        assertEquals(50000.0, AnalyticsEngine.totalIncome(tx), 0.0)
-        assertEquals(42000.0, AnalyticsEngine.totalExpense(tx), 0.0)
-        assertEquals(5000.0, AnalyticsEngine.savingsBalance(transfers), 0.0)
-        assertEquals(3000.0, AnalyticsEngine.availableAmount(tx, transfers), 0.0)
-    }
-
-    @Test fun aWithdrawalIncreasesAvailableAmountByExactlyWhatItRemovesFromSavingsBalance() {
-        val tx = listOf(incomeTx(10000.0))
-        val before = AnalyticsEngine.availableAmount(tx, listOf(transfer(4000.0, TransferDirection.TO_SAVINGS)))
-        val after = AnalyticsEngine.availableAmount(tx, listOf(transfer(4000.0, TransferDirection.TO_SAVINGS), transfer(1000.0, TransferDirection.FROM_SAVINGS)))
-        assertEquals(1000.0, after - before, 0.0)
-    }
-
-    @Test fun transferTotalsOnlyCountsTransfersWithinTheRange() {
+    /** Income/Expense-only worked example: Income 50000, Expense 30000 -> available 20000 for the period. */
+    @Test fun scopedAvailableAmountIsIncomeMinusExpense() {
         val range = DateRange(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30))
-        val transfers = listOf(
-            transfer(1000.0, TransferDirection.TO_SAVINGS, LocalDate.of(2026, 9, 1)), // in range (start boundary)
-            transfer(500.0, TransferDirection.FROM_SAVINGS, LocalDate.of(2026, 9, 30)), // in range (end boundary)
-            transfer(2000.0, TransferDirection.TO_SAVINGS, LocalDate.of(2026, 8, 31)), // just before
-            transfer(2000.0, TransferDirection.TO_SAVINGS, LocalDate.of(2026, 10, 1)), // just after
+        val tx = listOf(incomeTx(50000.0, LocalDate.of(2026, 9, 15)), expenseTx(30000.0, LocalDate.of(2026, 9, 15)))
+        assertEquals(20000.0, AnalyticsEngine.availableAmount(tx, range), 0.0)
+    }
+
+    /** Add Entry's insufficient-cash-flow warning: available minus the amount being entered. */
+    @Test fun scopedAvailableAmountGoesNegativeWhenANewExpenseWouldExceedIt() {
+        val range = DateRange(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30))
+        val tx = listOf(incomeTx(10000.0, LocalDate.of(2026, 9, 5)))
+        val available = AnalyticsEngine.availableAmount(tx, range)
+        assertEquals(10000.0, available, 0.0)
+        assertTrue(available - 12000.0 < 0) // entering a 12000 expense would exceed it -> warning fires
+        assertTrue(available - 8000.0 >= 0) // an 8000 expense would not -> no warning
+    }
+
+    /** Edit Entry's double-counting fix: excluding the edited row's own original amount changes the result. */
+    @Test fun excludingTheEditedTransactionAvoidsDoubleCountingItsOwnAmount() {
+        val range = DateRange(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30))
+        val original = expenseTx(5000.0, LocalDate.of(2026, 9, 10))
+        val tx = listOf(incomeTx(10000.0, LocalDate.of(2026, 9, 5)), original)
+        // Counting the original row AND the amount being edited would double-count it.
+        val withoutExclusion = AnalyticsEngine.availableAmount(tx, range) - 5000.0
+        assertEquals(0.0, withoutExclusion, 0.0)
+        // Excluding the row being edited first is correct: editing it to the same 5000 changes nothing.
+        val correctlyExcluded = AnalyticsEngine.availableAmount(tx.filter { it.id != original.id }, range) - 5000.0
+        assertEquals(5000.0, correctlyExcluded, 0.0)
+    }
+
+    // --- Edit Entry's cash-flow warning: must reflect the PROPOSED change, never merely the
+    // already-saved state (Round 18) ---
+
+    @Test fun openingAnAlreadyNegativeMonthsExpenseUnchangedNeverWarns() {
+        // Income 4000, an unrelated 4000 expense, and the 3000 expense being "opened" -> the month is
+        // already -3000 before any edit. Simply viewing it (same amount, same date) must not warn.
+        val income = incomeTx(4000.0, LocalDate.of(2026, 9, 2))
+        val otherExpense = expenseTx(4000.0, LocalDate.of(2026, 9, 5))
+        val original = expenseTx(3000.0, LocalDate.of(2026, 9, 10))
+        val all = listOf(income, otherExpense, original)
+        assertTrue(
+            "already-negative month must still show false when truly unchanged",
+            !AnalyticsEngine.editCashFlowWarning(all, original, proposedAmount = 3000.0, proposedDate = original.date, proposedType = FlowType.EXPENSE),
         )
-        val totals = AnalyticsEngine.transferTotals(transfers, range)
-        assertEquals(1000.0, totals.contributions, 0.0)
-        assertEquals(500.0, totals.withdrawals, 0.0)
-        assertEquals(500.0, totals.net, 0.0)
+    }
+
+    @Test fun increasingTheAmountPastThePointOfNegativeAvailableCashWarns() {
+        val income = incomeTx(10000.0, LocalDate.of(2026, 9, 5))
+        val original = expenseTx(3000.0, LocalDate.of(2026, 9, 10))
+        val all = listOf(income, original)
+        assertTrue(AnalyticsEngine.editCashFlowWarning(all, original, proposedAmount = 11000.0, proposedDate = original.date, proposedType = FlowType.EXPENSE))
+    }
+
+    @Test fun increasingTheAmountButStayingNonNegativeDoesNotWarn() {
+        val income = incomeTx(10000.0, LocalDate.of(2026, 9, 5))
+        val original = expenseTx(3000.0, LocalDate.of(2026, 9, 10))
+        val all = listOf(income, original)
+        assertTrue(!AnalyticsEngine.editCashFlowWarning(all, original, proposedAmount = 5000.0, proposedDate = original.date, proposedType = FlowType.EXPENSE))
+    }
+
+    /** The bug report's worked example: decreasing must never be blamed for a deficit caused by other, unrelated expenses. */
+    @Test fun decreasingTheAmountNeverWarnsSolelyBecauseOfAnUnrelatedExistingDeficit() {
+        val income = incomeTx(4000.0, LocalDate.of(2026, 9, 2))
+        val otherExpense = expenseTx(4000.0, LocalDate.of(2026, 9, 5)) // alone already exceeds income
+        val original = expenseTx(1000.0, LocalDate.of(2026, 9, 10))
+        val all = listOf(income, otherExpense, original)
+        // Decreasing can only help, never make the proposed figure worse than the real current state.
+        assertTrue(!AnalyticsEngine.editCashFlowWarning(all, original, proposedAmount = 500.0, proposedDate = original.date, proposedType = FlowType.EXPENSE))
+        // Contrast: increasing the same entry DOES warn, since that increase is what worsens it.
+        assertTrue(AnalyticsEngine.editCashFlowWarning(all, original, proposedAmount = 2000.0, proposedDate = original.date, proposedType = FlowType.EXPENSE))
+    }
+
+    @Test fun movingTheDateToAnotherMonthEvaluatesAgainstTheDestinationMonthAlone() {
+        val sept = expenseTx(3000.0, LocalDate.of(2026, 9, 15))
+        val octIncome = incomeTx(5000.0, LocalDate.of(2026, 10, 3))
+        val octExpense = expenseTx(4800.0, LocalDate.of(2026, 10, 20))
+        val all = listOf(sept, octIncome, octExpense)
+        // October already has only 200 of headroom (5000 - 4800) before this entry arrives.
+        assertTrue(AnalyticsEngine.editCashFlowWarning(all, sept, proposedAmount = 500.0, proposedDate = LocalDate.of(2026, 10, 25), proposedType = FlowType.EXPENSE))
+        assertTrue(!AnalyticsEngine.editCashFlowWarning(all, sept, proposedAmount = 100.0, proposedDate = LocalDate.of(2026, 10, 25), proposedType = FlowType.EXPENSE))
+    }
+
+    @Test fun movingTheDateBackToItsOriginalValueClearsTheWarningAgain() {
+        val income = incomeTx(10000.0, LocalDate.of(2026, 9, 5))
+        val original = expenseTx(3000.0, LocalDate.of(2026, 9, 10))
+        val all = listOf(income, original)
+        // First confirm a genuine date move can warn (moved to a month with no income at all)...
+        assertTrue(AnalyticsEngine.editCashFlowWarning(all, original, proposedAmount = 3000.0, proposedDate = LocalDate.of(2026, 11, 1), proposedType = FlowType.EXPENSE))
+        // ...then confirm reverting the date to what it originally was clears it.
+        assertTrue(!AnalyticsEngine.editCashFlowWarning(all, original, proposedAmount = 3000.0, proposedDate = original.date, proposedType = FlowType.EXPENSE))
+    }
+
+    @Test fun convertingAnIncomeEntryToAnExpenseIsEvaluatedAsANewExpense() {
+        val original = incomeTx(2000.0, LocalDate.of(2026, 9, 10))
+        val smallOtherIncome = incomeTx(1000.0, LocalDate.of(2026, 9, 2))
+        val all = listOf(original, smallOtherIncome)
+        // Flipping it to a 2000 expense leaves only the other 1000 income behind it -> negative.
+        assertTrue(AnalyticsEngine.editCashFlowWarning(all, original, proposedAmount = 2000.0, proposedDate = original.date, proposedType = FlowType.EXPENSE))
+        // Converting to Income (even with a changed amount) is never flagged -- the warning is Expense-only.
+        assertTrue(!AnalyticsEngine.editCashFlowWarning(all, original, proposedAmount = 9000.0, proposedDate = original.date, proposedType = FlowType.INCOME))
+    }
+
+    @Test fun changingOnlyNoteOrCategoryCannotAffectTheWarningSinceNeitherIsAnInput() {
+        // editCashFlowWarning's signature has no note/category parameter at all: calling it twice with
+        // the exact same amount/date/type (as a note- or category-only edit would leave them) always
+        // produces the same result, by construction -- there is nothing else that could change it.
+        val income = incomeTx(4000.0, LocalDate.of(2026, 9, 2))
+        val original = expenseTx(3000.0, LocalDate.of(2026, 9, 10))
+        val all = listOf(income, original)
+        val first = AnalyticsEngine.editCashFlowWarning(all, original, proposedAmount = 3000.0, proposedDate = original.date, proposedType = FlowType.EXPENSE)
+        val second = AnalyticsEngine.editCashFlowWarning(all, original, proposedAmount = 3000.0, proposedDate = original.date, proposedType = FlowType.EXPENSE)
+        assertEquals(first, second)
+        assertTrue(!first)
     }
 
     // The Savings screen's "Current Year"/"All time" custom-range presets (round 8).

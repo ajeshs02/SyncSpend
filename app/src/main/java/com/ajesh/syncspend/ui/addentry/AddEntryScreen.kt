@@ -198,6 +198,14 @@ fun AddEntryScreen(onBack: () -> Unit, onSaved: () -> Unit, onAddCategory: (Flow
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                     }
+                    if (state.showCashFlowWarning) {
+                        Text(
+                            "Your expenses exceed your recorded available cash. Check whether any income is missing.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.neg,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
                     AmountEntryPad(
                         dateLabel = DateUtils.shortDate(state.date),
                         onDigit = { dismissKeyboard(); hint = null; viewModel.pressDigit(it) },

@@ -7,16 +7,19 @@ import java.time.YearMonth
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
- * The design renders Home and Transactions off one shared Component state —
- * switching the month/scope or the Expense/Income flow on either screen
- * moves the other one too. This holder (one instance, owned by
- * [com.ajesh.syncspend.di.AppContainer]) reproduces that: both screens'
- * ViewModels read and write the same [scope]/[flow], instead of each keeping
- * an independent local copy that would silently drift apart.
+ * Home and Transactions each have their own independent date-range scope and Expense/Income flow
+ * selection — [homeScope]/[homeFlow] for Home (also used by Settings' export-range default and by
+ * Add Entry, which mirrors Home's own toggle), [transactionsScope]/[transactionsFlow] for
+ * Transactions (also used by Stats, which shares Transactions' own scope/flow rather than Home's).
+ * This holder (one instance, owned by [com.ajesh.syncspend.di.AppContainer]) still survives
+ * navigation but not process death, same as before the split.
  */
 class SharedSelectionState {
-    val scope = MutableStateFlow<ScopePeriod>(ScopePeriod.Month(YearMonth.now()))
-    val flow = MutableStateFlow(FlowType.EXPENSE)
+    val homeScope = MutableStateFlow<ScopePeriod>(ScopePeriod.Month(YearMonth.now()))
+    val homeFlow = MutableStateFlow(FlowType.EXPENSE)
+
+    val transactionsScope = MutableStateFlow<ScopePeriod>(ScopePeriod.Month(YearMonth.now()))
+    val transactionsFlow = MutableStateFlow(FlowType.EXPENSE)
 
     /**
      * Which transaction the Edit Entry sheet is open for (null = closed). Home's
@@ -24,9 +27,6 @@ class SharedSelectionState {
      * app root renders the sheet so it paints above the floating nav.
      */
     val editingTransactionId = MutableStateFlow<Long?>(null)
-
-    /** Which transfer the Edit Transfer sheet is open for (null = closed) — the Transactions page's Savings filter sets this, never [editingTransactionId], since a transfer is not a [com.ajesh.syncspend.data.db.entity.TransactionEntity]. */
-    val editingTransferId = MutableStateFlow<Long?>(null)
 
     /**
      * A page a tapped notification asked for. MainActivity sets it (also on a cold start, before anything

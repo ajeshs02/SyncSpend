@@ -13,12 +13,12 @@ class DefaultCategoriesTest {
     private fun cat(name: String, type: FlowType, archived: Boolean = false) =
         CategoryEntity(name = name, iconKey = "tag", type = type, sortOrder = 0, archived = archived)
 
-    @Test fun shipsTheFifteenStarterCategories() {
+    @Test fun shipsTheFourteenStarterCategories() {
         val all = DefaultCategories.all
-        assertEquals(15, all.size)
-        assertEquals(8, all.count { it.type == FlowType.EXPENSE })
-        // Freelance/PF/Reward/Previous Savings/Other are the "Add to Savings" source list too — reused
-        // Income categories, not a parallel system (see TransferEntity's doc).
+        assertEquals(14, all.size)
+        assertEquals(7, all.count { it.type == FlowType.EXPENSE })
+        // PF/Reward/Previous Savings/Other were originally seeded as the now-removed Savings &
+        // Investment feature's "Add to Savings" source list — ordinary Income categories now.
         assertEquals(
             listOf("Salary", "Freelance", "Gift", "PF", "Reward", "Previous Savings", "Other"),
             all.filter { it.type == FlowType.INCOME }.map { it.name },
@@ -40,7 +40,7 @@ class DefaultCategoriesTest {
     @Test fun existingCategoriesAreNotDuplicatedCaseInsensitively() {
         val existing = listOf(cat("food", FlowType.EXPENSE), cat("SALARY", FlowType.INCOME), cat("Gift ", FlowType.INCOME))
         val missing = DefaultCategories.missingFrom(existing).map { it.name }
-        assertEquals(12, missing.size)
+        assertEquals(11, missing.size)
         assertTrue("Food" !in missing && "Salary" !in missing && "Gift" !in missing)
     }
 

@@ -35,7 +35,7 @@ class EntryNoteWrapTest {
     private val longest = "Dinner With Family At Mumbai Darbar Cafe"
 
     private fun row(id: Long, note: String) = TxRow(
-        id = id, categoryLabel = "Recharge, Bills & Subscriptions", note = note,
+        id = id, categoryId = 1, categoryLabel = "Recharge, Bills & Subscriptions", note = note,
         amountFormatted = "₹150,000", isPositive = false, dayLabel = "27 Sep - 18:40", iconKey = "receipt",
     )
 

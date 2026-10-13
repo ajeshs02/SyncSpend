@@ -15,6 +15,10 @@ import java.time.LocalDate
  * "Mark Done & Add Expense" actually inserts that [TransactionEntity]; it is the duplicate-prevention
  * gate (not [completed] alone — see `ForecastViewModel`), and is cleared back to null if that linked
  * transaction is later deleted, without reverting [completed] (see `TransactionRepository.delete`).
+ *
+ * [description] is a separate, optional free-text note — [note] itself is this forecast's required
+ * title (e.g. "Rent"), the equivalent of a transaction's category; [description] plays the role
+ * [TransactionEntity.description] does there, an optional extra line, never required.
  */
 @Entity(tableName = "forecasts")
 data class ForecastEntity(
@@ -25,4 +29,5 @@ data class ForecastEntity(
     val categoryId: Long? = null,
     val completed: Boolean = false,
     val completedTransactionId: Long? = null,
+    val description: String = "",
 )

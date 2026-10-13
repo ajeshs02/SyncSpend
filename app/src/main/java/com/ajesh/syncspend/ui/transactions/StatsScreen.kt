@@ -41,9 +41,9 @@ import java.time.LocalDate
  * The standalone Stats page (bottom nav), reached instead of a tab inside Transactions. Reuses
  * [TransactionsViewModel] — its `stats` never depended on the Entries/Categories tab, so a second
  * instance here is a clean, minimal reuse rather than a new ViewModel. No more Expense/Income toggle
- * — both flows are built and stacked in one scroll (see [statsItems]). The period picker (round 10) is
- * the same [PeriodPickerSheet] Home uses, sharing one selection across Home/Stats/Transactions via
- * [TransactionsViewModel.scope].
+ * — both flows are built and stacked in one scroll (see [statsItems]). The period picker is the same
+ * [PeriodPickerSheet] Transactions uses, sharing Transactions' own independent scope/flow selection
+ * (see [SharedSelectionState]) rather than Home's.
  */
 @Composable
 fun StatsScreen() {
@@ -56,7 +56,6 @@ fun StatsScreen() {
                     container.categoryRepository,
                     container.preferencesRepository,
                     container.subscriptionRepository,
-                    container.transferRepository,
                     container.selectionState,
                 )
             }
@@ -109,12 +108,12 @@ fun StatsScreen() {
                 verticalArrangement = Arrangement.spacedBy(11.dp),
             ) {
                 item(key = "header-expense") { SectionHeading("Expenses") }
-                statsItems(expense, keyPrefix = "exp", includeSavingsCard = true)
+                statsItems(expense, keyPrefix = "exp", includeNetCard = true)
                 item(key = "income-divider") {
                     Box(Modifier.padding(top = 22.dp).fillMaxWidth().height(1.dp).background(colors.line))
                 }
                 item(key = "header-income") { SectionHeading("Income") }
-                statsItems(income, keyPrefix = "inc", includeSavingsCard = false)
+                statsItems(income, keyPrefix = "inc", includeNetCard = false)
             }
         }
     }

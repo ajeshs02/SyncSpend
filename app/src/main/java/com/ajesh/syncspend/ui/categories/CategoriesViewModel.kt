@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.repository.CategoryRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
-import com.ajesh.syncspend.data.repository.TransferRepository
 import com.ajesh.syncspend.domain.model.FlowType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +24,6 @@ data class CategoriesUiState(
 class CategoriesViewModel(
     private val categoryRepository: CategoryRepository,
     private val transactionRepository: TransactionRepository,
-    private val transferRepository: TransferRepository,
     initialType: FlowType = FlowType.EXPENSE,
 ) : ViewModel() {
 
@@ -62,15 +60,10 @@ class CategoriesViewModel(
         }
     }
 
-    /**
-     * Removes the row if nothing references it; otherwise archives it so old entries keep their
-     * label. An Income category can be referenced by a Transfer's source too (reused rather than a
-     * parallel category system — see `TransferEntity`'s doc), so both counts are checked.
-     */
+    /** Removes the row if nothing references it; otherwise archives it so old entries keep their label. */
     fun delete(category: CategoryEntity) {
         viewModelScope.launch {
-            val inUse = transactionRepository.countByCategory(category.id) > 0 ||
-                transferRepository.countByCategory(category.id) > 0
+            val inUse = transactionRepository.countByCategory(category.id) > 0
             if (inUse) {
                 categoryRepository.update(category.copy(archived = true))
             } else {

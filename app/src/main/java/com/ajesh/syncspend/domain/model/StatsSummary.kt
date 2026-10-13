@@ -43,12 +43,7 @@ data class StatsSummary(
     /** Signed % change vs the previous period; null when there's nothing to compare against. */
     val trendPercent: Int?,
     val otherFlowTotal: Double,
-    /**
-     * (income − expense) / income over the range, null when there is no income. Named distinctly from
-     * the Transfer feature's Savings Balance on purpose — this is the classic "how much of your
-     * income you kept" metric, unrelated to the savings pool's own balance
-     * ([com.ajesh.syncspend.domain.analytics.AnalyticsEngine.savingsBalance]).
-     */
+    /** (income − expense) / income over the range, null when there is no income — "how much of your income you kept". */
     val netSavingsRatePercent: Int?,
     val topCategory: CategoryRollup?,
     val categories: List<CategoryRollup>,

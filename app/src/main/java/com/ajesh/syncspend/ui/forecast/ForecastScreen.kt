@@ -41,6 +41,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.ForecastEntity
 import com.ajesh.syncspend.di.LocalAppContainer
+import com.ajesh.syncspend.domain.model.EntryNote
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.ui.components.CategoryField
 import com.ajesh.syncspend.ui.components.CategoryPickerSheet
@@ -166,8 +167,8 @@ fun ForecastScreen(onBack: () -> Unit, onAddCategory: (FlowType) -> Unit = {}) {
             initial = null,
             currencySymbol = state.currencySymbol,
             categories = state.expenseCategories,
-            onSave = { note, amount, date, categoryId ->
-                viewModel.save(null, note, amount, date, categoryId)
+            onSave = { note, amount, date, categoryId, description ->
+                viewModel.save(null, note, amount, date, categoryId, description)
                 showAdd = false
             },
             onDelete = null,
@@ -180,8 +181,8 @@ fun ForecastScreen(onBack: () -> Unit, onAddCategory: (FlowType) -> Unit = {}) {
             initial = forecast,
             currencySymbol = state.currencySymbol,
             categories = state.expenseCategories,
-            onSave = { note, amount, date, categoryId ->
-                viewModel.save(forecast, note, amount, date, categoryId)
+            onSave = { note, amount, date, categoryId, description ->
+                viewModel.save(forecast, note, amount, date, categoryId, description)
                 editing = null
             },
             onDelete = { editing = null; deleting = forecast },
@@ -369,7 +370,7 @@ private fun ForecastDialog(
     initial: ForecastEntity?,
     currencySymbol: String,
     categories: List<CategoryEntity>,
-    onSave: (note: String, amount: Double, date: LocalDate, categoryId: Long?) -> Unit,
+    onSave: (note: String, amount: Double, date: LocalDate, categoryId: Long?, description: String) -> Unit,
     onDelete: (() -> Unit)?,
     onDismiss: () -> Unit,
     onAddCategory: () -> Unit = {},
@@ -381,11 +382,23 @@ private fun ForecastDialog(
     val nextMonth = remember { currentMonth.plusMonths(1) }
     var month by remember { mutableStateOf(initial?.date?.let { YearMonth.from(it) } ?: currentMonth) }
     var categoryId by remember { mutableStateOf(initial?.categoryId) }
+    var description by remember { mutableStateOf(initial?.description ?: "") }
     var showCategoryPicker by remember { mutableStateOf(false) }
     var attempted by remember { mutableStateOf(false) }
     val dismissKeyboardThen = rememberDismissKeyboardThen()
     val parsedAmount = amountText.toDoubleOrNull()
     val valid = note.isNotBlank() && parsedAmount != null && parsedAmount > 0
+
+    fun attemptSave() {
+        // A category is required — rather than a separate "pick a category" warning, open the picker
+        // directly (same pattern Add Entry and the Savings & Investment form already use), so the next
+        // tap is the fix, not a dead end.
+        if (categoryId == null) {
+            showCategoryPicker = true
+            return
+        }
+        if (valid) onSave(note.trim(), parsedAmount, month.atDay(1), categoryId, EntryNote.normalize(description)) else attempted = true
+    }
 
     DesignDialog(onDismiss = onDismiss) {
         DialogHeader(
@@ -418,12 +431,19 @@ private fun ForecastDialog(
                 month = nextMonth
             }
         }
-        FieldLabel("Category (optional)", top = 12.dp)
+        // No longer "(optional)" — a forecast now requires a category (see attemptSave).
+        FieldLabel("Category", top = 12.dp)
         CategoryField(category = categories.find { it.id == categoryId }, onClick = { dismissKeyboardThen { showCategoryPicker = true } })
+        FieldLabel("Add a Note (optional)", top = 12.dp)
+        DesignTextField(
+            value = description,
+            onValueChange = { v -> if (EntryNote.accepts(description, v)) description = v },
+            placeholder = "Add a note",
+        )
         DialogButtons(
             cta = if (initial == null) "Add" else "Save",
             onCancel = onDismiss,
-            onConfirm = { if (valid) onSave(note.trim(), parsedAmount, month.atDay(1), categoryId) else attempted = true },
+            onConfirm = ::attemptSave,
         )
         if (onDelete != null) {
             Text(

@@ -62,18 +62,18 @@ fun StatsTab(stats: StatsUi, modifier: Modifier = Modifier) {
         contentPadding = PaddingValues(top = 2.dp, bottom = SyncSpendChrome.screenBottomContentPadding),
         verticalArrangement = Arrangement.spacedBy(11.dp),
     ) {
-        statsItems(stats, keyPrefix = "s", includeSavingsCard = true)
+        statsItems(stats, keyPrefix = "s", includeNetCard = true)
     }
 }
 
 /**
  * [StatsTab]'s content as a [LazyListScope] extension, so [StatsScreen] can stack an Expense build and
  * an Income build inside one shared `LazyColumn` (no more Expense/Income toggle) without nesting two
- * scrollable lists. [keyPrefix] keeps item keys unique across both builds; [includeSavingsCard] renders
- * the flow-independent Savings summary card for only one of the two stacked sections, since its figures
+ * scrollable lists. [keyPrefix] keeps item keys unique across both builds; [includeNetCard] renders
+ * the flow-independent Net summary card for only one of the two stacked sections, since its figures
  * are identical either way.
  */
-internal fun LazyListScope.statsItems(stats: StatsUi, keyPrefix: String, includeSavingsCard: Boolean) {
+internal fun LazyListScope.statsItems(stats: StatsUi, keyPrefix: String, includeNetCard: Boolean) {
     item(key = "$keyPrefix-top", contentType = "top") {
         val colors = SyncSpendTheme.colors
         Column(
@@ -139,21 +139,20 @@ internal fun LazyListScope.statsItems(stats: StatsUi, keyPrefix: String, include
         }
     }
 
-    // Compact, flow-independent (shown the same for Expense and Income) — period-scoped Savings
-    // *movement*, never the all-time cumulative Savings Balance the Transfer screen shows (see
-    // SavingsSummaryUi's doc). Kept as its own small card, never folded into the tiles above, and
-    // rendered only once across the stacked Expense/Income sections (see [includeSavingsCard]).
-    if (includeSavingsCard) {
-        item(key = "$keyPrefix-savings", contentType = "card") {
+    // Compact, flow-independent (shown the same for Expense and Income) — this period's Income minus
+    // Expense. Kept as its own small card, never folded into the tiles above, and rendered only once
+    // across the stacked Expense/Income sections (see [includeNetCard]).
+    if (includeNetCard) {
+        item(key = "$keyPrefix-net", contentType = "card") {
             val colors = SyncSpendTheme.colors
-            StatsCard(title = "Savings · ${stats.savingsSummary.periodLabel}") {
+            StatsCard(title = "Net · ${stats.netRemaining.periodLabel}") {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SavingsSummaryStat("Added", stats.savingsSummary.contributionsFormatted, colors.mink, Modifier.weight(1f))
-                    SavingsSummaryStat("Withdrawn", stats.savingsSummary.withdrawalsFormatted, colors.neg, Modifier.weight(1f))
-                    SavingsSummaryStat(
+                    NetRemainingStat("Income", stats.netRemaining.incomeFormatted, colors.mink, Modifier.weight(1f))
+                    NetRemainingStat("Expense", stats.netRemaining.expenseFormatted, colors.neg, Modifier.weight(1f))
+                    NetRemainingStat(
                         "Net",
-                        stats.savingsSummary.netFormatted,
-                        if (stats.savingsSummary.netPositive) colors.mink else colors.neg,
+                        stats.netRemaining.netFormatted,
+                        if (stats.netRemaining.netPositive) colors.mink else colors.neg,
                         Modifier.weight(1f),
                     )
                 }
@@ -282,9 +281,9 @@ private fun StatsCard(title: String, gradient: Boolean = false, content: @Compos
     }
 }
 
-/** One of the three figures in the Savings summary card — a label, then a bold value in [valueColor]. */
+/** One of the three figures in the Net summary card — a label, then a bold value in [valueColor]. */
 @Composable
-private fun SavingsSummaryStat(label: String, value: String, valueColor: Color, modifier: Modifier = Modifier) {
+private fun NetRemainingStat(label: String, value: String, valueColor: Color, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         Text(label, fontSize = 10.5.sp, color = SyncSpendTheme.colors.sub)
         Text(

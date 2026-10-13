@@ -144,6 +144,91 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
     }
 }
 
+/**
+ * v8 -> v9: unconditionally deletes the pre-existing Expense category literally named "Savings" and
+ * every transaction filed under it. [MIGRATION_7_8] deliberately preserved this exact category as a
+ * leftover from the abandoned Savings-as-a-third-FlowType experiment ([MIGRATION_5_6]/[MIGRATION_7_8]);
+ * that reasoning no longer applies now that Savings is handled exclusively via the `transfers` ledger,
+ * and the user explicitly asked for it (and any entries under it) to be deleted outright, used or not.
+ * Scoped precisely to `type = 'EXPENSE' AND name = 'Savings'` — the unrelated `Previous Savings`
+ * Income category and the entire `transfers` table are untouched.
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "DELETE FROM `transactions` WHERE `categoryId` IN " +
+                "(SELECT `id` FROM `categories` WHERE `type` = 'EXPENSE' AND `name` = 'Savings')",
+        )
+        db.execSQL("DELETE FROM `categories` WHERE `type` = 'EXPENSE' AND `name` = 'Savings'")
+    }
+}
+
+/**
+ * v9 -> v10: adds [com.ajesh.syncspend.data.db.entity.TransferEntity.kind] (Savings vs. Investment) to
+ * the existing `transfers` table. Every pre-existing row predates Investment entirely, so it backfills
+ * as `SAVINGS` — the only historically-accurate value for data that was always Savings until now.
+ */
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `transfers` ADD COLUMN `kind` TEXT NOT NULL DEFAULT 'SAVINGS'")
+    }
+}
+
+/**
+ * v10 -> v11: adds [com.ajesh.syncspend.data.db.entity.ForecastEntity.description], an optional
+ * free-text note separate from the forecast's required `note` title (mirrors
+ * [com.ajesh.syncspend.data.db.entity.TransactionEntity.description]'s role). Every pre-existing
+ * forecast simply has none, same as a transaction created before notes existed.
+ */
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `forecasts` ADD COLUMN `description` TEXT NOT NULL DEFAULT ''")
+    }
+}
+
+/**
+ * v11 -> v12: the Savings & Investment feature (the `transfers` table and everything built on it)
+ * is removed outright. Every pre-existing row is dropped along with the table — these were never
+ * plain TransactionEntity rows, so no data needs to move anywhere first.
+ */
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP TABLE IF EXISTS `transfers`")
+    }
+}
+
+/**
+ * v12 -> v13: drops `transactions.fundingSource`/`contributionKind` — two legacy, always-null columns
+ * left over from the abandoned "Savings as a third FlowType" design (MIGRATION_5_6), confirmed fully
+ * dead: no production code ever writes a non-null value, and bundle import never even reads them.
+ * SQLite can't reliably DROP COLUMN across every Android SQLite version this app supports, so this
+ * rebuilds the table minus the two columns instead: create the trimmed table, copy every row across
+ * in column order, drop the old table, rename, then recreate the original table's two indices.
+ */
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE `transactions_new` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`amount` REAL NOT NULL, " +
+                "`description` TEXT NOT NULL, " +
+                "`categoryId` INTEGER NOT NULL, " +
+                "`date` INTEGER NOT NULL, " +
+                "`createdAt` INTEGER NOT NULL, " +
+                "`timeMinuteOfDay` INTEGER, " +
+                "`type` TEXT NOT NULL DEFAULT 'EXPENSE')",
+        )
+        db.execSQL(
+            "INSERT INTO `transactions_new` (`id`,`amount`,`description`,`categoryId`,`date`,`createdAt`,`timeMinuteOfDay`,`type`) " +
+                "SELECT `id`,`amount`,`description`,`categoryId`,`date`,`createdAt`,`timeMinuteOfDay`,`type` FROM `transactions`",
+        )
+        db.execSQL("DROP TABLE `transactions`")
+        db.execSQL("ALTER TABLE `transactions_new` RENAME TO `transactions`")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_date` ON `transactions` (`date`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_transactions_categoryId` ON `transactions` (`categoryId`)")
+    }
+}
+
 internal fun migrate3To4(db: SupportSQLiteDatabase, zone: ZoneId) {
     db.execSQL("ALTER TABLE `transactions` ADD COLUMN `timeMinuteOfDay` INTEGER")
     db.execSQL("ALTER TABLE `subscriptions` ADD COLUMN `remindDaysBefore` TEXT NOT NULL DEFAULT '1,3'")

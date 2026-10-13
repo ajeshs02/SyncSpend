@@ -38,6 +38,7 @@ import com.ajesh.syncspend.domain.model.CalendarBounds
 import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.di.LocalAppContainer
+import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
 import com.ajesh.syncspend.domain.model.EntryNote
 import com.ajesh.syncspend.domain.model.FlowType
 import com.ajesh.syncspend.ui.components.ConfirmDialog
@@ -55,7 +56,6 @@ import com.ajesh.syncspend.ui.icons.SyncSpendIcons
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import com.ajesh.syncspend.util.CurrencyFormatter
 import com.ajesh.syncspend.util.DateUtils
-import java.time.LocalDate
 import java.time.YearMonth
 import kotlin.math.abs
 import kotlinx.coroutines.flow.first
@@ -89,6 +89,7 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit, onAddCate
     }
     val categories by container.categoryRepository.getAll().collectAsStateWithLifecycle(emptyList())
     val earliest by container.transactionRepository.getEarliestDate().collectAsStateWithLifecycle(null)
+    val allTransactions by container.transactionRepository.getAll().collectAsStateWithLifecycle(emptyList())
     val prefs by container.preferencesRepository.preferences.collectAsStateWithLifecycle(
         com.ajesh.syncspend.data.datastore.UserPreferences(),
     )
@@ -115,6 +116,12 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit, onAddCate
     val parsedAmount = amountText.toDoubleOrNull()
     val canSave = parsedAmount != null && parsedAmount > 0 && categoryId != null
 
+    // True only when the user's proposed amount/date/type is an actual change from what's saved and
+    // that change creates or worsens an insufficient-cash-flow situation — never merely because the
+    // sheet opened with its original (already-saved) values. See AnalyticsEngine.editCashFlowWarning.
+    val showCashFlowWarning = parsedAmount != null &&
+        AnalyticsEngine.editCashFlowWarning(allTransactions, loaded, parsedAmount, date, type)
+
     DesignSheet(onDismiss = onDismiss) { close ->
         EditEntryBody(
             type = type,
@@ -135,6 +142,7 @@ private fun EditEntrySheet(transactionId: Long, onDismiss: () -> Unit, onAddCate
             onDateClick = { dismissKeyboardThen { showDate = true } },
             category = categories.find { it.id == categoryId },
             onCategoryClick = { dismissKeyboardThen { showPicker = true } },
+            showCashFlowWarning = showCashFlowWarning,
             canSave = canSave,
             onSave = {
                 val v = parsedAmount ?: return@EditEntryBody
@@ -220,6 +228,7 @@ internal fun EditEntryBody(
     onDateClick: () -> Unit,
     category: CategoryEntity?,
     onCategoryClick: () -> Unit,
+    showCashFlowWarning: Boolean = false,
     canSave: Boolean,
     onSave: () -> Unit,
     onDelete: () -> Unit,
@@ -272,6 +281,14 @@ internal fun EditEntryBody(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 8.dp),
         )
+        if (showCashFlowWarning) {
+            Text(
+                "Your expenses exceed your recorded available cash. Check whether any income is missing.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.neg,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
 
         Row(modifier = Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             SheetDeleteButton(onClick = onDelete)

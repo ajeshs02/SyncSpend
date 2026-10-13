@@ -7,7 +7,6 @@ import com.ajesh.syncspend.data.db.entity.ForecastEntity
 import com.ajesh.syncspend.data.db.entity.ReminderEntity
 import com.ajesh.syncspend.data.db.entity.SubscriptionEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
-import com.ajesh.syncspend.data.db.entity.TransferEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -34,7 +33,6 @@ object BundleExporter {
         reminders: List<ReminderEntity> = emptyList(),
         subscriptions: List<SubscriptionEntity> = emptyList(),
         forecasts: List<ForecastEntity> = emptyList(),
-        transfers: List<TransferEntity> = emptyList(),
     ) = withContext(Dispatchers.IO) {
         val root = JSONObject().put("schemaVersion", SCHEMA_VERSION)
         val categoriesById = categories.associateBy { it.id }
@@ -91,9 +89,6 @@ object BundleExporter {
             }
             root.put("forecasts", arr)
         }
-        if (BundleSection.TRANSFERS in sections) {
-            root.put("transfers", transfersJson(transfers, categoriesById))
-        }
 
         context.contentResolver.openOutputStream(uri, "wt")?.bufferedWriter(Charsets.UTF_8)?.use { out ->
             out.write(root.toString())
@@ -110,22 +105,6 @@ object BundleExporter {
                     .put("type", t.type.name)
                     .put("category", categories[t.categoryId]?.name ?: CsvImportParser.UNCATEGORIZED)
                     .put("description", t.description)
-                    .put("amount", t.amount),
-            )
-        }
-        return arr
-    }
-
-    /** [TransferEntity.categoryId] is serialized by name (like a transaction's), never a raw id — see this object's doc. */
-    private fun transfersJson(transfers: List<TransferEntity>, categories: Map<Long, CategoryEntity>): JSONArray {
-        val arr = JSONArray()
-        transfers.sortedWith(compareBy<TransferEntity> { it.date }.thenBy { it.createdAt }).forEach { t ->
-            arr.put(
-                JSONObject()
-                    .put("date", t.date.toString())
-                    .put("direction", t.direction.name)
-                    .put("category", t.categoryId?.let { categories[it]?.name })
-                    .put("note", t.note)
                     .put("amount", t.amount),
             )
         }

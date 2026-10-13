@@ -17,14 +17,13 @@ object DefaultCategories {
         DefaultCategory("Recharge, Bills & Subscriptions", FlowType.EXPENSE, "receipt"),
         DefaultCategory("Entertainment", FlowType.EXPENSE, "film"),
         DefaultCategory("Home", FlowType.EXPENSE, "house"),
-        DefaultCategory("Savings", FlowType.EXPENSE, "coin"),
         DefaultCategory("Debt / Liability", FlowType.EXPENSE, "card"),
         DefaultCategory("Salary", FlowType.INCOME, "bank"),
         DefaultCategory("Freelance", FlowType.INCOME, "brief"),
         DefaultCategory("Gift", FlowType.INCOME, "gift"),
-        // Added so "Add to Savings" has a sensible source to pick from (it reuses this Income list
-        // rather than a parallel category system — see TransferEntity's doc). Ordinary Income
-        // categories in every respect; nothing marks them "transfer-only".
+        // Originally seeded as Income sources for the now-removed Savings & Investment feature's
+        // "Add to Savings" flow. Ordinary Income categories in every respect now — kept as-is since a
+        // user may have real Income entries filed under them.
         DefaultCategory("PF", FlowType.INCOME, "shield"),
         DefaultCategory("Reward", FlowType.INCOME, "spark"),
         DefaultCategory("Previous Savings", FlowType.INCOME, "wallet"),

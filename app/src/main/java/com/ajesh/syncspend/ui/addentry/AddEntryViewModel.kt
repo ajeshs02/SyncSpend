@@ -7,11 +7,14 @@ import com.ajesh.syncspend.data.db.entity.CategoryEntity
 import com.ajesh.syncspend.data.db.entity.TransactionEntity
 import com.ajesh.syncspend.data.repository.CategoryRepository
 import com.ajesh.syncspend.data.repository.TransactionRepository
+import com.ajesh.syncspend.domain.analytics.AnalyticsEngine
 import com.ajesh.syncspend.domain.model.EntryNote
 import com.ajesh.syncspend.domain.model.FlowType
+import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.domain.state.SharedSelectionState
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.YearMonth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -31,6 +34,8 @@ data class AddEntryUiState(
     val currencySymbol: String = "₹",
     val categoryPickerOpen: Boolean = false,
     val allowDecimalInput: Boolean = false,
+    /** True when this would-be Expense, for the month containing [date], exceeds the recorded available cash — advisory only, never blocks save. */
+    val showCashFlowWarning: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -45,7 +50,7 @@ class AddEntryViewModel(
     // screen's own ViewModel survives across bottom-nav tab switches (NavHost keeps its
     // ViewModelStore via saveState/restoreState), so a one-time snapshot at construction would go
     // stale the moment the toggle changes elsewhere without this screen being reopened.
-    private val type = selection.flow
+    private val type = selection.homeFlow
     private val amountText = MutableStateFlow("0")
     private val date = MutableStateFlow(LocalDate.now())
     private val selectedCategory = MutableStateFlow<CategoryEntity?>(null)
@@ -69,7 +74,13 @@ class AddEntryViewModel(
         draft,
         categoriesForType,
         preferencesRepository.preferences,
-    ) { d, categories, prefs ->
+        transactionRepository.getAll(),
+    ) { d, categories, prefs, tx ->
+        val enteredAmount = d.amountText.toDoubleOrNull() ?: 0.0
+        val showCashFlowWarning = d.type == FlowType.EXPENSE && enteredAmount > 0.0 && run {
+            val range = AnalyticsEngine.scopeRange(ScopePeriod.Month(YearMonth.from(d.date)), LocalDate.now(), null)
+            AnalyticsEngine.availableAmount(tx, range) - enteredAmount < 0
+        }
         AddEntryUiState(
             type = d.type,
             amountText = d.amountText,
@@ -79,11 +90,12 @@ class AddEntryViewModel(
             currencySymbol = prefs.currencyCode.symbol,
             categoryPickerOpen = d.categoryPickerOpen,
             allowDecimalInput = prefs.allowDecimalInput,
+            showCashFlowWarning = showCashFlowWarning,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AddEntryUiState())
 
     fun setType(newType: FlowType) {
-        selection.flow.value = newType
+        selection.homeFlow.value = newType
         selectedCategory.value = null
     }
 

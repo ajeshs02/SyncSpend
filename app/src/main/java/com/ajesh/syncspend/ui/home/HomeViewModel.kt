@@ -34,6 +34,7 @@ data class HomeUiState(
     val loaded: Boolean = false,
     val flow: FlowType = FlowType.EXPENSE,
     val scopeLabel: String = "",
+    /** The period selector's sub-line: the resolved date range ("From 1 Oct 2026 - To 31 Oct 2026"), the same wording Stats shows below its own picker. */
     val scopeSubLabel: String = "",
     val total: Double = 0.0,
     val totalFormatted: String = "0",
@@ -80,9 +81,10 @@ class HomeViewModel(
         reminderRepository.getAll(),
         preferencesRepository.preferences,
         categoryRepository.getAll(),
-    ) { tx, subs, reminders, prefs, cats -> Sources(tx, subs, reminders, prefs, cats) }
+        ::Sources,
+    )
 
-    val uiState: StateFlow<HomeUiState> = combine(sources, selection.scope, selection.flow, ::compute)
+    val uiState: StateFlow<HomeUiState> = combine(sources, selection.homeScope, selection.homeFlow, ::compute)
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
@@ -102,15 +104,17 @@ class HomeViewModel(
         val lower = CalendarBounds.dataLowerMonth(now, earliest)
         val recent = scopeTx.sortedWith(compareByDescending<TransactionEntity> { it.date }.thenByDescending { it.createdAt }).take(10)
         val categoriesById = sources.categories.associateBy { it.id }
+        val range = AnalyticsEngine.scopeRange(scope, java.time.LocalDate.now(), earliest)
 
         return HomeUiState(
             loaded = true,
             flow = flowType,
             scopeLabel = AnalyticsEngine.scopeLabel(scope),
-            scopeSubLabel = "${scopeTx.size} " + when (flowType) {
-                FlowType.INCOME -> "income entries logged"
-                FlowType.EXPENSE -> "expenses logged"
-            },
+            // Same wording Stats shows below its own picker ("From 1 Oct 2026 - To 31 Oct 2026") —
+            // replaces the previous "N expenses/income entries logged" count, which didn't answer the
+            // question this sub-line exists for. Stats passes subLabel = null to its own PeriodSelectorPill
+            // (it shows this same text as a separate line below instead) — see that screen, untouched.
+            scopeSubLabel = DateUtils.appliedRangeLabel(range),
             total = total,
             totalFormatted = CurrencyFormatter.amount(total),
             currencySymbol = sources.prefs.currencyCode.symbol,
@@ -141,7 +145,7 @@ class HomeViewModel(
     }
 
     fun applyScope(newScope: ScopePeriod) {
-        selection.scope.value = newScope
+        selection.homeScope.value = newScope
     }
 
     /** ‹ › step the current selection by one month / year / window, never past the present or before the oldest entry's month. */
@@ -152,10 +156,10 @@ class HomeViewModel(
     private fun step(delta: Int) {
         val now = java.time.YearMonth.now()
         val lower = CalendarBounds.dataLowerMonth(now, uiState.value.earliestTransactionDate)
-        AnalyticsEngine.stepScope(selection.scope.value, delta, now, lower)?.let { selection.scope.value = it }
+        AnalyticsEngine.stepScope(selection.homeScope.value, delta, now, lower)?.let { selection.homeScope.value = it }
     }
 
     fun setFlow(type: FlowType) {
-        selection.flow.value = type
+        selection.homeFlow.value = type
     }
 }

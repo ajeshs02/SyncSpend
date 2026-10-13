@@ -97,10 +97,10 @@ class ForecastViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ForecastUiState())
 
-    fun save(existing: ForecastEntity?, note: String, amount: Double, date: LocalDate?, categoryId: Long?) {
+    fun save(existing: ForecastEntity?, note: String, amount: Double, date: LocalDate?, categoryId: Long?, description: String = "") {
         viewModelScope.launch {
             if (existing == null) {
-                repository.insert(ForecastEntity(note = note, amount = amount, date = date, categoryId = categoryId))
+                repository.insert(ForecastEntity(note = note, amount = amount, date = date, categoryId = categoryId, description = description))
             } else {
                 // Editing a plain "marked done" forecast (no linked expense) un-does it — any further
                 // action needed is a fresh, explicit Mark Done/Add Expense. A forecast already linked to a
@@ -113,6 +113,7 @@ class ForecastViewModel(
                         amount = amount,
                         date = date,
                         categoryId = categoryId,
+                        description = description,
                         completed = if (revertCompletion) false else existing.completed,
                     ),
                 )

@@ -55,7 +55,6 @@ fun CategoriesScreen(initialFlow: FlowType? = null) {
                 CategoriesViewModel(
                     container.categoryRepository,
                     container.transactionRepository,
-                    container.transferRepository,
                     initialFlow ?: FlowType.EXPENSE,
                 )
             }

@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.ajesh.syncspend.domain.model.CurrencyCode
 import com.ajesh.syncspend.domain.model.ThemeMode
+import com.ajesh.syncspend.widget.WidgetRefresher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,10 +24,12 @@ private fun defaultAllowDecimalInput(code: CurrencyCode): Boolean = code != Curr
 
 /**
  * User preferences over a DataStore. The store is injected (the app passes [dataStore] of its
- * Context) so tests can hand in an isolated one.
+ * Context) so tests can hand in an isolated one. [context] is optional and separate from [store]
+ * purely so the home-screen widget tile can be told to redraw itself right after a currency/decimal
+ * change — it defaults to null (no refresh attempted) for tests, which never place a real widget.
  */
-class PreferencesRepository(private val store: DataStore<Preferences>, scope: CoroutineScope) {
-    constructor(context: Context, scope: CoroutineScope) : this(context.dataStore, scope)
+class PreferencesRepository(private val store: DataStore<Preferences>, scope: CoroutineScope, private val context: Context? = null) {
+    constructor(context: Context, scope: CoroutineScope) : this(context.dataStore, scope, context)
 
 
     private object Keys {
@@ -78,6 +81,7 @@ class PreferencesRepository(private val store: DataStore<Preferences>, scope: Co
                 it[Keys.ALLOW_DECIMAL_INPUT] = defaultAllowDecimalInput(code)
             }
         }
+        refreshWidget()
     }
 
     suspend fun setAllowDecimalInput(enabled: Boolean) {
@@ -85,6 +89,18 @@ class PreferencesRepository(private val store: DataStore<Preferences>, scope: Co
             it[Keys.ALLOW_DECIMAL_INPUT] = enabled
             it[Keys.ALLOW_DECIMAL_INPUT_USER_SET] = true
         }
+        refreshWidget()
+    }
+
+    /**
+     * Every other in-app screen already reads [preferences] live, so a currency/decimal change shows
+     * up there immediately on its own. The home-screen widget tile is the one exception — it's plain
+     * `RemoteViews`, redrawn only when explicitly told to (see [TransactionRepository]'s own
+     * `refreshWidget`) — so it needs this nudge to pick up the new symbol/formatting right away
+     * instead of waiting for the next transaction or the daily alarm.
+     */
+    private fun refreshWidget() {
+        context?.let { WidgetRefresher.requestUpdate(it) }
     }
 
     suspend fun setDailyReminder(enabled: Boolean, minuteOfDay: Int) {

@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.ajesh.syncspend.domain.model.CalendarBounds
 import com.ajesh.syncspend.domain.model.ScopePeriod
 import com.ajesh.syncspend.ui.icons.SyncSpendIcons
+import com.ajesh.syncspend.ui.theme.SyncSpendPalette
 import com.ajesh.syncspend.ui.theme.SyncSpendTheme
 import java.time.LocalDate
 import java.time.Month
@@ -175,6 +176,8 @@ internal fun PeriodPickerBody(
                             label = month.getDisplayName(TextStyle.SHORT, Locale.US),
                             selected = draft is ScopePeriod.Month && draft.yearMonth == ym,
                             enabled = inRange,
+                            // Purely an "this is today's actual month" indicator, independent of selection.
+                            isCurrent = ym == YearMonth.now(),
                             modifier = Modifier.weight(1f),
                             vertical = 12.dp,
                             radius = 14.dp,
@@ -210,6 +213,8 @@ fun PickerChip(
     selected: Boolean,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    /** Purely a "this is today's actual month" marker (a green outline), independent of [selected]. */
+    isCurrent: Boolean = false,
     vertical: androidx.compose.ui.unit.Dp = 10.dp,
     radius: androidx.compose.ui.unit.Dp = 12.dp,
     /** Keep the label on one line (rolling-window chips, where three share a row). */
@@ -224,7 +229,11 @@ fun PickerChip(
                 if (selected) SyncSpendTheme.colors.selectedBrush else SolidColor(SyncSpendTheme.colors.pill),
                 RoundedCornerShape(radius),
             )
-            .border(1.dp, SyncSpendTheme.colors.line, RoundedCornerShape(radius))
+            .border(
+                if (isCurrent) 1.5.dp else 1.dp,
+                if (isCurrent) SyncSpendPalette.BrandGreen else SyncSpendTheme.colors.line,
+                RoundedCornerShape(radius),
+            )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,

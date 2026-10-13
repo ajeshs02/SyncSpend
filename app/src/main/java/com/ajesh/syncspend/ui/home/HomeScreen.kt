@@ -69,7 +69,6 @@ fun HomeScreen(
     onOpenSubscriptions: () -> Unit,
     onOpenReminders: () -> Unit,
     onOpenForecast: () -> Unit,
-    onOpenTransfer: () -> Unit,
     onOpenStats: () -> Unit,
 ) {
     val container = LocalAppContainer.current
@@ -91,7 +90,7 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // The toggle reads the selection itself (main-thread, instant) rather than waiting for the
     // computed state to come back from the background, so its pill moves on the tap.
-    val flow by container.selectionState.flow.collectAsStateWithLifecycle()
+    val flow by container.selectionState.homeFlow.collectAsStateWithLifecycle()
     val colors = SyncSpendTheme.colors
 
     // The title, flow toggle and period selector stay put; only what is below them scrolls, so
@@ -145,17 +144,16 @@ fun HomeScreen(
                     modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp),
                 )
 
-                // 2x2 grid: each row shares one height (IntrinsicSize.Max) so "Subscriptions & EMIs"
-                // wrapping to a second line doesn't make its card taller than its row-mates.
-                Column(modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(modifier = Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ShortcutCard(Modifier.weight(1f).fillMaxHeight(), SyncSpendIcons.Repeat, "Subscriptions & EMIs", "${state.subsCount} active", onOpenSubscriptions)
-                        ShortcutCard(Modifier.weight(1f).fillMaxHeight(), SyncSpendIcons.Bell, "Reminders", "${state.remindersCount} set", onOpenReminders)
-                    }
-                    Row(modifier = Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ShortcutCard(Modifier.weight(1f).fillMaxHeight(), SyncSpendIcons.Cal, "Forecast", "Plan ahead", onOpenForecast)
-                        ShortcutCard(Modifier.weight(1f).fillMaxHeight(), SyncSpendIcons.Coin, "Savings", "Move to savings", onOpenTransfer)
-                    }
+                // One row of three, sharing a height (IntrinsicSize.Max) so "Subscriptions & EMIs"
+                // wrapping to a second line doesn't make its card taller than its row-mates (the 4th
+                // tile, Savings & Investments, was removed with that feature).
+                Row(
+                    modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 12.dp).height(IntrinsicSize.Max),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ShortcutCard(Modifier.weight(1f).fillMaxHeight(), SyncSpendIcons.Repeat, "Subscriptions & EMIs", "${state.subsCount} active", onOpenSubscriptions)
+                    ShortcutCard(Modifier.weight(1f).fillMaxHeight(), SyncSpendIcons.Bell, "Reminders", "${state.remindersCount} set", onOpenReminders)
+                    ShortcutCard(Modifier.weight(1f).fillMaxHeight(), SyncSpendIcons.Cal, "Forecast", "Plan ahead", onOpenForecast)
                 }
 
                 // Breathing room before the scrollable section starts, per the ask for a visible gap here.
@@ -345,9 +343,9 @@ internal fun RotatingInsight(lines: List<String>, modifier: Modifier = Modifier)
 
 
 /**
- * Four of these fill a 2x2 grid now — a 2-line title so a longer label like "Subscriptions & EMIs"
- * still fits at half the row's width. The caller passes `fillMaxHeight()` inside a row sized with
- * `IntrinsicSize.Max`, so both cards in a row always share one height regardless of which one wraps.
+ * A 2-line title so a longer label like "Subscriptions & EMIs" still fits at a third of the row's
+ * width. All three of these pass `fillMaxHeight()` inside a row sized with `IntrinsicSize.Max`, so
+ * they always share one height regardless of which one wraps.
  */
 @Composable
 private fun ShortcutCard(modifier: Modifier, icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
